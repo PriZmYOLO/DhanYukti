@@ -3,6 +3,7 @@
 # DhanYukti — Project Instructions
 
 ## Product
+
 DhanYukti (धनयुक्ति) is a Household Financial OS.
 Tagline: “Plan your money. Know your next step.”
 
@@ -14,6 +15,7 @@ Built for the CDPG Annual Conclave 2026 National Student Case Challenge —
 National Finals, IIM Bangalore, 30 September 2026.
 
 ## Required customer journey
+
 1. Consent
 2. Connect
 3. Understand
@@ -24,6 +26,7 @@ National Finals, IIM Bangalore, 30 September 2026.
 8. Sustain
 
 ## Team ownership
+
 - Lohit: frontend screens and browser integration
 - Harshal: backend state, permissions, and deployment
 - Anish: evidence adapters, data connections, and related data work
@@ -34,6 +37,7 @@ Respect these boundaries. Do not modify backend work owned by other
 teammates unless explicitly asked.
 
 ## Frontend
+
 The frontend lives in `web/` (this directory): Next.js 16 App Router,
 TypeScript, Tailwind CSS v4, shadcn/ui (base-nova style, built on Base UI —
 not Radix). This Next.js version has breaking changes: check
@@ -45,6 +49,7 @@ there is a clear reason to improve them. Reuse the shared components
 and brand strings (`lib/brand.ts`).
 
 ## Product and financial-data principles
+
 - Unknown is not zero.
 - Unavailable data is not proof that something does not exist.
 - Pending, failed, stale, and revoked are distinct states.
@@ -63,10 +68,12 @@ and brand strings (`lib/brand.ts`).
   may explain results but must not fabricate them.
 
 ## Architecture and integration
+
 Integrate through explicit, documented contracts. Do not invent backend
 endpoints or assume a provider API is available.
 
 Home decision view (paths relative to `web/`):
+
 - Integration seam: `lib/data/home.ts` → `loadHomeView()`. It also
   normalises unknown values and enforces one snapshot per page; keep that
   when connecting the real backend.
@@ -82,6 +89,7 @@ Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration.
 
 ## Current implementation status
+
 - L01: complete
 - L02: complete
 - L03: PASS
@@ -93,6 +101,7 @@ browser checks and L01/L02 regression checks passed in the last
 verification run.
 
 Known follow-ups:
+
 - Convert the scratch browser tests (kept outside the repo) into proper
   repository tests.
 - Add browser coverage for unusual/unknown backend states and invite
@@ -105,12 +114,15 @@ Known follow-ups:
 Do not start L04 unless explicitly asked.
 
 ## Development workflow
+
 Before editing:
+
 1. Inspect relevant files and current project state.
 2. Check existing contracts and team ownership.
 3. Identify the smallest coherent implementation.
 
 After editing, run the relevant checks (from `web/`):
+
 - Prettier: `npx prettier --check .`
 - ESLint: `npx eslint .`
 - TypeScript/build: `npx next build`
@@ -120,6 +132,7 @@ Do not claim a check passed unless it actually ran and passed. Do not delete
 unrelated files or make broad configuration changes without a clear reason.
 
 When reporting completion, state:
+
 - What changed
 - Files changed
 - Checks actually run and their results
@@ -127,6 +140,7 @@ When reporting completion, state:
 - Any backend contract or teammate dependency
 
 ## GitHub status
+
 - Repository: https://github.com/PriZmYOLO/DhanYukti (private, owner
   `PriZmYOLO`).
 - The Git root is the project folder (`DhanYukti/`), not `web/`. Root
