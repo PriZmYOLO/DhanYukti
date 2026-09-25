@@ -127,8 +127,15 @@ When reporting completion, state:
 - Any backend contract or teammate dependency
 
 ## GitHub status
-The DhanYukti GitHub repository has not been created yet. Do not assume a
-remote exists, claim anything has been pushed, or create a repository
-without explicit instruction.
+- Repository: https://github.com/PriZmYOLO/DhanYukti (private, owner
+  `PriZmYOLO`).
+- The Git root is the project folder (`DhanYukti/`), not `web/`. Root
+  `.gitignore` excludes `.claude/settings.local.json`; root `.gitattributes`
+  enforces LF line endings to match Prettier.
+- `main` tracks `origin/main`. No collaborators have been added yet.
+
+Do not commit, push, force-push, change visibility, add collaborators, or
+create branches or pull requests without explicit instruction. Do not claim
+something was pushed unless the push actually succeeded.
 
 Keep this document concise and update it as the project evolves.
