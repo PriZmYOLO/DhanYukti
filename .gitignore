@@ -1,0 +1,21 @@
+# Repository-wide ignores. App-specific rules live in web/.gitignore.
+
+# Claude Code: personal local settings (shared .claude/settings.json is fine)
+.claude/settings.local.json
+
+# dependencies and build output, anywhere in the repo
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# env files and secrets
+.env*
+*.pem
+*.key
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
