@@ -8,9 +8,10 @@ import { HomeText } from "@/components/home/home-text";
 import type { SafeToSpendRelease } from "@/lib/contracts/decision-packet";
 import type { FactSummary } from "@/lib/contracts/household-projection";
 
+/** A ruled figure block: a strong rule above, no box. */
 function Tile({ children, label }: { label: ReactNode; children: ReactNode }) {
   return (
-    <div className="bg-card space-y-2 rounded-xl border p-4">
+    <div className="border-foreground space-y-2 border-t-[1.5px] pt-3.5">
       <p className="text-muted-foreground text-sm">{label}</p>
       {children}
     </div>
@@ -27,7 +28,10 @@ function SafeToSpend({ release }: { release: SafeToSpendRelease | null }) {
       return (
         <div className="space-y-1">
           <p>
-            <Money value={release.amount} className="text-2xl" />
+            <Money
+              value={release.amount}
+              className="text-[2rem] leading-tight tracking-tight"
+            />
           </p>
           <p className="text-muted-foreground text-xs">
             <HomeText k="safeUntil" />{" "}
@@ -78,14 +82,14 @@ export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
   const cashFacts = facts.filter((fact) => fact.kind === "cash_balance");
 
   return (
-    <section aria-labelledby="money-now-heading" className="space-y-3">
+    <section aria-labelledby="money-now-heading" className="space-y-4">
       <h2
         id="money-now-heading"
-        className="text-lg font-semibold tracking-tight"
+        className="font-heading text-2xl tracking-tight"
       >
         <HomeText k="moneyNowHeading" />
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Tile label={<HomeText k="cashAvailable" />}>
           {cashFacts.length === 0 ? (
             <AvailabilityState
@@ -99,7 +103,10 @@ export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
                 <li key={fact.fact_id} className="space-y-1.5">
                   {fact.availability === "present" ? (
                     <p>
-                      <Money value={fact.amount} className="text-2xl" />
+                      <Money
+                        value={fact.amount}
+                        className="text-[2rem] leading-tight tracking-tight"
+                      />
                     </p>
                   ) : (
                     <AvailabilityState status={fact.availability} compact />

@@ -1,4 +1,5 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
@@ -9,6 +10,7 @@ import type {
   FactKind,
   FactSummary,
 } from "@/lib/contracts/household-projection";
+import { cn } from "@/lib/utils";
 
 const UPCOMING_KINDS: readonly FactKind[] = [
   "income",
@@ -20,8 +22,8 @@ function Item({ fact, passed }: { fact: FactSummary; passed: boolean }) {
   const incoming = fact.kind === "income";
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
   return (
-    <li className="grid grid-cols-[4.5rem_1fr] gap-3 p-3 sm:grid-cols-[6.5rem_1fr_auto] sm:items-center">
-      <p className="text-muted-foreground text-sm leading-tight">
+    <li className="grid grid-cols-[4.5rem_1fr] gap-3 px-1 py-3.5 sm:grid-cols-[7rem_1fr_auto] sm:items-center">
+      <p className="text-muted-foreground text-xs leading-tight font-semibold tracking-wide uppercase tabular-nums">
         {passed ? (
           <span className="text-warning-foreground block text-xs font-medium">
             <HomeText k="datePassed" />
@@ -60,7 +62,12 @@ function Item({ fact, passed }: { fact: FactSummary; passed: boolean }) {
       </div>
       <div className="col-start-2 sm:col-start-auto sm:text-right">
         {fact.availability === "present" ? (
-          <Money value={fact.amount} per={fact.per} />
+          // Money in reads green; "Money in" is always written beside it.
+          <Money
+            value={fact.amount}
+            per={fact.per}
+            className={cn("font-semibold", incoming && "text-positive")}
+          />
         ) : (
           <AvailabilityState status={fact.availability} compact />
         )}
@@ -72,6 +79,8 @@ function Item({ fact, passed }: { fact: FactSummary; passed: boolean }) {
 interface ComingUpProps {
   facts: FactSummary[];
   asOf: string;
+  /** Released summary shown between the heading and the dated rows. */
+  summary?: ReactNode;
 }
 
 const byDate = (a: FactSummary, b: FactSummary) =>
@@ -85,7 +94,7 @@ const byDate = (a: FactSummary, b: FactSummary) =>
  * whose date isn't known. It only lists released facts; it does not total,
  * forecast or decide whether anything was paid.
  */
-export function ComingUp({ facts, asOf }: ComingUpProps) {
+export function ComingUp({ facts, asOf, summary }: ComingUpProps) {
   const relevant = facts.filter((fact) => UPCOMING_KINDS.includes(fact.kind));
   const isPassed = (fact: FactSummary) =>
     fact.effective_on !== null && fact.effective_on < asOf && fact.per === null;
@@ -101,19 +110,25 @@ export function ComingUp({ facts, asOf }: ComingUpProps) {
   ];
 
   return (
-    <section aria-labelledby="coming-up-heading" className="space-y-3">
-      <h2
-        id="coming-up-heading"
-        className="text-lg font-semibold tracking-tight"
-      >
-        <HomeText k="comingUpHeading" />
-      </h2>
+    <section aria-labelledby="coming-up-heading" className="space-y-5">
+      <div>
+        <p className="text-primary text-xs font-semibold tracking-widest uppercase">
+          <HomeText k="cashFlowLabel" />
+        </p>
+        <h2
+          id="coming-up-heading"
+          className="font-heading mt-1 text-[2rem] leading-tight tracking-tight"
+        >
+          <HomeText k="comingUpHeading" />
+        </h2>
+      </div>
+      {summary}
       {items.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           <HomeText k="comingUpEmpty" />
         </p>
       ) : (
-        <ol className="bg-card divide-y rounded-xl border">
+        <ol className="divide-y border-b">
           {items.map(({ fact, passed }) => (
             <Item key={fact.fact_id} fact={fact} passed={passed} />
           ))}

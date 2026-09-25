@@ -88,18 +88,26 @@ export function ConsequenceOfDelay({
       ? description
       : null;
 
+  // A flat dark panel: the counterweight to the headline, not an alarm. The
+  // raised mint next-step panel stays the page's one elevated surface.
   return (
-    <div className="border-warning bg-warning/10 space-y-1 rounded-r-lg border-l-4 py-3 pr-3 pl-4">
-      <p className="text-warning-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+    <div className="surface-forest space-y-3 rounded-xl p-5 sm:p-6">
+      <p className="text-warning flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase">
         <Hourglass aria-hidden className="size-3.5" />
         <HomeText k="ifNothingChanges" />
       </p>
-      <p className="text-base">{sentence}</p>
-      {extraDescription && <p className="text-sm">{extraDescription}</p>}
-      {kind === "cash_gap" && (
-        <p className="text-foreground/85 text-sm">
-          <HomeText k="consequenceNotLoss" />
-        </p>
+      <p className="font-heading text-[1.625rem] leading-snug tracking-tight lg:text-[1.875rem]">
+        {sentence}
+      </p>
+      {(extraDescription || kind === "cash_gap") && (
+        <div className="text-forest-muted space-y-1 border-t border-current/25 pt-3 text-sm">
+          {extraDescription && <p>{extraDescription}</p>}
+          {kind === "cash_gap" && (
+            <p>
+              <HomeText k="consequenceNotLoss" />
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

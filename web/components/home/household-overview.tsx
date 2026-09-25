@@ -13,7 +13,7 @@ export function HouseholdOverview({ projection }: HouseholdOverviewProps) {
       <section aria-labelledby="members-heading" className="space-y-3">
         <h2
           id="members-heading"
-          className="text-lg font-semibold tracking-tight"
+          className="text-primary text-xs font-semibold tracking-widest uppercase"
         >
           Household members
         </h2>
@@ -43,9 +43,9 @@ export function HouseholdOverview({ projection }: HouseholdOverviewProps) {
       <section aria-labelledby="sources-heading" className="space-y-3">
         <h2
           id="sources-heading"
-          className="text-lg font-semibold tracking-tight"
+          className="text-primary text-xs font-semibold tracking-widest uppercase"
         >
-          Connected sources
+          Sources
         </h2>
         <ul className="space-y-2">
           {projection.connections.map((connection) => (

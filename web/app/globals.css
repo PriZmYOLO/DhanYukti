@@ -12,8 +12,25 @@
     system-ui, sans-serif;
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-mint: var(--mint);
+  --color-mint-surface: var(--mint-surface);
+  --color-mint-border: var(--mint-border);
+  --color-forest: var(--forest);
+  --color-forest-foreground: var(--forest-foreground);
+  --color-forest-muted: var(--forest-muted);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  /* Editorial serif: page headlines, the priority title and the consequence
+     sentence only. Money always stays Geist (see Money). */
+  --font-serif:
+    var(--font-newsreader), var(--font-noto-devanagari), Georgia, serif;
+  --font-heading: var(--font-serif);
+  --shadow-raised:
+    0 1px 2px oklch(0.22 0.015 155 / 0.05),
+    0 12px 32px -18px oklch(0.22 0.015 155 / 0.2);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,33 +69,56 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Editorial palette: ivory paper, forest ink, mint as a fill only.
+ *
+ * Contrast (WCAG 2.x, text needs 4.5:1), checked against these values:
+ *   foreground on background 15.4, on card 16.5, on mint-surface 14.8
+ *   muted-foreground on background 6.1, card 6.5, muted 5.6, mint-surface 5.8
+ *   primary on background 7.0, card 7.5, mint-surface 6.7; primary-fg on it 6.9
+ *   warning-foreground on background 8.5, on warning/10–15 tints 7.9–8.6
+ *   warning (amber) on forest 9.6 — the "If nothing changes" label
+ *   forest-foreground on forest 14.5; forest-muted on forest 8.8
+ *   positive on background 6.4; negative on background 5.8
+ * Mint (and mint-border) are never text: fills, seal and highlights only.
+ * Colour never carries meaning alone — every state has a word and/or icon;
+ * negative figures also carry a "−" sign and a label.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0.085 170);
-  --primary-foreground: oklch(0.985 0 0);
+  --background: oklch(0.962 0.012 85);
+  --foreground: oklch(0.22 0.015 155);
+  --card: oklch(0.985 0.006 85);
+  --card-foreground: oklch(0.22 0.015 155);
+  --popover: oklch(0.985 0.006 85);
+  --popover-foreground: oklch(0.22 0.015 155);
+  --primary: oklch(0.43 0.08 155);
+  --primary-foreground: oklch(0.96 0.012 85);
   --warning: oklch(0.83 0.13 85);
   --warning-foreground: oklch(0.4 0.09 65);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.935 0.012 85);
+  --secondary-foreground: oklch(0.22 0.015 155);
+  --muted: oklch(0.935 0.012 85);
+  --muted-foreground: oklch(0.47 0.015 150);
+  --accent: oklch(0.935 0.012 85);
+  --accent-foreground: oklch(0.22 0.015 155);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.45 0.085 170);
+  --border: oklch(0.87 0.014 85);
+  --input: oklch(0.87 0.014 85);
+  --ring: oklch(0.43 0.08 155);
+  --mint: oklch(0.9 0.06 155);
+  --mint-surface: oklch(0.945 0.03 155);
+  --mint-border: oklch(0.86 0.055 155);
+  --forest: oklch(0.24 0.028 160);
+  --forest-foreground: oklch(0.96 0.012 85);
+  --forest-muted: oklch(0.8 0.02 150);
+  --positive: oklch(0.45 0.1 150);
+  --negative: oklch(0.5 0.14 32);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -89,27 +129,36 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* Dark: the same forest world at night (not yet exposed in the UI). */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.78 0.1 170);
-  --primary-foreground: oklch(0.2 0.03 170);
+  --background: oklch(0.2 0.02 160);
+  --foreground: oklch(0.95 0.012 85);
+  --card: oklch(0.24 0.024 160);
+  --card-foreground: oklch(0.95 0.012 85);
+  --popover: oklch(0.24 0.024 160);
+  --popover-foreground: oklch(0.95 0.012 85);
+  --primary: oklch(0.85 0.08 155);
+  --primary-foreground: oklch(0.22 0.03 160);
   --warning: oklch(0.75 0.13 85);
   --warning-foreground: oklch(0.88 0.1 85);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.29 0.024 160);
+  --secondary-foreground: oklch(0.95 0.012 85);
+  --muted: oklch(0.29 0.024 160);
+  --muted-foreground: oklch(0.78 0.02 150);
+  --accent: oklch(0.29 0.024 160);
+  --accent-foreground: oklch(0.95 0.012 85);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.78 0.1 170);
+  --ring: oklch(0.85 0.08 155);
+  --mint: oklch(0.42 0.06 155);
+  --mint-surface: oklch(0.27 0.035 155);
+  --mint-border: oklch(0.38 0.05 155);
+  --forest: oklch(0.15 0.02 160);
+  --forest-foreground: oklch(0.95 0.012 85);
+  --forest-muted: oklch(0.78 0.02 150);
+  --positive: oklch(0.78 0.11 150);
+  --negative: oklch(0.75 0.12 32);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -154,5 +203,45 @@
   &:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+}
+
+/*
+ * A dark forest surface. It re-scopes the tokens, so components inside it
+ * (lists, chips, availability states) render correctly without overrides.
+ */
+@utility surface-forest {
+  --background: var(--forest);
+  --foreground: var(--forest-foreground);
+  --card: oklch(0.28 0.03 160);
+  --card-foreground: var(--forest-foreground);
+  --muted: oklch(0.31 0.03 160);
+  --muted-foreground: var(--forest-muted);
+  --border: oklch(0.4 0.03 160);
+  --primary: oklch(0.85 0.08 155);
+  --ring: oklch(0.85 0.08 155);
+  background-color: var(--forest);
+  color: var(--forest-foreground);
+}
+
+/*
+ * Full-bleed band inside the centred page column. The colour is a spread
+ * box-shadow clipped to the band's height: shadows never add scroll width,
+ * so there is no horizontal overflow (a 100vw box would, with a scrollbar).
+ */
+@utility bleed-band {
+  box-shadow: 0 0 0 100vmax var(--band-color, var(--background));
+  clip-path: inset(0 -100vmax);
+}
+
+/* Text selection and the caret carry the palette too. */
+@layer base {
+  ::selection {
+    background-color: var(--mint);
+    color: var(--foreground);
+  }
+  html {
+    caret-color: var(--primary);
+    accent-color: var(--primary);
   }
 }

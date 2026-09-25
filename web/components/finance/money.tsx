@@ -32,11 +32,18 @@ export function Money({
     );
   }
 
+  // Always Geist with tabular digits, even inside a serif sentence. A negative
+  // amount is muted red; it also carries "−" and sits beside a label, so the
+  // colour is never the only signal.
   return (
     <>
       <data
         value={value.amount_paise}
-        className={cn("font-medium whitespace-nowrap tabular-nums", className)}
+        className={cn(
+          "font-sans font-medium whitespace-nowrap tabular-nums",
+          value.amount_paise < 0 && "text-negative",
+          className,
+        )}
       >
         {text}
         {per && (

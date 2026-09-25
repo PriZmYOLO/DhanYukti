@@ -43,7 +43,14 @@ function WhySection({
  * used, what is unknown and how sure the result is — all as released. It
  * receives a server-built WhyView containing only what it renders.
  */
-export function WhySheet({ view }: { view: WhyView }) {
+export function WhySheet({
+  view,
+  trigger = "button",
+}: {
+  view: WhyView;
+  /** "link" renders an inline text trigger, e.g. inside a sentence. */
+  trigger?: "button" | "link";
+}) {
   const text = useHomeText();
   // Open at the top: focus the title rather than the first link, which
   // sits at the end of a long explanation.
@@ -59,7 +66,11 @@ export function WhySheet({ view }: { view: WhyView }) {
   return (
     <Sheet>
       <SheetTrigger
-        className={buttonVariants({ variant: "outline", size: "lg" })}
+        className={
+          trigger === "link"
+            ? "text-primary focus-ring inline-flex min-h-6 items-center gap-1 rounded-sm font-medium underline-offset-4 hover:underline [&_svg]:size-3.5"
+            : buttonVariants({ variant: "outline", size: "lg" })
+        }
       >
         <CircleHelp aria-hidden />
         {text("whyButton")}

@@ -13,7 +13,7 @@ export function AreaPlaceholder({ areaId }: AreaPlaceholderProps) {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="font-heading flex items-center gap-2 text-3xl tracking-tight">
           <Icon aria-hidden className="text-primary size-6" />
           {area.title}
         </h1>

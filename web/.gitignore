@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+# review screenshots (not baselines)
+/tests/e2e/__review__/
 
 # next.js
 /.next/

@@ -65,7 +65,7 @@ export function HealthCardSection({ health }: { health: HealthCard | null }) {
       <div className="space-y-1">
         <h2
           id="health-heading"
-          className="text-lg font-semibold tracking-tight"
+          className="font-heading text-[2rem] leading-tight tracking-tight"
         >
           <HomeText k="healthHeading" />
         </h2>
@@ -82,13 +82,13 @@ export function HealthCardSection({ health }: { health: HealthCard | null }) {
         />
       ) : (
         <>
-          <ul className="bg-card divide-y rounded-xl border">
+          <ul className="border-foreground divide-y border-t-[1.5px] border-b">
             {rows.map((row) => {
               const Icon = domainIcon[row.domain];
               return (
                 <li
                   key={row.domain}
-                  className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:gap-4 sm:p-4"
+                  className="flex flex-col gap-2 px-1 py-3.5 sm:flex-row sm:items-start sm:gap-4"
                 >
                   <div className="flex min-w-0 flex-1 gap-3">
                     <Icon
