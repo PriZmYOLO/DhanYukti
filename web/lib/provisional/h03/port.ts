@@ -7,6 +7,7 @@
  * the backend side, so no method takes a member id.
  */
 import type {
+  ApprovalDetails,
   ApprovalHandoff,
   ConsentChoices,
   ConsentRequestTerms,
@@ -30,8 +31,14 @@ export interface ConsentPort {
   /** Records the four choices and creates a request; fetches nothing. */
   requestConsent(choices: ConsentChoices): Promise<RequestConsentResult>;
 
-  /** Hands the member to the Account Aggregator app for approval. */
-  startApproval(linkId: string): Promise<ApprovalHandoff>;
+  /**
+   * Hands the member to the Account Aggregator app for approval. A live
+   * adapter may answer "needs_details" first; call again with details.
+   */
+  startApproval(
+    linkId: string,
+    details?: ApprovalDetails,
+  ): Promise<ApprovalHandoff>;
 
   /**
    * H07: withdraws source access. The backend cancels jobs, removes the data
