@@ -244,9 +244,11 @@ export const homeCopy = {
   },
   whyWrongBody: {
     standard:
-      "Correcting a fact and reporting a recommendation will be done from Privacy. They are not connected in this build yet.",
-    simple: "Soon you can fix mistakes from Privacy. It is not ready yet.",
+      "Propose a correction to a fact above, or report a recommendation from Privacy. A correction stays a proposal until it is checked.",
+    simple:
+      "You can send a fix for a detail above. Nothing changes until we check it.",
   },
+  whyCorrectFact: { standard: "Correct a fact", simple: "Fix a detail" },
   whyGoToPrivacy: { standard: "Go to Privacy", simple: "Open Privacy" },
   reversible: {
     standard: "Can be undone",

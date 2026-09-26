@@ -89,6 +89,16 @@ export const consentCopy = {
       "Tell us which fact is wrong. It stays a proposal until it is checked and accepted.",
     simple: "Tell us what is wrong. We check it before changing anything.",
   },
+  privateHeading: { standard: "Kept private", simple: "Only yours" },
+  privateCardTitle: {
+    standard: "Only you can see this",
+    simple: "Only you see this",
+  },
+  privateCardBody: {
+    standard:
+      "What you keep private. Nobody else in the household sees it or is told it exists.",
+    simple: "Your private money. Your family can't see it.",
+  },
   reportTitle: {
     standard: "Report a recommendation",
     simple: "Report a suggestion",
@@ -448,24 +458,6 @@ export const consentCopy = {
   },
 
   // Correct a fact / report a recommendation
-  correctIntro: {
-    standard:
-      "Say which fact is wrong and what it should be. A correction stays a proposal until it is checked and accepted; nothing changes before that.",
-    simple: "Tell us what is wrong. Nothing changes until we check it.",
-  },
-  correctWhichLabel: {
-    standard: "Which fact is wrong?",
-    simple: "What is wrong?",
-  },
-  correctWhichHint: {
-    standard: "For example, “Electricity bill due date”.",
-    simple: "For example, “Light bill date”.",
-  },
-  correctValueLabel: {
-    standard: "What should it be?",
-    simple: "What is right?",
-  },
-  correctSubmit: { standard: "Save correction", simple: "Save" },
   reportIntro: {
     standard:
       "Tell us what is wrong with a suggested step. Reporting it doesn't change or cancel anything by itself.",
@@ -497,10 +489,6 @@ export const consentCopy = {
     simple: "More details (optional)",
   },
   reportSubmit: { standard: "Save report", simple: "Save" },
-  fieldRequired: {
-    standard: "Please fill this in.",
-    simple: "Please fill this in.",
-  },
   reasonRequired: {
     standard: "Please choose what the problem is.",
     simple: "Please pick one.",
@@ -511,7 +499,7 @@ export const consentCopy = {
   },
   feedbackSavedBody: {
     standard:
-      "Not sent and not accepted. The correction and report services aren't connected in this build, so nothing has changed and nobody has been notified.",
+      "Not sent and not resolved. The report service isn't connected in this build, so nothing has changed and nobody has been notified.",
     simple: "Not sent to anyone yet. Nothing has changed.",
   },
   feedbackSavedOn: { standard: "Saved", simple: "Saved on" },

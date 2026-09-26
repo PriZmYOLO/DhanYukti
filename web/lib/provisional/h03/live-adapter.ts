@@ -6,13 +6,17 @@
  * references; the server keeps those and returns only `SourceLink`. The
  * session is an httpOnly cookie set by the server (not authentication).
  *
- * Correction and report intake have no backend yet, so they still go to
- * the labelled demo adapter (receipts say "demo_not_sent").
+ * Report intake has no backend yet, so it still goes to the labelled demo
+ * adapter (receipts say "demo_not_sent"). Fact corrections are not part of
+ * this port; they go through the H07 CorrectionPort (lib/provisional/h07).
+ * H07's picture status has no backend either: after a revoke this adapter
+ * flips the h07 demo picture to "recalculating", like the demo adapter.
  */
 import { LIVE_TERMS } from "@/lib/aa/live-terms";
 import type { ErrorEnvelope } from "@/lib/contracts/common";
 import { demoConsentAdapter } from "@/lib/provisional/h03/demo-adapter";
 import type { ConsentPort } from "@/lib/provisional/h03/port";
+import { markDemoRecalculation } from "@/lib/provisional/h07/demo-adapter";
 import type {
   ApprovalHandoff,
   RequestConsentResult,
@@ -98,10 +102,14 @@ export const liveConsentAdapter: ConsentPort = {
       `/api/aa/links/${encodeURIComponent(linkId)}/revoke`,
       { method: "POST" },
     );
+    // Home/Why must not reuse figures built with revoked data. Stands in
+    // for H07's recompute until it exists.
+    if (link.consent.status === "revoked") {
+      await markDemoRecalculation("source_revoked");
+    }
     return link;
   },
 
-  proposeCorrection: (draft) => demoConsentAdapter.proposeCorrection(draft),
   reportRecommendation: (draft) =>
     demoConsentAdapter.reportRecommendation(draft),
 };

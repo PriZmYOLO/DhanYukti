@@ -11,6 +11,7 @@ import {
   useModeText,
 } from "@/components/consent/dpdp-purposes";
 import { PrivacyFrame } from "@/components/consent/privacy-frame";
+import { useInvalidateHouseholdView } from "@/components/correction/picture-status";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -46,6 +47,7 @@ function AaConsents() {
   const [links, setLinks] = useState<SourceLink[] | null | "error">(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const invalidateHouseholdView = useInvalidateHouseholdView();
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +87,8 @@ function AaConsents() {
           ? current.map((l) => (l.link_id === linkId ? updated : l))
           : current,
       );
+      // Home and Why must not reuse figures built with the revoked data.
+      await invalidateHouseholdView();
       setAnnouncement(text("passportRevoked"));
     } finally {
       setBusy(null);

@@ -256,3 +256,10 @@
     accent-color: var(--primary);
   }
 }
+
+/* DEMO ONLY (components/correction/picture-prepaint.tsx): hold Home's
+   server-sent figures off screen until React swaps in the recalculation
+   notice. Delete with the demo adapters. */
+html[data-demo-picture="recalculating"] [data-picture-gated] {
+  visibility: hidden;
+}

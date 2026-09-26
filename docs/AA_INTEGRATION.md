@@ -3,6 +3,25 @@
 Job 1 of the finals plan: a real consent → fetch → decrypt flow on the
 Anumati UAT sandbox, shown inside DhanYukti. This page is the runbook.
 
+## Status (27 Sep)
+
+- **Storage:** Upstash Redis `dhanyukti-aa` (Free plan, Mumbai `bom1`) is
+  connected to the Vercel project.
+- **Storage variables:** `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_URL`,
+  `REDIS_URL` and `KV_REST_API_READ_ONLY_TOKEN` are set for all
+  environments. They are not yet marked Sensitive. Follow-up: mark them
+  Sensitive and remove them from Development.
+- The tokens were rotated once after creation.
+- Production was redeployed; `/api/aa/status` shows `storage: "redis"` and
+  `storage_ready: true`.
+- **Still pending:** `ANUMATI_CLIENT_ID` / `ANUMATI_CLIENT_SECRET` from
+  Anumati, `NEXT_PUBLIC_AA_LIVE=true` (then redeploy), and webhook
+  registration with Anumati. Until then Production runs the labelled demo
+  adapter.
+
+Never put the values of these variables in this repository, the docs, logs
+or chat.
+
 ## How it works
 
 ```
