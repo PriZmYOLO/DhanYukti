@@ -48,19 +48,21 @@ export function MainNav({ variant, className }: MainNavProps) {
     );
   }
 
+  // Top bar: the current area is underlined, like a ledger tab.
   return (
     <nav aria-label="Main" className={className}>
-      <ul className="flex items-center gap-1">
+      <ul className="flex h-full items-stretch gap-1">
         {appAreas.map(({ id, href, label }) => {
           const active = isActiveHref(pathname, href);
           return (
-            <li key={id}>
+            <li key={id} className="flex">
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "hover:bg-muted hover:text-foreground focus-ring rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active ? "bg-muted text-foreground" : "text-muted-foreground",
+                  "hover:text-foreground focus-ring flex items-center px-3 text-sm font-medium transition-colors",
+                  "aria-[current=page]:text-foreground aria-[current=page]:shadow-[inset_0_-2px_0_var(--color-foreground)]",
+                  !active && "text-muted-foreground",
                 )}
               >
                 {label}

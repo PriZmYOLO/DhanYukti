@@ -32,7 +32,7 @@ export function FixtureScenarioSwitch({
                   scroll={false}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "focus-ring inline-flex rounded-full border px-2.5 py-0.5 text-xs",
+                    "focus-ring inline-flex min-h-11 items-center rounded-full border px-3.5 text-xs",
                     active
                       ? "border-warning-foreground/40 bg-warning-foreground text-background font-medium"
                       : "border-warning/60 hover:bg-warning/20",

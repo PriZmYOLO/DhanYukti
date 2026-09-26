@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_Devanagari } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Newsreader,
+  Noto_Sans_Devanagari,
+} from "next/font/google";
 
 import { OnboardingProvider } from "@/components/onboarding/onboarding-provider";
 import { AppHeader } from "@/components/shell/app-header";
@@ -23,6 +28,14 @@ const notoDevanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
 });
 
+// Editorial serif for headlines (the --font-serif / --font-heading token).
+// Chosen because it has its own ₹ glyph; latin-ext carries U+20B9.
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin", "latin-ext"],
+  axes: ["opsz"],
+});
+
 export const metadata: Metadata = {
   title: {
     template: `%s · ${brand.name}`,
@@ -36,7 +49,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${notoDevanagari.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${notoDevanagari.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <a
@@ -49,7 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
           <main
             id="main"
-            className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-24 md:pb-12"
+            className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-24 md:pb-12"
           >
             {children}
           </main>

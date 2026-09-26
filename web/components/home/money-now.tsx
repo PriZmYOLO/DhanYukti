@@ -3,14 +3,19 @@ import type { ReactNode } from "react";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
-import { SourceBadge } from "@/components/finance/source-badge";
+import {
+  groupSources,
+  SourceBadge,
+  SourceLegend,
+} from "@/components/finance/source-badge";
 import { HomeText } from "@/components/home/home-text";
 import type { SafeToSpendRelease } from "@/lib/contracts/decision-packet";
 import type { FactSummary } from "@/lib/contracts/household-projection";
 
+/** A ruled figure block: a strong rule above, no box. */
 function Tile({ children, label }: { label: ReactNode; children: ReactNode }) {
   return (
-    <div className="bg-card space-y-2 rounded-xl border p-4">
+    <div className="border-foreground space-y-2 border-t-[1.5px] pt-3.5">
       <p className="text-muted-foreground text-sm">{label}</p>
       {children}
     </div>
@@ -27,7 +32,10 @@ function SafeToSpend({ release }: { release: SafeToSpendRelease | null }) {
       return (
         <div className="space-y-1">
           <p>
-            <Money value={release.amount} className="text-2xl" />
+            <Money
+              value={release.amount}
+              className="text-[2rem] leading-tight tracking-tight"
+            />
           </p>
           <p className="text-muted-foreground text-xs">
             <HomeText k="safeUntil" />{" "}
@@ -76,16 +84,17 @@ interface MoneyNowProps {
  */
 export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
   const cashFacts = facts.filter((fact) => fact.kind === "cash_balance");
+  const sources = groupSources(cashFacts);
 
   return (
-    <section aria-labelledby="money-now-heading" className="space-y-3">
+    <section aria-labelledby="money-now-heading" className="space-y-4">
       <h2
         id="money-now-heading"
-        className="text-lg font-semibold tracking-tight"
+        className="font-heading text-2xl tracking-tight"
       >
         <HomeText k="moneyNowHeading" />
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Tile label={<HomeText k="cashAvailable" />}>
           {cashFacts.length === 0 ? (
             <AvailabilityState
@@ -99,7 +108,10 @@ export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
                 <li key={fact.fact_id} className="space-y-1.5">
                   {fact.availability === "present" ? (
                     <p>
-                      <Money value={fact.amount} className="text-2xl" />
+                      <Money
+                        value={fact.amount}
+                        className="text-[2rem] leading-tight tracking-tight"
+                      />
                     </p>
                   ) : (
                     <AvailabilityState status={fact.availability} compact />
@@ -109,14 +121,29 @@ export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
                       <HomeText k="asOf" />{" "}
                       <DateDisplay value={fact.effective_on} />
                     </span>
-                    <SourceBadge
-                      kind={fact.source_kind}
-                      sourceLabel={fact.source_label}
-                    />
+                    {sources.differs(fact) && (
+                      <SourceBadge
+                        kind={fact.source_kind}
+                        sourceLabel={fact.source_label}
+                      />
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
+          )}
+          {sources.common && (
+            <SourceLegend
+              kind={sources.common}
+              sourceLabel={sources.commonLabel}
+              scope={
+                !sources.uniform
+                  ? "unless-marked"
+                  : cashFacts.length === 1
+                    ? "single"
+                    : "all"
+              }
+            />
           )}
         </Tile>
         <Tile label={<HomeText k="safeToSpend" />}>

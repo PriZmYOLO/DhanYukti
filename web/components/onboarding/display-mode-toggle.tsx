@@ -37,11 +37,13 @@ export function DisplayModeToggle() {
           type="button"
           aria-pressed={current === mode}
           onClick={() => choose(mode)}
+          // 44px tall: a primary control, easy to hit on touch.
           className={cn(
             buttonVariants({
               variant: current === mode ? "secondary" : "ghost",
-              size: "sm",
+              size: "xl",
             }),
+            "px-3.5",
           )}
         >
           {label}

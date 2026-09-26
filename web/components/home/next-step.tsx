@@ -1,8 +1,10 @@
 import {
   ChevronDown,
+  CircleDashed,
   CircleHelp,
   Link2,
   RotateCcw,
+  ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 
@@ -10,6 +12,7 @@ import { AvailabilityState } from "@/components/finance/availability-state";
 import { ActionKindIcon } from "@/components/home/action-kind-icon";
 import { HomeText } from "@/components/home/home-text";
 import { Button } from "@/components/ui/button";
+import { CONFIRMATION_CONNECTED } from "@/lib/capabilities";
 import type {
   ActionCandidate,
   ActionRelease,
@@ -27,9 +30,31 @@ const headingFor: Record<GateDisposition, HomeCopyKey> = {
 
 function Heading({ k }: { k: HomeCopyKey }) {
   return (
-    <h3 className="text-muted-foreground text-sm font-medium">
+    <h3 className="text-primary text-xs font-semibold tracking-widest uppercase">
       <HomeText k={k} />
     </h3>
+  );
+}
+
+/**
+ * The gate result as a status line. "Ready for review" is only true once
+ * confirmation is connected; until then a neutral "Preview only" status is
+ * shown instead, with no green dot. Other gates keep their released label.
+ */
+function GateStatus({ gate }: { gate: ActionCandidate["gate"] }) {
+  if (gate === "proceed_to_user_confirmation" && !CONFIRMATION_CONNECTED) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <CircleDashed aria-hidden className="size-3.5" />
+        <HomeText k="confirmPreviewOnly" />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className="bg-primary size-1.5 rounded-full" />
+      <HomeText k={`gate_${gate}`} />
+    </span>
   );
 }
 
@@ -50,24 +75,18 @@ function StepFacts({ candidate }: { candidate: ActionCandidate }) {
       {candidate.reversible === false && <IrreversibleWarning />}
       {candidate.effect && <p className="text-sm">{candidate.effect}</p>}
       {candidate.conditional_on && (
-        <p className="bg-muted/50 flex gap-2 rounded-lg p-3 text-sm">
-          <Link2
-            aria-hidden
-            className="text-muted-foreground mt-0.5 size-4 shrink-0"
-          />
-          <span>
-            <span className="font-medium">
-              <HomeText k="dependsOn" />:
-            </span>{" "}
-            {candidate.conditional_on}
-          </span>
-        </p>
+        // The label is a caption above the released text, so it reads
+        // correctly whatever grammatical form that text takes.
+        <div className="bg-card/70 rounded-lg p-3 text-sm">
+          <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+            <Link2 aria-hidden className="size-3.5 shrink-0" />
+            <HomeText k="dependsOn" />
+          </p>
+          <p className="mt-1">{candidate.conditional_on}</p>
+        </div>
       )}
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="bg-primary size-1.5 rounded-full" />
-          <HomeText k={`gate_${candidate.gate}`} />
-        </span>
+        <GateStatus gate={candidate.gate} />
         {candidate.reversible === true && (
           <span className="inline-flex items-center gap-1.5">
             <RotateCcw aria-hidden className="size-3.5" />
@@ -170,12 +189,12 @@ export function NextStep({ action, isUiPreview }: NextStepProps) {
       <div className="flex gap-3">
         <span
           aria-hidden
-          className="bg-primary/10 text-primary grid size-10 shrink-0 place-items-center rounded-lg"
+          className="bg-mint text-forest grid size-10 shrink-0 place-items-center rounded-lg"
         >
           <ActionKindIcon kind={step.kind} className="size-5" />
         </span>
         <div className="min-w-0 space-y-1">
-          <p className="text-lg font-semibold tracking-tight text-balance">
+          <p className="text-xl font-semibold tracking-tight text-balance">
             {step.title}
           </p>
           <p className="text-muted-foreground">{step.summary}</p>
@@ -197,12 +216,25 @@ export function NextStep({ action, isUiPreview }: NextStepProps) {
 
       {step.gate === "proceed_to_user_confirmation" && (
         <div className="space-y-2">
-          <Button size="lg" disabled aria-describedby={noteId}>
+          {/* Disabled until the action service exists (lib/capabilities).
+              Styled inert — dashed and muted — never as a call to action. */}
+          <Button
+            size="xl"
+            disabled={!CONFIRMATION_CONNECTED}
+            aria-describedby={CONFIRMATION_CONNECTED ? undefined : noteId}
+            className="disabled:border-muted-foreground/45 disabled:bg-muted/70 disabled:text-muted-foreground w-full disabled:border-dashed disabled:opacity-100"
+          >
             <HomeText k="reviewAndConfirm" />
           </Button>
-          <p id={noteId} className="text-muted-foreground text-xs">
-            <HomeText k="confirmNotConnected" />
-          </p>
+          {!CONFIRMATION_CONNECTED && (
+            <p
+              id={noteId}
+              className="text-muted-foreground flex items-start gap-1.5 text-xs"
+            >
+              <ShieldCheck aria-hidden className="mt-px size-3.5 shrink-0" />
+              <HomeText k="confirmNotConnected" />
+            </p>
+          )}
         </div>
       )}
 
@@ -214,17 +246,17 @@ export function NextStep({ action, isUiPreview }: NextStepProps) {
 function Alternatives({ candidates }: { candidates: ActionCandidate[] }) {
   if (candidates.length === 0) return null;
   return (
-    <details className="group rounded-lg border">
-      <summary className="hover:bg-muted/50 focus-ring flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+    <details className="group border-t border-current/15">
+      <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-sm text-xs font-semibold tracking-wider uppercase [&::-webkit-details-marker]:hidden">
         <span>
           <HomeText k="otherOptions" /> ({candidates.length})
         </span>
         <ChevronDown
           aria-hidden
-          className="size-4 transition-transform group-open:rotate-180"
+          className="ease-out-strong size-4 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
         />
       </summary>
-      <ul className="divide-y border-t px-3">
+      <ul className="divide-y">
         {candidates.map((candidate) => (
           <Alternative key={candidate.action_id} candidate={candidate} />
         ))}

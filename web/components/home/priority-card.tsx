@@ -1,4 +1,4 @@
-import { CalendarClock, CircleCheck, CircleDashed } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleHelp } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AvailabilityState } from "@/components/finance/availability-state";
@@ -6,11 +6,13 @@ import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
 import { ConfidenceBadge } from "@/components/home/confidence-badge";
 import { ConsequenceOfDelay } from "@/components/home/consequence";
+import { EvidenceLine } from "@/components/home/evidence-line";
 import { HomeText } from "@/components/home/home-text";
 import { MissingFactsList } from "@/components/home/missing-facts";
 import { NextStep } from "@/components/home/next-step";
-import { WhySheet } from "@/components/home/why-sheet";
+import { BrandSeal } from "@/components/shell/brand-seal";
 import type {
+  ActionRelease,
   CashFlowFindings,
   Consequence,
   DecisionPacket,
@@ -19,6 +21,10 @@ import type {
 import type { FactSummary } from "@/lib/contracts/household-projection";
 import type { HomeCopyKey } from "@/lib/home/copy";
 import { buildWhyView } from "@/lib/home/why-view";
+import { cn } from "@/lib/utils";
+
+/** Anchor for the hero's "what we don't know yet" list. */
+export const PRIORITY_MISSING_ID = "priority-missing";
 
 function Figure({
   label,
@@ -28,8 +34,8 @@ function Figure({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-muted/50 flex items-baseline justify-between gap-3 rounded-lg px-3 py-2.5 sm:block sm:p-3">
-      <dt className="text-muted-foreground text-sm sm:text-xs">
+    <div className="flex items-baseline justify-between gap-3 py-3 sm:block sm:pr-4">
+      <dt className="text-muted-foreground text-xs">
         <HomeText k={label} />
       </dt>
       <dd className="flex flex-wrap items-baseline justify-end gap-x-1.5 text-right sm:mt-1 sm:justify-start sm:text-left">
@@ -39,7 +45,11 @@ function Figure({
   );
 }
 
-function CashFlowFigures({
+/**
+ * Released cash-flow findings as a ruled summary strip (like the totals line
+ * of an account book). Shown with the Coming-up ledger.
+ */
+export function CashFlowFigures({
   cashFlow,
   consequence,
 }: {
@@ -57,28 +67,31 @@ function CashFlowFigures({
 
   return (
     <div className="space-y-2">
-      <dl className="grid gap-2 sm:grid-cols-3">
+      <dl className="border-foreground divide-border grid divide-y border-t-[1.5px] border-b sm:grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] sm:divide-y-0">
         {deficit && !repeatedByConsequence && (
           <Figure label="firstShortfall">
-            <Money value={deficit.amount} className="text-lg" />
+            <Money value={deficit.amount} className="text-[1.375rem]" />
             <span className="text-muted-foreground text-xs">
               <HomeText k="onDate" /> <DateDisplay value={deficit.on} />
             </span>
           </Figure>
         )}
         <Figure label="lowestPoint">
-          <Money value={cashFlow.minimum_cash.amount} className="text-lg" />
+          <Money
+            value={cashFlow.minimum_cash.amount}
+            className="text-[1.375rem]"
+          />
           <span className="text-muted-foreground text-xs">
             <HomeText k="onDate" />{" "}
             <DateDisplay value={cashFlow.minimum_cash.on} />
           </span>
         </Figure>
         <Figure label="agreedFloor">
-          <Money value={cashFlow.floor} className="text-lg" />
+          <Money value={cashFlow.floor} className="text-[1.375rem]" />
         </Figure>
         {floorBroken && (
           <Figure label="belowFloorBy">
-            <Money value={cashFlow.gap_to_floor} className="text-lg" />
+            <Money value={cashFlow.gap_to_floor} className="text-[1.375rem]" />
           </Figure>
         )}
       </dl>
@@ -96,25 +109,25 @@ function CashFlowFigures({
   );
 }
 
+function Eyebrow({ id }: { id?: string }) {
+  return (
+    <h2
+      id={id}
+      className="text-primary text-xs font-semibold tracking-widest uppercase"
+    >
+      <HomeText k="attentionHeading" />
+    </h2>
+  );
+}
+
 function CardShell({ children }: { children: ReactNode }) {
   return (
     <section
       aria-labelledby="priority-heading"
-      className="bg-card text-card-foreground overflow-hidden rounded-xl border shadow-xs"
+      className="bg-card text-card-foreground overflow-hidden rounded-xl border"
     >
       {children}
     </section>
-  );
-}
-
-function Heading() {
-  return (
-    <h2
-      id="priority-heading"
-      className="text-muted-foreground text-sm font-medium"
-    >
-      <HomeText k="attentionHeading" />
-    </h2>
   );
 }
 
@@ -123,15 +136,47 @@ function Section({ children }: { children: ReactNode }) {
 }
 
 /** Missing facts, shown in every released state — unknown is never hidden. */
-function MissingFactsSection({ packet }: { packet: DecisionPacket }) {
+function MissingFacts({ packet }: { packet: DecisionPacket }) {
   if (packet.missing_facts.length === 0) return null;
   return (
-    <Section>
-      <h3 className="text-muted-foreground text-sm font-medium">
+    <div
+      id={PRIORITY_MISSING_ID}
+      className="border-muted-foreground/50 max-w-prose scroll-mt-24 space-y-3 border-t border-dashed pt-4"
+    >
+      <h4 className="flex items-center gap-2 text-sm font-semibold">
+        <CircleHelp aria-hidden className="size-4" />
         <HomeText k="missingHeading" />
-      </h3>
+      </h4>
       <MissingFactsList facts={packet.missing_facts} />
-    </Section>
+    </div>
+  );
+}
+
+/**
+ * The next step as the page's one raised surface: mint only when a step is
+ * released and available, otherwise a neutral panel that still explains why
+ * there is no step.
+ */
+function NextStepPanel({
+  action,
+  isUiPreview,
+}: {
+  action: ActionRelease;
+  isUiPreview: boolean;
+}) {
+  const available =
+    action.status === "released" && action.proposal.gate !== "unavailable";
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-5 sm:p-6",
+        available
+          ? "border-mint-border bg-mint-surface shadow-raised"
+          : "bg-card",
+      )}
+    >
+      <NextStep action={action} isUiPreview={isUiPreview} />
+    </div>
   );
 }
 
@@ -143,8 +188,8 @@ interface PriorityCardProps {
 }
 
 /**
- * Home's priority card (Task Pack L03): need → consequence of delay →
- * figures → next step → missing information → confidence and Why.
+ * Home's priority (Task Pack L03): need → consequence of delay → how it was
+ * worked out → missing information → confidence and Why → next step.
  * Every value is rendered exactly as released. The absence of a need is
  * always explained and is only called "nothing needs attention" when the
  * engine says so and nothing decisive is missing.
@@ -158,7 +203,7 @@ export function PriorityCard({
     return (
       <CardShell>
         <div className="space-y-4 p-4 sm:p-6">
-          <Heading />
+          <Eyebrow id="priority-heading" />
           <AvailabilityState
             status="failed"
             title={<HomeText k="decisionUnavailableTitle" />}
@@ -189,12 +234,12 @@ export function PriorityCard({
     return (
       <CardShell>
         <div className="space-y-3 p-4 sm:p-6">
-          <Heading />
-          <h3 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+          <Eyebrow id="priority-heading" />
+          <h3 className="font-heading flex items-center gap-2 text-3xl tracking-tight">
             <Icon
               aria-hidden
               className={
-                clear ? "text-primary size-5" : "text-muted-foreground size-5"
+                clear ? "text-primary size-6" : "text-muted-foreground size-6"
               }
             />
             <HomeText k={titleKey} />
@@ -206,7 +251,11 @@ export function PriorityCard({
             <NextStep action={packet.action} isUiPreview={isUiPreview} />
           </Section>
         )}
-        <MissingFactsSection packet={packet} />
+        {packet.missing_facts.length > 0 && (
+          <Section>
+            <MissingFacts packet={packet} />
+          </Section>
+        )}
       </CardShell>
     );
   }
@@ -214,43 +263,53 @@ export function PriorityCard({
   const { need } = priority;
   const why = buildWhyView(packet, need, evidence, isUiPreview);
 
+  // Four blocks, in DOM (reading and focus) order: title → consequence →
+  // next step → explanation. Phones stack them, so all three first blocks
+  // start above the fold at 375×812; from lg the title and explanation sit
+  // left and the consequence and next step stack on the right (explicit
+  // placement), so the next step's heading is above the fold at 1280×800.
   return (
-    <CardShell>
-      <div className="space-y-5 p-4 sm:p-6">
-        <Heading />
-        <div className="space-y-2">
-          <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-            {need.title}
-          </h3>
-          {need.deadline && (
-            <p className="bg-muted inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium">
-              <CalendarClock aria-hidden className="size-3.5" />
-              <span>
+    <section
+      aria-labelledby="priority-heading"
+      className="grid gap-6 lg:grid-cols-12 lg:gap-x-12 lg:gap-y-8"
+    >
+      <div className="space-y-4 lg:col-span-7">
+        <div className="flex items-center gap-3">
+          <BrandSeal />
+          <div className="leading-tight">
+            <Eyebrow id="priority-heading" />
+            {need.deadline && (
+              <p className="text-muted-foreground mt-0.5 text-sm">
                 <HomeText k="dueBy" /> <DateDisplay value={need.deadline} />
-              </span>
-            </p>
-          )}
-          <p className="text-muted-foreground max-w-prose">{need.summary}</p>
+              </p>
+            )}
+          </div>
         </div>
-        {consequence && <ConsequenceOfDelay consequence={consequence} />}
-        {need.cash_flow && (
-          <CashFlowFigures
-            cashFlow={need.cash_flow}
-            consequence={consequence}
-          />
-        )}
+        <h3 className="font-heading text-[2.25rem] leading-[1.05] tracking-tight text-balance sm:text-[3.25rem] lg:text-[4rem]">
+          {need.title}
+        </h3>
       </div>
 
-      <Section>
-        <NextStep action={packet.action} isUiPreview={isUiPreview} />
-      </Section>
+      {consequence && (
+        <div className="lg:col-span-5 lg:col-start-8 lg:self-end">
+          <ConsequenceOfDelay consequence={consequence} />
+        </div>
+      )}
 
-      <MissingFactsSection packet={packet} />
+      <div className="lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start">
+        <NextStepPanel action={packet.action} isUiPreview={isUiPreview} />
+      </div>
 
-      <div className="bg-muted/30 flex flex-wrap items-center justify-between gap-3 border-t p-4 sm:px-6">
+      <div className="space-y-5 lg:col-span-7 lg:col-start-1 lg:row-start-2">
+        <div className="space-y-2">
+          <p className="text-foreground/85 max-w-prose text-[1.0625rem] leading-relaxed">
+            {need.summary}
+          </p>
+          <EvidenceLine view={why} />
+        </div>
+        <MissingFacts packet={packet} />
         <ConfidenceBadge confidence={need.confidence} />
-        <WhySheet view={why} />
       </div>
-    </CardShell>
+    </section>
   );
 }

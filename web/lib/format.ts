@@ -34,6 +34,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   timeZone: "UTC",
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
 // Financial timestamps are shown in Asia/Kolkata (Guide §2).
 const timestampFormatter = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
@@ -48,8 +54,7 @@ export function isIsoDate(value: string): boolean {
   return ISO_DATE.test(value);
 }
 
-/** "2026-09-28" → "28 Sept 2026". Returns null for invalid dates. */
-export function formatIsoDate(value: IsoDate): string | null {
+function parseIsoDate(value: IsoDate): Date | null {
   const match = ISO_DATE.exec(value);
   if (!match) return null;
 
@@ -58,7 +63,43 @@ export function formatIsoDate(value: IsoDate): string | null {
   if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
     return null;
   }
-  return dateFormatter.format(date);
+  return date;
+}
+
+/** "2026-09-28" → "28 Sept 2026". Returns null for invalid dates. */
+export function formatIsoDate(value: IsoDate): string | null {
+  const date = parseIsoDate(value);
+  return date ? dateFormatter.format(date) : null;
+}
+
+/** "2026-09-28" → "28 Sept", for compact date columns. Null if invalid. */
+export function formatIsoDateShort(value: IsoDate): string | null {
+  const date = parseIsoDate(value);
+  return date ? shortDateFormatter.format(date) : null;
+}
+
+/**
+ * Every calendar day from start to end inclusive, as ISO dates. Calendar
+ * arithmetic only (no amounts). Returns [] for invalid or reversed ranges,
+ * and stops at `limit` days so a malformed horizon can't grow unbounded.
+ */
+export function isoDaysBetween(
+  start: IsoDate,
+  end: IsoDate,
+  limit = 62,
+): IsoDate[] {
+  const from = parseIsoDate(start);
+  const to = parseIsoDate(end);
+  if (!from || !to || from > to) return [];
+  const days: IsoDate[] = [];
+  for (
+    let day = from;
+    day <= to && days.length < limit;
+    day = new Date(day.getTime() + 86_400_000)
+  ) {
+    days.push(day.toISOString().slice(0, 10));
+  }
+  return days;
 }
 
 /** Timezone-aware timestamp → IST display. Rejects timestamps without an offset. */

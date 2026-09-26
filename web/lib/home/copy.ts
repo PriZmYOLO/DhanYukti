@@ -149,7 +149,12 @@ export const homeCopy = {
   },
   noNextStep: { standard: "No next step yet", simple: "No step yet" },
   uiPreview: "UI preview · not from the decision engine",
-  dependsOn: { standard: "Depends on", simple: "Only if" },
+  // A caption above the released conditional_on text, not part of a sentence.
+  dependsOn: { standard: "Depends on", simple: "This depends on" },
+  confirmPreviewOnly: {
+    standard: "Preview only — confirming is not connected yet",
+    simple: "Preview only — you can't confirm yet",
+  },
   otherOptions: {
     standard: "Other options",
     simple: "Other things you can do",
@@ -158,10 +163,11 @@ export const homeCopy = {
     standard: "Review and confirm",
     simple: "Check and confirm",
   },
+  // Short on purpose: the step's status line already says confirming is not
+  // connected (confirmPreviewOnly), so the note doesn't repeat it.
   confirmNotConnected: {
-    standard:
-      "Confirming a step isn't connected yet. Nothing is sent or changed from here.",
-    simple: "You can't confirm yet. Nothing is sent.",
+    standard: "Nothing is sent.",
+    simple: "Nothing is sent.",
   },
   gate_proceed_to_user_confirmation: {
     standard: "Ready for you to review",
@@ -206,6 +212,15 @@ export const homeCopy = {
     simple: "Could change this",
   },
   whyButton: { standard: "Why this?", simple: "Why?" },
+  // "Worked out from 5 amounts entered by your household"; the source phrase
+  // is added only when every evidence item was entered by a member.
+  workedOutFrom: { standard: "Worked out from", simple: "Based on" },
+  amountOne: "amount",
+  amountMany: "amounts",
+  enteredByHousehold: {
+    standard: "entered by your household",
+    simple: "your household entered",
+  },
 
   // Why sheet
   whyTitle: {
@@ -248,6 +263,19 @@ export const homeCopy = {
   close: "Close",
 
   // Coming up
+  cashFlowLabel: { standard: "Cash flow", simple: "Money in and out" },
+  // Cash strip: dated released facts and markers; no balance line.
+  // Describes the layout only, never the engine's method.
+  stripCaption: {
+    standard: "One column per day, from",
+    simple: "One column for each day, from",
+  },
+  stripFirstShort: { standard: "First short", simple: "First short" },
+  stripLowest: { standard: "Lowest", simple: "Lowest" },
+  stripNothingDated: {
+    standard: "No dated amounts in this window.",
+    simple: "No dates in this window.",
+  },
   comingUpHeading: { standard: "Coming up", simple: "Coming soon" },
   comingUpEmpty: {
     standard: "No upcoming dates have been recorded.",
@@ -273,6 +301,19 @@ export const homeCopy = {
     standard:
       "“Not known yet” means we have no information. It never means none.",
     simple: "“Not known yet” does not mean zero.",
+  },
+  healthGapsHeading: {
+    standard: "Help us fill the gaps",
+    simple: "Help us fill the gaps",
+  },
+  questionsAboveOne: {
+    standard: "1 question above could change your priority",
+    simple: "1 question above could change what comes first",
+  },
+  // Preceded by the count, e.g. "2 questions above could change…".
+  questionsAboveMany: {
+    standard: "questions above could change your priority",
+    simple: "questions above could change what comes first",
   },
   healthUnavailable: {
     standard: "The health summary isn't available right now",

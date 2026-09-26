@@ -88,6 +88,10 @@ Onboarding (L02) goes through the provisional `OnboardingPort` in
 Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration.
 
+What this build can do lives in `lib/capabilities.ts`. `CONFIRMATION_CONNECTED`
+is false until the action service (Y08/H09/L08) exists: the next step stays
+"Preview only" and its confirm button stays disabled.
+
 ## Current implementation status
 
 - L01: complete
@@ -102,10 +106,13 @@ verification run.
 
 Known follow-ups:
 
-- Convert the scratch browser tests (kept outside the repo) into proper
-  repository tests.
+- Home and an onboarding smoke test now have Playwright coverage in
+  `tests/e2e/`; the rest of the scratch L02 checks (invite flows, session
+  isolation, storage safety) still need converting.
 - Add browser coverage for unusual/unknown backend states and invite
   failure paths.
+- Cash strip: a balance line needs the backend to release E03 daily closing
+  cash (`daily: {date, closing_cash}[]` in CashFlowFindings; ask Amma).
 - Fix the simple-language first-load wording flash.
 - Ensure setup pages use uncached/dynamic rendering once real authenticated
   backend data is introduced.
@@ -126,7 +133,9 @@ After editing, run the relevant checks (from `web/`):
 - Prettier: `npx prettier --check .`
 - ESLint: `npx eslint .`
 - TypeScript/build: `npx next build`
-- Relevant browser tests
+- Browser tests: `npm run test:e2e` (Playwright on the installed Chrome,
+  against a production build; screenshot baselines are Windows-specific —
+  regenerate with `--update-snapshots` only for intended visual changes)
 
 Do not claim a check passed unless it actually ran and passed. Do not delete
 unrelated files or make broad configuration changes without a clear reason.

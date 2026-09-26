@@ -75,7 +75,7 @@ export function SetupFrame({ step, title, intro, children }: SetupFrameProps) {
         <DisplayModeToggle />
       </div>
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-balance">
+        <h1 className="font-heading text-3xl tracking-tight text-balance">
           {title}
         </h1>
         {intro && <p className="text-muted-foreground">{intro}</p>}
