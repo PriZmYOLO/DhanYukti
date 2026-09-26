@@ -136,6 +136,8 @@ After editing, run the relevant checks (from `web/`):
 - Browser tests: `npm run test:e2e` (Playwright on the installed Chrome,
   against a production build; screenshot baselines are Windows-specific —
   regenerate with `--update-snapshots` only for intended visual changes)
+- Locally Playwright uses 2 workers; stop any servers you start when a task
+  ends.
 
 Do not claim a check passed unless it actually ran and passed. Do not delete
 unrelated files or make broad configuration changes without a clear reason.
