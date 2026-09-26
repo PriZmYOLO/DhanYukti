@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  BookUser,
   ChevronRight,
+  FileText,
   FileUp,
   Flag,
   FlaskConical,
@@ -218,6 +220,23 @@ function Dashboard() {
         lead={text("choicesLead")}
       >
         <GrantOverview links={links} />
+      </Section>
+
+      <Section id="passport-heading" title={text("passportTitle")}>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          <EntryCard
+            href="/privacy/passport"
+            icon={BookUser}
+            title={text("privacyPassportTitle")}
+            body={text("privacyPassportBody")}
+          />
+          <EntryCard
+            href="/privacy/notice"
+            icon={FileText}
+            title={text("privacyNoticeTitle")}
+            body={text("privacyNoticeBody")}
+          />
+        </ul>
       </Section>
 
       <Section id="links-heading" title={text("linksHeading")}>

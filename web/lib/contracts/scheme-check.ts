@@ -5,6 +5,7 @@
  * insurance. Unknown is never "not enrolled".
  */
 import type { IsoDate, IsoTimestamp, MoneyPaise } from "@/lib/contracts/common";
+import type { ExistingCover } from "@/lib/contracts/insurance-cover";
 
 export type SchemeId = "pmjjby" | "pmsby";
 
@@ -53,6 +54,8 @@ export type SchemeCheckResult =
       /** When premium_seen: the next auto-debit to keep money for. */
       next_renewal_by: IsoDate;
       is_sandbox: boolean;
+      /** Private premiums seen in the same data, plus the member's tags. */
+      existing_cover?: ExistingCover;
     }
   /** The member didn't allow alerts and suggestions for this source. */
   | { status: "not_allowed" }

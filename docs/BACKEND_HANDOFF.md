@@ -200,6 +200,18 @@ covered, no named debit), `outside_age`, or `unknown`. Never turn
 priorities (Amma), they can consume the same result; public schemes stay
 ahead of any private product.
 
+## 3b. DPDP consent and Value Ledger (Job 2b)
+
+|          |                                                                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notice   | `lib/dpdp/notice.ts` (`NOTICE_PURPOSES`, `NOTICE_VERSION`; bump the version on any change)                                                     |
+| Ledger   | `lib/server/dpdp/ledger.ts` (append-only, hash-chained; `hasConsent(sid, purpose)`)                                                            |
+| Routes   | `GET /api/dpdp/state`, `POST /api/dpdp/consents/{purpose}` `{ action: "grant" \| "withdraw" }`                                                 |
+| Enforced | `insurance_tags` (withdraw deletes tags). `manual_entries` / `member_profile` recorded only: wire deletion when H01/H03 store them server-side |
+
+Any new processing purpose must be added to the notice and checked with
+`hasConsent` before use. AA link events are written to the same ledger.
+
 ## 4. Capability flags (`lib/capabilities.ts`)
 
 | Flag                         | Today                                                                                       | Flip to `true` only when                                                                          |

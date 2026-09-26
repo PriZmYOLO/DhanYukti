@@ -22,6 +22,8 @@
  *
  * Mobile number ending in 5 → the first account shows PMJJBY + PMSBY
  * premium debits in late May (Jan Suraksha "covered" case).
+ * Mobile number ending in 7 → the first account pays five private
+ * insurers (HDFC ERGO, ICICI Lombard, ACKO, Axis Max Life, SBI General).
  * Mobile number ending in 0 → the second account "fails to deliver"
  * (to rehearse the partial state).
  */
@@ -80,7 +82,7 @@ async function post(path, body) {
 }
 
 /** Twelve months of a salaried household's savings account (test data). */
-function rebitDeposit(masked, seed, withSchemes = false) {
+function rebitDeposit(masked, seed, withSchemes = false, withPrivate = false) {
   const today = new Date();
   const txns = [];
   let balance = 18_000 + seed * 7_000;
@@ -134,6 +136,20 @@ function rebitDeposit(masked, seed, withSchemes = false) {
     }
     if (m % 3 === 2)
       push(d(20), "DEBIT", "UPI", 5_000, "UPI/SCHOOL FEE/ST MARYS");
+    // Private insurance premiums (test data): the household in the team's
+    // example. Month numbers are 0-based.
+    if (withPrivate) {
+      const month = d(1).getMonth();
+      push(d(10), "DEBIT", "ACH", 1_850, "NACH/AXIS MAX LIFE INSURANCE/TERM");
+      if (month === 0)
+        push(d(15), "DEBIT", "ACH", 24_500, "ACH/HDFC ERGO GENERAL INSURANCE");
+      if (month === 2)
+        push(d(18), "DEBIT", "UPI", 38_000, "UPI/ICICI LOMBARD GIC LTD");
+      if (month === 7)
+        push(d(22), "DEBIT", "UPI", 9_800, "UPI/ACKO GENERAL INSURANCE/CAR");
+      if (month === 10)
+        push(d(12), "DEBIT", "NEFT", 6_900, "NEFT/SBI GENERAL INSURANCE CO");
+    }
     // Jan Suraksha renewal: auto-debited at the end of May (test data).
     if (withSchemes && d(28).getMonth() === 4) {
       push(d(28), "DEBIT", "ACH", 436, "PMJJBY PREMIUM RENEWAL");
@@ -205,6 +221,7 @@ async function deliver(journey) {
           a.masked,
           i,
           i === 0 && journey.mobile.endsWith("5"),
+          i === 0 && journey.mobile.endsWith("7"),
         ),
       }),
       fipKeyMaterial: {

@@ -747,6 +747,224 @@ export const consentCopy = {
       "Premiums and cover as published by the Department of Financial Services.",
     simple: "Numbers from the Government of India.",
   },
+
+  // DPDP notice, Value Ledger, Consent Passport (Job 2b)
+  noticeTitle: {
+    standard: "What DhanYukti does with your data",
+    simple: "What we do with your data",
+  },
+  noticeIntro: {
+    standard:
+      "Two kinds of consent. Account Aggregator consent lets DhanYukti fetch bank data; you give it in the Anumati app. DPDP consent covers what DhanYukti itself processes: things you type in, who your insurance covers, your profile. Each purpose below is separate and off until you turn it on.",
+    simple:
+      "Two kinds of yes. One lets us read your bank data (you give it in Anumati). This page is the other: what we do with things you tell us. Each item is separate.",
+  },
+  noticeVersion: { standard: "Notice version", simple: "Version" },
+  noticePurpose: { standard: "Why", simple: "Why" },
+  noticeData: { standard: "What data", simple: "What" },
+  noticeRetention: { standard: "How long it's kept", simple: "How long" },
+  noticeProcessor: { standard: "Also processed by", simple: "Also used by" },
+  noticeNoProcessor: { standard: "Only DhanYukti", simple: "Only us" },
+  noticeNotInBuild: {
+    standard: "Not in this build: nothing is processed for this yet.",
+    simple: "Not built yet. Nothing is used.",
+  },
+  noticeNotEnforced: {
+    standard:
+      "In this build this data stays in your browser tab; withdrawal is recorded but server-side deletion isn't wired yet.",
+    simple: "For now this stays in your browser. We record your choice.",
+  },
+  noticeEnforced: {
+    standard: "Withdrawing deletes this data at once.",
+    simple: "Saying stop deletes it at once.",
+  },
+  consentGive: { standard: "Give consent", simple: "Allow" },
+  consentWithdraw: { standard: "Withdraw", simple: "Stop" },
+  consentStatus_granted: { standard: "Consent given", simple: "Allowed" },
+  consentStatus_withdrawn: { standard: "Withdrawn", simple: "Stopped" },
+  consentStatus_never_asked: { standard: "Not given", simple: "Not allowed" },
+  consentSince: { standard: "since", simple: "since" },
+  receiptTitle: {
+    standard: "Receipt saved in your Value Ledger",
+    simple: "Receipt saved",
+  },
+  receiptId: { standard: "Receipt", simple: "Receipt" },
+  receiptDownload: { standard: "Download receipt", simple: "Download" },
+  dpdpUnavailable: {
+    standard:
+      "Consent records can't be loaded on this deployment right now (storage not set up). Nothing has been recorded.",
+    simple: "We can't load your choices right now. Nothing was saved.",
+  },
+  passportTitle: { standard: "Consent Passport", simple: "Consent Passport" },
+  passportIntro: {
+    standard:
+      "Every consent you've given DhanYukti, in one place. Each can be ended with one tap, as easily as it was given.",
+    simple: "All your yeses in one place. Stop any with one tap.",
+  },
+  passportAaHeading: {
+    standard: "Bank data · Account Aggregator consent",
+    simple: "Bank data (Anumati)",
+  },
+  passportAaEmpty: { standard: "No bank linked.", simple: "No bank linked." },
+  passportDpdpHeading: {
+    standard: "What DhanYukti processes · DPDP consent",
+    simple: "What we use (DPDP)",
+  },
+  passportPerfiosHeading: {
+    standard: "Perfios Hub APIs (KYC and verification)",
+    simple: "Perfios checks",
+  },
+  passportPerfiosBody: {
+    standard:
+      "None in use. This build doesn't call Perfios Hub APIs, so no consent has been asked for. Each would be added here, with its own purpose, before first use.",
+    simple: "None used. We'd ask you here first.",
+  },
+  passportRevoke: { standard: "Revoke", simple: "Stop" },
+  passportRevoked: {
+    standard: "Revoked. Data deleted from DhanYukti.",
+    simple: "Stopped. Data deleted.",
+  },
+  passportOpenNotice: { standard: "Read the full notice", simple: "Read more" },
+  ledgerHeading: { standard: "Value Ledger", simple: "Your receipts" },
+  ledgerLead: {
+    standard:
+      "Every consent event, in order. Each entry is chained to the one before it, so a changed or deleted entry would show.",
+    simple: "Every yes and stop, in order. Nothing can be changed quietly.",
+  },
+  ledgerVerified: { standard: "Chain verified", simple: "Checked: untouched" },
+  ledgerBroken: {
+    standard: "Chain doesn't verify: an entry was changed or removed",
+    simple: "Something was changed",
+  },
+  ledgerEmpty: { standard: "No consent events yet.", simple: "Nothing yet." },
+  ledger_dpdp_granted: { standard: "Consent given", simple: "Allowed" },
+  ledger_dpdp_withdrawn: { standard: "Consent withdrawn", simple: "Stopped" },
+  ledger_aa_requested: {
+    standard: "Bank link requested",
+    simple: "Bank link asked",
+  },
+  ledger_aa_approved: {
+    standard: "Bank link approved in Anumati",
+    simple: "Bank link: yes",
+  },
+  ledger_aa_revoked: {
+    standard: "Bank link revoked",
+    simple: "Bank link stopped",
+  },
+  ledger_aa_ended: {
+    standard: "Bank link ended by Anumati",
+    simple: "Bank link ended",
+  },
+  ledgerBankLink: { standard: "Bank link", simple: "Bank link" },
+  privacyPassportTitle: {
+    standard: "Consent Passport",
+    simple: "Consent Passport",
+  },
+  privacyPassportBody: {
+    standard:
+      "Every consent in one place, with one-tap revoke and your receipts.",
+    simple: "All your yeses, with one-tap stop.",
+  },
+  privacyNoticeTitle: {
+    standard: "What DhanYukti does with your data",
+    simple: "What we do with your data",
+  },
+  privacyNoticeBody: {
+    standard:
+      "The DPDP notice, purpose by purpose, with a withdraw button for each.",
+    simple: "Each use of your data, with a stop button.",
+  },
+
+  // Existing insurance (upgrade to the government insurance check)
+  coverHeading: {
+    standard: "Insurance you already pay for",
+    simple: "Insurance you pay",
+  },
+  coverLead: {
+    standard:
+      "Premiums found in your linked bank data. Who each policy covers is only what you tell us.",
+    simple: "Found in your bank data. You tell us who each one covers.",
+  },
+  coverNone: {
+    standard: "No private insurance premiums found in your linked accounts.",
+    simple: "No insurance payments found.",
+  },
+  licence_life: { standard: "Life insurer", simple: "Life insurance company" },
+  licence_general: {
+    standard: "General insurer",
+    simple: "General insurance company",
+  },
+  licence_health: {
+    standard: "Health insurer",
+    simple: "Health insurance company",
+  },
+  frequency_monthly: { standard: "monthly", simple: "every month" },
+  frequency_quarterly: { standard: "quarterly", simple: "every 3 months" },
+  frequency_half_yearly: { standard: "half-yearly", simple: "twice a year" },
+  frequency_yearly: { standard: "yearly", simple: "once a year" },
+  coverLastPaid: { standard: "Last premium", simple: "Last paid" },
+  coverYearly: { standard: "About a year", simple: "Per year" },
+  coverTotalLead: { standard: "Premiums seen, about", simple: "You pay about" },
+  coverAcross: { standard: "across", simple: "for" },
+  coverPolicies: { standard: "policies", simple: "policies" },
+  coverWho: { standard: "Who does it cover?", simple: "Who is it for?" },
+  coverKind: { standard: "What kind of cover?", simple: "What kind?" },
+  coverSave: { standard: "Save", simple: "Save" },
+  coverEdit: { standard: "Change", simple: "Change" },
+  coverSaved: { standard: "Saved", simple: "Saved" },
+  coverNotTold: { standard: "Not told yet", simple: "Not told yet" },
+  coverTagInvalid: {
+    standard: "Choose at least one member.",
+    simple: "Pick at least one person.",
+  },
+  coverAllowTitle: {
+    standard: "Tell DhanYukti who each policy covers?",
+    simple: "Tell us who each policy is for?",
+  },
+  coverAllowBody: {
+    standard:
+      "This needs your DPDP consent for \u201cWho your insurance covers\u201d. It's kept up to 90 days and deleted as soon as you withdraw.",
+    simple: "We need your OK to keep this. Deleted when you say stop.",
+  },
+  coverAllow: { standard: "Give consent", simple: "Allow" },
+  member_self: { standard: "Me", simple: "Me" },
+  member_spouse: { standard: "Spouse", simple: "Husband/wife" },
+  member_children: { standard: "Children", simple: "Children" },
+  member_parents: { standard: "Parents", simple: "Parents" },
+  member_other: { standard: "Someone else", simple: "Someone else" },
+  kind_health: { standard: "Health", simple: "Health" },
+  kind_life: { standard: "Life", simple: "Life" },
+  kind_motor: { standard: "Motor", simple: "Car/bike" },
+  kind_accident: { standard: "Accident", simple: "Accident" },
+  kind_home: { standard: "Home", simple: "Home" },
+  kind_other: { standard: "Other", simple: "Other" },
+  coverSummaryHealth: {
+    standard: "Health cover told for",
+    simple: "Health cover for",
+  },
+  coverSummaryLifeYes: {
+    standard: "You told us a life policy covers you.",
+    simple: "You have life cover.",
+  },
+  coverSummaryLifeNo: {
+    standard: "No life policy told as covering you.",
+    simple: "No life cover for you told yet.",
+  },
+  coverSummaryMotorOnly: {
+    standard:
+      "Accident cover in a motor policy applies only to vehicle accidents.",
+    simple: "Car insurance only covers road accidents in that car.",
+  },
+  schemeTopUpTitle: {
+    standard:
+      "You already pay for insurance. Government schemes can add low-cost cover:",
+    simple: "You have insurance. These cheap government schemes can add more:",
+  },
+  coverNoAdvice: {
+    standard:
+      "DhanYukti doesn't recommend or sell private insurance. These are facts from your bank data and what you told us.",
+    simple: "We don't sell insurance. These are just your facts.",
+  },
 } satisfies Record<string, ModeText>;
 
 export type ConsentCopyKey = keyof typeof consentCopy;
