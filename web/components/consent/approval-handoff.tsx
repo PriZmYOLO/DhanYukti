@@ -8,6 +8,7 @@ import { AvailabilityState } from "@/components/finance/availability-state";
 import type { ReturnTo } from "@/lib/consent/return-to";
 import { useConsentText } from "@/components/consent/consent-text";
 import { LinkStateNote } from "@/components/consent/link-card";
+import { SchemeCheckCard } from "@/components/consent/scheme-check-card";
 import { PrivacyFrame } from "@/components/consent/privacy-frame";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -353,6 +354,12 @@ function Handoff({ linkId, returnTo }: { linkId: string; returnTo: ReturnTo }) {
           data-link-state={state}
         >
           <LinkStateNote link={link} state={state} live={AA_CONNECTED} />
+          {!link.is_demo && (state === "active" || state === "partial") && (
+            <SchemeCheckCard
+              linkId={link.link_id}
+              isSandbox={link.is_sandbox === true}
+            />
+          )}
           {pollable && (
             <p role="status" className="text-muted-foreground text-sm">
               {text("waitingForProvider")}

@@ -122,6 +122,8 @@ false: statement upload shows "Not available in this build".
 - L04: complete against the demo adapter; live Anumati AA adapter built
   and tested against a local mock (awaiting Anumati credentials)
 - L05: complete against the demo adapters (awaiting real backend)
+- Job 2a (government insurance check, PMJJBY/PMSBY on AA data):
+  complete on live links; consent-gated by "Alerts and suggested actions"
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -220,8 +222,8 @@ When reporting completion, state:
 
 ## GitHub status
 
-- Repository: https://github.com/PriZmYOLO/DhanYukti (private, owner
-  `PriZmYOLO`).
+- Repository: https://github.com/PriZmYOLO/DhanYukti (**public**, owner
+  `PriZmYOLO`). Never commit secrets, `.env` files or real customer data.
 - The Git root is the project folder (`DhanYukti/`), not `web/`. Root
   `.gitignore` excludes `.claude/settings.local.json`; root `.gitattributes`
   enforces LF line endings to match Prettier.

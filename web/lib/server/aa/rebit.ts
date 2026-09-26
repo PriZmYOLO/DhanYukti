@@ -26,6 +26,8 @@ export interface ParsedDepositAccount {
   balance_at: string | null; // ISO timestamp from the FIP
   data_from: string | null; // ISO date
   data_to: string | null;
+  /** Holder date of birth from Profile, used only to work out an age. */
+  holder_dob: string | null;
   transactions: ParsedTransaction[];
 }
 
@@ -84,6 +86,9 @@ function fromJson(doc: unknown): ParsedDepositAccount {
   const summary = pick(account, "Summary");
   const txns = pick(account, "Transactions");
   const list = asArray(pick(txns, "Transaction")).map(txn);
+  const holder = asArray(
+    pick(pick(pick(account, "Profile"), "Holders"), "Holder"),
+  )[0];
   return {
     masked_acc_number: str(pick(account, "maskedAccNumber")),
     account_type: str(pick(summary, "type")),
@@ -91,6 +96,7 @@ function fromJson(doc: unknown): ParsedDepositAccount {
     balance_at: str(pick(summary, "balanceDateTime")),
     data_from: isoDate(pick(txns, "startDate")),
     data_to: isoDate(pick(txns, "endDate")),
+    holder_dob: isoDate(pick(holder, "dob")),
     transactions: list,
   };
 }
@@ -120,6 +126,7 @@ function fromXml(xml: string): ParsedDepositAccount {
     balance_at: str(pick(summary, "balanceDateTime")),
     data_from: isoDate(pick(txns, "startDate")),
     data_to: isoDate(pick(txns, "endDate")),
+    holder_dob: isoDate(pick(xmlAttrs(xml, "Holder")[0], "dob")),
     transactions: xmlAttrs(xml, "Transaction").map(txn),
   };
 }

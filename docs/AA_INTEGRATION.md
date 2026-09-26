@@ -90,6 +90,36 @@ shortened references and the provider's HTTP status (never secrets or data).
 If data arrived but couldn't be decrypted, the encrypted payload is kept for
 24 hours under `aa:raw:<link id>` so it can be re-opened with the jar.
 
+## Government insurance check (Job 2a)
+
+After data arrives, the link card and the post-approval screen show a
+**Government insurance check** (PMJJBY ₹436/yr → ₹2L life, joining age
+18–50; PMSBY ₹20/yr → ₹2L accident, 18–70; figures from the Department of
+Financial Services).
+
+- Rule: `lib/server/schemes/jan-suraksha.ts` (pure function). Route:
+  `GET /api/aa/links/{id}/scheme-check`. Contract:
+  `lib/contracts/scheme-check.ts`. Card: `components/consent/scheme-check-card.tsx`.
+- **Consent-gated:** runs only if the member turned on "Alerts and suggested
+  actions" when linking. Otherwise the card says the check wasn't run.
+- A premium counts as seen only from a debit whose narration names the
+  scheme (PMJJBY, PMSBY, Jeevan Jyoti, Suraksha Bima, or "Jan Suraksha" with
+  a matching amount). Amount alone never counts.
+- "No premium seen" needs the data to cover a 20 May – 15 Jun renewal
+  window; otherwise the answer is "Can't tell", never "not enrolled".
+- The card always says it only sees linked accounts (it may be paid from
+  another), shows the evidence date and amount, and says DhanYukti earns
+  nothing from public schemes, which come before any private insurance.
+- Age comes from the bank profile's date of birth, reduced to an age when
+  stored; the date itself isn't kept.
+- Mock: a mobile number ending in **5** gives a household that already pays
+  both premiums (renewal-reminder case); any other number gives the
+  "₹456 a year for ₹4 lakh" suggestion.
+
+**Demo line:** "Before any private product, we check government cover. It
+costs ₹456 a year for ₹4 lakh, we earn nothing from it, and we only ran the
+check because the user allowed suggestions."
+
 ## Rehearse locally without credentials
 
 ```bash

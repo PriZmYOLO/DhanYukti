@@ -191,6 +191,21 @@ Per account: `status: "received" | "processing" | "failed"`, `data_from`,
 (`household-projection.ts`) has no `awaiting_approval` or `expired`. Either
 add them or tell the frontend how they collapse.
 
+## 3a. Government insurance check (Job 2a)
+
+|          |                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------- |
+| Rule     | `lib/server/schemes/jan-suraksha.ts` → `checkJanSuraksha(accounts)` (pure)                   |
+| Route    | `GET /api/aa/links/{id}/scheme-check` → `{ check: SchemeCheckResult }`                       |
+| Contract | `lib/contracts/scheme-check.ts`                                                              |
+| Gate     | Runs only when the link's `alerts_and_actions` grant is on; else `{ status: "not_allowed" }` |
+
+Per scheme: `premium_seen` (with evidence), `not_seen` (renewal window
+covered, no named debit), `outside_age`, or `unknown`. Never turn
+`unknown` into "not enrolled". When the financial engines own protection
+priorities (Amma), they can consume the same result; public schemes stay
+ahead of any private product.
+
 ## 4. Corrections and recalculation (H07)
 
 |           |                                                                                                |
