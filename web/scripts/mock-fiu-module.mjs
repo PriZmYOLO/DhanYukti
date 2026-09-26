@@ -20,6 +20,8 @@
  *   ANUMATI_BASE_URL=http://localhost:4010 ANUMATI_CLIENT_ID=mock-id \
  *   ANUMATI_CLIENT_SECRET=mock-secret NEXT_PUBLIC_AA_LIVE=true npm run dev
  *
+ * Mobile number ending in 5 → the first account shows PMJJBY + PMSBY
+ * premium debits in late May (Jan Suraksha "covered" case).
  * Mobile number ending in 0 → the second account "fails to deliver"
  * (to rehearse the partial state).
  */
@@ -78,7 +80,7 @@ async function post(path, body) {
 }
 
 /** Twelve months of a salaried household's savings account (test data). */
-function rebitDeposit(masked, seed) {
+function rebitDeposit(masked, seed, withSchemes = false) {
   const today = new Date();
   const txns = [];
   let balance = 18_000 + seed * 7_000;
@@ -132,6 +134,11 @@ function rebitDeposit(masked, seed) {
     }
     if (m % 3 === 2)
       push(d(20), "DEBIT", "UPI", 5_000, "UPI/SCHOOL FEE/ST MARYS");
+    // Jan Suraksha renewal: auto-debited at the end of May (test data).
+    if (withSchemes && d(28).getMonth() === 4) {
+      push(d(28), "DEBIT", "ACH", 436, "PMJJBY PREMIUM RENEWAL");
+      push(d(28), "DEBIT", "ACH", 20, "PMSBY PREMIUM RENEWAL");
+    }
   }
   return JSON.stringify({
     Account: {
@@ -139,7 +146,12 @@ function rebitDeposit(masked, seed) {
       maskedAccNumber: masked,
       linkedAccRef: randomUUID(),
       version: "1.1",
-      Profile: { Holders: { type: "SINGLE", Holder: { name: "TEST USER" } } },
+      Profile: {
+        Holders: {
+          type: "SINGLE",
+          Holder: { name: "TEST USER", dob: "1994-03-15" },
+        },
+      },
       Summary: {
         currentBalance: balance.toFixed(2),
         currency: "INR",
@@ -189,7 +201,11 @@ async function deliver(journey) {
         fipNonce: fip.nonce,
         ourPublicKey: fiu.publicKeyPem,
         ourNonce: fiu.nonce,
-        plaintext: rebitDeposit(a.masked, i),
+        plaintext: rebitDeposit(
+          a.masked,
+          i,
+          i === 0 && journey.mobile.endsWith("5"),
+        ),
       }),
       fipKeyMaterial: {
         cryptoAlg: "ECDH",

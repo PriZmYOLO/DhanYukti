@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { LIVE_TERMS } from "@/lib/aa/live-terms";
 import type { ErrorEnvelope, IsoTimestamp } from "@/lib/contracts/common";
+import type { SchemeCheckResult } from "@/lib/contracts/scheme-check";
 import type {
   ConsentChoices,
   ConsentStatus,
@@ -25,6 +26,7 @@ import {
   type ParsedDepositAccount,
 } from "@/lib/server/aa/rebit";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
+import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
 
 /**
  * Live Account Aggregator links (Anumati FIU module). This is the server
@@ -65,10 +67,20 @@ interface LinkRecord {
   pending: PendingRetrieval | null;
 }
 
+/**
+ * What DhanYukti keeps per account. The holder's date of birth is reduced
+ * to an age when stored; the date itself is not kept.
+ */
+export type StoredAccount = Omit<ParsedDepositAccount, "holder_dob"> & {
+  fip_id: string | null;
+  account_label: string;
+  holder_age: number | null;
+};
+
 export interface StoredAccountData {
   link_id: string;
   fetched_at: string;
-  accounts: (ParsedDepositAccount & { fip_id: string | null })[];
+  accounts: StoredAccount[];
 }
 
 const keys = {
@@ -448,6 +460,16 @@ function findEscrow(
   return null;
 }
 
+/** Whole years between an ISO date of birth and `on`; null if unknown. */
+function ageOn(dob: string | null, on: Date): number | null {
+  if (!dob) return null;
+  const [y, m, d] = dob.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const [ty, tm, td] = istDate(on).split("-").map(Number);
+  const age = ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
+  return age >= 0 && age < 130 ? age : null;
+}
+
 function accountLabel(session: FiSession, parsed: ParsedDepositAccount | null) {
   const masked = parsed?.masked_acc_number ?? session.maskedAccNumber ?? "";
   const last4 = masked.replace(/[^0-9]/g, "").slice(-4);
@@ -509,7 +531,13 @@ function processSessions(response: GetDataResponse, fetchedAt: string) {
         encryptedFI: session.encryptedFI,
       });
       const parsed = parseDepositFI(plaintext);
-      stored.push({ ...parsed, fip_id: session.fipId ?? null });
+      const { holder_dob, ...facts } = parsed;
+      stored.push({
+        ...facts,
+        fip_id: session.fipId ?? null,
+        account_label: accountLabel(session, parsed),
+        holder_age: ageOn(holder_dob, new Date()),
+      });
       const balanceDate = parsed.balance_at
         ? istDate(new Date(parsed.balance_at))
         : null;
@@ -647,4 +675,21 @@ export async function readAccountData(
   if (!record || record.session_id !== sid) return null;
   if (record.consent_status !== "active") return null;
   return kvGet<StoredAccountData>(keys.data(linkId));
+}
+
+/**
+ * Jan Suraksha check (Job 2a) for one of this session's links. Runs only
+ * when the member allowed "Alerts and suggested actions" for this source.
+ */
+export async function schemeCheck(
+  sid: string,
+  linkId: string,
+): Promise<SchemeCheckResult | null> {
+  const record = await loadLink(linkId);
+  if (!record || record.session_id !== sid) return null;
+  if (!record.grants.alerts_and_actions) return { status: "not_allowed" };
+  if (record.consent_status !== "active") return { status: "no_data" };
+  const data = await kvGet<StoredAccountData>(keys.data(linkId));
+  if (!data || data.accounts.length === 0) return { status: "no_data" };
+  return checkJanSuraksha(data.accounts, { isSandbox: aaConfig.isSandbox });
 }

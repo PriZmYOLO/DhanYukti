@@ -632,6 +632,121 @@ export const consentCopy = {
     standard: "Anumati Account Aggregator",
     simple: "Anumati",
   },
+
+  // Government protection check (Jan Suraksha: PMJJBY + PMSBY), Job 2a
+  schemeHeading: {
+    standard: "Government insurance check",
+    simple: "Government insurance check",
+  },
+  schemeLead: {
+    standard:
+      "Public schemes come first. DhanYukti earns nothing from them and shows them before any private insurance.",
+    simple: "Government schemes first. We earn nothing from them.",
+  },
+  scheme_pmjjby: {
+    standard: "PMJJBY · Pradhan Mantri Jeevan Jyoti Bima Yojana (life cover)",
+    simple: "PMJJBY (life cover)",
+  },
+  scheme_pmsby: {
+    standard: "PMSBY · Pradhan Mantri Suraksha Bima Yojana (accident cover)",
+    simple: "PMSBY (accident cover)",
+  },
+  schemeCover: { standard: "Cover", simple: "Pays" },
+  schemePremium: { standard: "Premium", simple: "Costs" },
+  schemePerYear: { standard: "a year", simple: "a year" },
+  schemeStatus_premium_seen: {
+    standard: "Premium seen",
+    simple: "You pay this",
+  },
+  schemeStatus_not_seen: {
+    standard: "No premium seen in your linked account",
+    simple: "Not seen in your account",
+  },
+  schemeStatus_outside_age: {
+    standard: "Outside the joining age",
+    simple: "Not for your age",
+  },
+  schemeStatus_unknown: {
+    standard: "Can't tell from this data",
+    simple: "We can't tell yet",
+  },
+  schemeSeenOn: { standard: "Last premium", simple: "Last paid" },
+  schemeJoinAge: { standard: "Joining age", simple: "Age to join" },
+  schemeSuggestTitle: {
+    standard: "Consider government insurance first",
+    simple: "Try government insurance first",
+  },
+
+  schemeSuggestTotalLead: { standard: "Together:", simple: "Both:" },
+  schemeSuggestFor: { standard: "for", simple: "for" },
+  schemeSuggestCover: { standard: "of cover", simple: "cover" },
+  schemeSuggestHow: {
+    standard:
+      "Enrol through your own bank: its app, net banking or a branch. The premium is then auto-debited once a year, at the end of May.",
+    simple:
+      "Join through your bank's app or branch. The money is taken once a year, in late May.",
+  },
+  schemeOtherAccount: {
+    standard:
+      "We only see the accounts you linked. If you already pay this from another account, you're covered; each person can hold it through one account only.",
+    simple:
+      "We only see the accounts you shared. If you pay it from another account, you're already covered.",
+  },
+  schemeAgeUnknown: {
+    standard:
+      "Your bank didn't share your age, so check the joining age before you enrol.",
+    simple: "Check the age limit before you join.",
+  },
+  schemeRenewalTitle: {
+    standard: "Keep the premium ready for renewal",
+    simple: "Keep money ready for renewal",
+  },
+  schemeRenewalLead: {
+    standard: "Keep at least",
+    simple: "Keep at least",
+  },
+  schemeRenewalBy: {
+    standard: "in this account before",
+    simple: "in this account before",
+  },
+  schemeRenewalWhy: {
+    standard:
+      "If the auto-debit fails for lack of balance, the cover lapses for the year.",
+    simple: "If there isn't enough money, the cover stops.",
+  },
+  schemeUnknownBody: {
+    standard:
+      "Your linked data doesn't include the late-May renewal period, so we can't say whether you're enrolled. Nothing has been assumed.",
+    simple:
+      "Your data doesn't include late May, so we can't tell. We assume nothing.",
+  },
+  schemeChecked: {
+    standard: "Checked transactions from",
+    simple: "Checked from",
+  },
+  schemeWindow: {
+    standard: "including the renewal period",
+    simple: "including renewal time",
+  },
+  schemeNotAllowedTitle: {
+    standard: "Check not run: you didn't allow suggestions",
+    simple: "Not checked: you said no to suggestions",
+  },
+  schemeNotAllowedBody: {
+    standard:
+      'This source was linked without "Alerts and suggested actions", so DhanYukti hasn\'t looked for government insurance premiums. Link again with that choice on if you want the check.',
+    simple:
+      "You didn't allow suggestions for this bank. Link it again with that turned on if you want this check.",
+  },
+  schemeUnavailable: {
+    standard: "The government insurance check couldn't run right now.",
+    simple: "The check didn't work right now.",
+  },
+  schemeOfficial: {
+    standard:
+      "Premiums and cover as published by the Department of Financial Services.",
+    simple: "Numbers from the Government of India.",
+  },
 } satisfies Record<string, ModeText>;
 
 export type ConsentCopyKey = keyof typeof consentCopy;

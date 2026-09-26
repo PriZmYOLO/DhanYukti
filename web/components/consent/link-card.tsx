@@ -8,6 +8,7 @@ import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
 import { SourceBadge } from "@/components/finance/source-badge";
 import { useConsentText } from "@/components/consent/consent-text";
+import { SchemeCheckCard } from "@/components/consent/scheme-check-card";
 import { Button } from "@/components/ui/button";
 import {
   LINK_STATE_INFO,
@@ -469,6 +470,12 @@ export function LinkCard({ link, onRevoke }: LinkCardProps) {
       <LinkStateNote link={link} state={state} />
       <ConsentDetails link={link} state={state} />
       {info.showAccounts && <Accounts link={link} />}
+      {!link.is_demo && (state === "active" || state === "partial") && (
+        <SchemeCheckCard
+          linkId={link.link_id}
+          isSandbox={link.is_sandbox === true}
+        />
+      )}
       {showGrants && <GrantsSummary link={link} />}
       <Activity link={link} />
       {info.revocable && <RevokeControl link={link} onRevoke={onRevoke} />}

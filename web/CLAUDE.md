@@ -112,6 +112,8 @@ false: statement upload shows "Not available in this build".
 - L03: PASS
 - L04: complete against the demo adapter; live Anumati AA adapter built
   and tested against a local mock (awaiting Anumati credentials)
+- Job 2a (government insurance check, PMJJBY/PMSBY on AA data):
+  complete on live links; consent-gated by "Alerts and suggested actions"
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
