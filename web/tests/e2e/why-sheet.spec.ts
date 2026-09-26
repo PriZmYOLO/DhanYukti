@@ -13,9 +13,17 @@ test("Why sheet is modal, traps focus and restores it", async ({ page }) => {
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-modal", "true");
 
-  // Tab repeatedly: focus never leaves the dialog.
+  // Tab repeatedly: focus never leaves the dialog. Base UI's focus guards
+  // hand focus back on the next animation frame (enqueueFocus uses rAF), so
+  // wait two frames, as a real key press would, before checking.
   for (let index = 0; index < 12; index++) {
     await page.keyboard.press("Tab");
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
     const inside = await dialog.evaluate((node) =>
       node.contains(document.activeElement),
     );

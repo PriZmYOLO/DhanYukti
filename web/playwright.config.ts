@@ -24,6 +24,12 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
   },
+  // Screenshot baselines exist only for Windows (…-chrome-win32.png). On
+  // other platforms visual comparison is skipped instead of failing on a
+  // missing baseline, so every other assertion in those tests still runs.
+  // Add Linux baselines (--update-snapshots on Linux with real fonts) and
+  // remove this line to compare there too.
+  ignoreSnapshots: process.platform !== "win32",
   expect: {
     toHaveScreenshot: { animations: "disabled", maxDiffPixelRatio: 0.01 },
   },
