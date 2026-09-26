@@ -1,5 +1,6 @@
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
+import { CashStrip } from "@/components/home/cash-strip";
 import { ComingUp } from "@/components/home/coming-up";
 import { FixtureScenarioSwitch } from "@/components/home/fixture-scenario-switch";
 import { HealthCardSection } from "@/components/home/health-card";
@@ -72,22 +73,29 @@ export default async function Home(props: PageProps<"/">) {
 
       {projection ? (
         <div className="grid gap-10 pt-6 lg:grid-cols-12 lg:gap-12 lg:pt-10">
-          <div className="lg:col-span-5">
+          <div className="min-w-0 lg:col-span-5">
             <MoneyNow
               facts={projection.facts}
               safeToSpend={packet?.safe_to_spend ?? null}
             />
           </div>
-          <div className="lg:col-span-7">
+          {/* min-w-0 keeps the strip's sideways scroll inside this column. */}
+          <div className="min-w-0 lg:col-span-7">
             <ComingUp
               facts={projection.facts}
               asOf={projection.as_of}
               summary={
                 need?.cash_flow && (
-                  <CashFlowFigures
-                    cashFlow={need.cash_flow}
-                    consequence={packet?.consequence ?? null}
-                  />
+                  <>
+                    <CashFlowFigures
+                      cashFlow={need.cash_flow}
+                      consequence={packet?.consequence ?? null}
+                    />
+                    <CashStrip
+                      cashFlow={need.cash_flow}
+                      facts={projection.facts}
+                    />
+                  </>
                 )
               }
             />
@@ -113,7 +121,10 @@ export default async function Home(props: PageProps<"/">) {
       {/* Two full-width bands that meet without a gap. */}
       <div className="pt-10 lg:pt-12">
         <div className="bg-card bleed-band py-12 [--band-color:var(--card)]">
-          <HealthCardSection health={health} />
+          <HealthCardSection
+            health={health}
+            missingAbove={packet?.missing_facts.length ?? 0}
+          />
         </div>
         <TrustFooter projection={projection} />
       </div>

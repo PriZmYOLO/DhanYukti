@@ -1,11 +1,18 @@
 import type { IsoDate, IsoTimestamp } from "@/lib/contracts/common";
-import { formatIsoDate, formatTimestamp, isIsoDate } from "@/lib/format";
+import {
+  formatIsoDate,
+  formatIsoDateShort,
+  formatTimestamp,
+  isIsoDate,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface DateDisplayProps {
   /** ISO date ("2026-09-28") or timezone-aware timestamp. null = unknown. */
   value: IsoDate | IsoTimestamp | null;
   unknownLabel?: string;
+  /** "short" drops the year ("28 Sept") for compact date columns. */
+  format?: "long" | "short";
   className?: string;
 }
 
@@ -13,6 +20,7 @@ interface DateDisplayProps {
 export function DateDisplay({
   value,
   unknownLabel = "Date not known",
+  format = "long",
   className,
 }: DateDisplayProps) {
   if (value === null) {
@@ -23,7 +31,11 @@ export function DateDisplay({
     );
   }
 
-  const text = isIsoDate(value) ? formatIsoDate(value) : formatTimestamp(value);
+  const text = isIsoDate(value)
+    ? format === "short"
+      ? formatIsoDateShort(value)
+      : formatIsoDate(value)
+    : formatTimestamp(value);
   if (text === null) {
     return (
       <span className={cn("text-destructive", className)}>Invalid date</span>

@@ -178,7 +178,6 @@ export function AvailabilityState({
           toneClasses[copy.tone],
           className,
         )}
-        title={typeof body === "string" ? body : undefined}
       >
         <Icon
           aria-hidden

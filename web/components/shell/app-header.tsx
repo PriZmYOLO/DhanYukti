@@ -38,7 +38,7 @@ export function AppHeader() {
           <Link
             href="/ask"
             className={cn(
-              buttonVariants({ variant: "forest", size: "lg" }),
+              buttonVariants({ variant: "forest", size: "xl" }),
               "px-3.5",
             )}
           >

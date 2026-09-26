@@ -75,8 +75,11 @@ export function WhySheet({
         <CircleHelp aria-hidden />
         {text("whyButton")}
       </SheetTrigger>
+      {/* Base UI traps focus and makes the page inert but doesn't set
+          aria-modal; this sheet is always modal, so say so explicitly. */}
       <SheetContent
         side="right"
+        aria-modal="true"
         initialFocus={titleRef}
         className="gap-0 overflow-hidden data-[side=right]:w-full data-[side=right]:sm:max-w-md"
       >

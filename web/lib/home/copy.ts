@@ -264,6 +264,18 @@ export const homeCopy = {
 
   // Coming up
   cashFlowLabel: { standard: "Cash flow", simple: "Money in and out" },
+  // Cash strip: dated released facts and markers; no balance line.
+  // Describes the layout only, never the engine's method.
+  stripCaption: {
+    standard: "One column per day, from",
+    simple: "One column for each day, from",
+  },
+  stripFirstShort: { standard: "First short", simple: "First short" },
+  stripLowest: { standard: "Lowest", simple: "Lowest" },
+  stripNothingDated: {
+    standard: "No dated amounts in this window.",
+    simple: "No dates in this window.",
+  },
   comingUpHeading: { standard: "Coming up", simple: "Coming soon" },
   comingUpEmpty: {
     standard: "No upcoming dates have been recorded.",
@@ -289,6 +301,19 @@ export const homeCopy = {
     standard:
       "“Not known yet” means we have no information. It never means none.",
     simple: "“Not known yet” does not mean zero.",
+  },
+  healthGapsHeading: {
+    standard: "Help us fill the gaps",
+    simple: "Help us fill the gaps",
+  },
+  questionsAboveOne: {
+    standard: "1 question above could change your priority",
+    simple: "1 question above could change what comes first",
+  },
+  // Preceded by the count, e.g. "2 questions above could change…".
+  questionsAboveMany: {
+    standard: "questions above could change your priority",
+    simple: "questions above could change what comes first",
   },
   healthUnavailable: {
     standard: "The health summary isn't available right now",

@@ -27,8 +27,9 @@ export function ConfidenceBadge({
   className,
 }: ConfidenceBadgeProps) {
   return (
+    // The basis is screen-reader text, not a title tooltip (unreachable on
+    // touch); it is shown in full in the Why sheet.
     <span
-      title={confidence.basis ?? undefined}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs",
         toneClasses[confidence.level],
@@ -42,6 +43,9 @@ export function ConfidenceBadge({
           <HomeText k={`confidence_${confidence.level}`} />
         </span>
       </span>
+      {confidence.basis && (
+        <span className="sr-only">. {confidence.basis}</span>
+      )}
     </span>
   );
 }

@@ -4,7 +4,11 @@ import type { ReactNode } from "react";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
-import { SourceBadge } from "@/components/finance/source-badge";
+import {
+  groupSources,
+  SourceBadge,
+  SourceLegend,
+} from "@/components/finance/source-badge";
 import { HomeText } from "@/components/home/home-text";
 import type {
   FactKind,
@@ -18,7 +22,16 @@ const UPCOMING_KINDS: readonly FactKind[] = [
   "essential_spending",
 ];
 
-function Item({ fact, passed }: { fact: FactSummary; passed: boolean }) {
+function Item({
+  fact,
+  passed,
+  showSource,
+}: {
+  fact: FactSummary;
+  passed: boolean;
+  /** false when the list's legend already says where this came from. */
+  showSource: boolean;
+}) {
   const incoming = fact.kind === "income";
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;
   return (
@@ -54,10 +67,12 @@ function Item({ fact, passed }: { fact: FactSummary; passed: boolean }) {
             <Icon aria-hidden className="size-3.5" />
             <HomeText k={incoming ? "moneyIn" : "moneyOut"} />
           </span>
-          <SourceBadge
-            kind={fact.source_kind}
-            sourceLabel={fact.source_label}
-          />
+          {showSource && (
+            <SourceBadge
+              kind={fact.source_kind}
+              sourceLabel={fact.source_label}
+            />
+          )}
         </div>
       </div>
       <div className="col-start-2 sm:col-start-auto sm:text-right">
@@ -108,6 +123,9 @@ export function ComingUp({ facts, asOf, summary }: ComingUpProps) {
     ...passed.map((fact) => ({ fact, passed: true })),
     ...[...current, ...undated].map((fact) => ({ fact, passed: false })),
   ];
+  // One legend line when the rows share a source; a row keeps its own badge
+  // only if its source differs or it names a specific source.
+  const sources = groupSources(items.map(({ fact }) => fact));
 
   return (
     <section aria-labelledby="coming-up-heading" className="space-y-5">
@@ -128,11 +146,31 @@ export function ComingUp({ facts, asOf, summary }: ComingUpProps) {
           <HomeText k="comingUpEmpty" />
         </p>
       ) : (
-        <ol className="divide-y border-b">
-          {items.map(({ fact, passed }) => (
-            <Item key={fact.fact_id} fact={fact} passed={passed} />
-          ))}
-        </ol>
+        <div className="space-y-2">
+          {sources.common && (
+            <SourceLegend
+              kind={sources.common}
+              sourceLabel={sources.commonLabel}
+              scope={
+                !sources.uniform
+                  ? "unless-marked"
+                  : items.length === 1
+                    ? "single"
+                    : "all"
+              }
+            />
+          )}
+          <ol className="divide-y border-t border-b">
+            {items.map(({ fact, passed }) => (
+              <Item
+                key={fact.fact_id}
+                fact={fact}
+                passed={passed}
+                showSource={sources.differs(fact)}
+              />
+            ))}
+          </ol>
+        </div>
       )}
     </section>
   );

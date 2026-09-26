@@ -3,7 +3,11 @@ import type { ReactNode } from "react";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
-import { SourceBadge } from "@/components/finance/source-badge";
+import {
+  groupSources,
+  SourceBadge,
+  SourceLegend,
+} from "@/components/finance/source-badge";
 import { HomeText } from "@/components/home/home-text";
 import type { SafeToSpendRelease } from "@/lib/contracts/decision-packet";
 import type { FactSummary } from "@/lib/contracts/household-projection";
@@ -80,6 +84,7 @@ interface MoneyNowProps {
  */
 export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
   const cashFacts = facts.filter((fact) => fact.kind === "cash_balance");
+  const sources = groupSources(cashFacts);
 
   return (
     <section aria-labelledby="money-now-heading" className="space-y-4">
@@ -116,14 +121,29 @@ export function MoneyNow({ facts, safeToSpend }: MoneyNowProps) {
                       <HomeText k="asOf" />{" "}
                       <DateDisplay value={fact.effective_on} />
                     </span>
-                    <SourceBadge
-                      kind={fact.source_kind}
-                      sourceLabel={fact.source_label}
-                    />
+                    {sources.differs(fact) && (
+                      <SourceBadge
+                        kind={fact.source_kind}
+                        sourceLabel={fact.source_label}
+                      />
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
+          )}
+          {sources.common && (
+            <SourceLegend
+              kind={sources.common}
+              sourceLabel={sources.commonLabel}
+              scope={
+                !sources.uniform
+                  ? "unless-marked"
+                  : cashFacts.length === 1
+                    ? "single"
+                    : "all"
+              }
+            />
           )}
         </Tile>
         <Tile label={<HomeText k="safeToSpend" />}>
