@@ -30,6 +30,19 @@ export const onboardingCopy = {
     simple: "Only the words change. Your numbers stay the same.",
   },
   progressLabel: "Setup steps",
+  whyHeading: { standard: "Why we ask this", simple: "Why we ask" },
+  liveSummaryHeading: {
+    standard: "What you've entered so far",
+    simple: "What you typed so far",
+  },
+  liveAsOf: { standard: "As of", simple: "On" },
+  liveNextOn: { standard: "Next income", simple: "Next pay" },
+  liveDueOn: { standard: "Bill due", simple: "Pay by" },
+  liveNeedsFix: { standard: "Needs a fix", simple: "Please fix" },
+  liveSummaryNote: {
+    standard: "Not saved until you press Save and continue.",
+    simple: "Press Next to save.",
+  },
   stepHousehold: { standard: "Household", simple: "Family group" },
   stepContext: "About you",
   stepMoney: { standard: "Money details", simple: "Your money" },
@@ -171,6 +184,10 @@ export const onboardingCopy = {
     simple: "Type the code a family member gave you.",
   },
   inviteCodeLabel: "Invite code",
+  inviteCodeHint: {
+    standard: "The code the family member who invited you shared.",
+    simple: "The code a family member gave you.",
+  },
   inviteCodeRequired: "Enter the invite code you received.",
   joinAction: { standard: "Check invite", simple: "Check code" },
   linkTitle: { standard: "I received an invite link", simple: "I got a link" },
@@ -273,6 +290,10 @@ export const onboardingCopy = {
     standard: "I earn money for the household",
     simple: "Yes, I earn",
   },
+  roleHint: {
+    standard: "Whether you bring money into the household right now.",
+    simple: "Tell us if you earn now.",
+  },
   roleNonEarning: {
     standard: "I don't earn right now",
     simple: "No, not now",
@@ -280,6 +301,10 @@ export const onboardingCopy = {
   occupationLegend: {
     standard: "What kind of work do you do?",
     simple: "What work do you do?",
+  },
+  occupationHint: {
+    standard: "Pick the closest match. Your main work is enough.",
+    simple: "Pick the one closest to your work.",
   },
   occupationSalaried: {
     standard: "Salaried job",
@@ -300,6 +325,10 @@ export const onboardingCopy = {
   incomePatternLegend: {
     standard: "How does your income arrive?",
     simple: "How do you get paid?",
+  },
+  incomePatternHint: {
+    standard: "Whether your own income is steady or changes.",
+    simple: "Does your pay stay the same?",
   },
   incomeFixed: {
     standard: "About the same amount on a fixed date",
@@ -324,6 +353,10 @@ export const onboardingCopy = {
   goalLegend: {
     standard: "What matters most right now?",
     simple: "What is most important now?",
+  },
+  goalHint: {
+    standard: "Your own choice. DhanYukti does not pick this for you.",
+    simple: "You choose this, not DhanYukti.",
   },
   goalEducation: {
     standard: "School or education costs",
@@ -374,6 +407,10 @@ export const onboardingCopy = {
     simple: "Money you have now",
   },
   cashAmountLabel: {
+    standard: "Cash and bank balance",
+    simple: "Money you have",
+  },
+  cashAmountHint: {
     standard: "Cash and bank money available now",
     simple: "How much money do you have now?",
   },
@@ -381,13 +418,27 @@ export const onboardingCopy = {
     standard: "As of which date?",
     simple: "On which day?",
   },
+  cashDateHint: {
+    standard: "The day this amount was true.",
+    simple: "The day you counted it.",
+  },
+  asOfToday: { standard: "As of today,", simple: "Today," },
+  earlierDate: {
+    standard: "It was an earlier date",
+    simple: "It was another day",
+  },
   incomeSection: { standard: "Regular income", simple: "Money coming in" },
-  incomeAmountLabel: {
+  incomeAmountLabel: { standard: "Income amount", simple: "Money you get" },
+  incomeAmountHint: {
     standard: "Amount you usually receive",
     simple: "How much do you get?",
   },
   incomeNone: { standard: "No regular income", simple: "No regular income" },
   frequencyLegend: { standard: "How often?", simple: "How often?" },
+  frequencyHint: {
+    standard: "How often this income usually arrives.",
+    simple: "How often you get it.",
+  },
   frequencyMonthly: "Every month",
   frequencyWeekly: "Every week",
   frequencyDaily: "Every day",
@@ -395,6 +446,10 @@ export const onboardingCopy = {
   nextIncomeLabel: {
     standard: "Next expected date",
     simple: "When do you get it next?",
+  },
+  nextIncomeHint: {
+    standard: "When you expect to receive it next.",
+    simple: "The day you think it comes.",
   },
   billSection: {
     standard: "An important bill",
@@ -406,8 +461,16 @@ export const onboardingCopy = {
     simple: "Like school fee or electricity.",
   },
   billAmountLabel: { standard: "Bill amount", simple: "How much?" },
+  billAmountHint: {
+    standard: "What you have to pay for this bill.",
+    simple: "The money you must pay.",
+  },
   billNone: { standard: "No bill to add", simple: "No bill" },
   billDueLabel: { standard: "Due date", simple: "Last day to pay" },
+  billDueHint: {
+    standard: "The last day to pay it.",
+    simple: "Pay by this day.",
+  },
   moneyDemoNote: {
     standard:
       "Saved only in this demo session as your own entries. They are not bank data, are not checked yet, and are not added to Home.",
@@ -434,13 +497,10 @@ export const onboardingCopy = {
   },
   reviewYou: "You",
   change: "Change",
-  entrySource: {
-    standard: "Entered by you in this demo session",
-    simple: "You typed this",
-  },
-  candidateStatus: {
-    standard: "Not yet accepted · demo only",
-    simple: "Not checked yet · practice",
+  moneyEntryLine: {
+    standard:
+      "Entered by you in this demo session · not yet accepted · demo only",
+    simple: "You typed this · not checked yet · practice only",
   },
   notOnHomeTitle: {
     standard: "Not used on Home yet",
@@ -466,7 +526,104 @@ export const onboardingCopy = {
     simple: "How you get paid",
   },
   labelDependents: { standard: "Dependents", simple: "People depending" },
-  labelGoal: { standard: "Most important now", simple: "Most important" },
+  labelGoal: {
+    standard: "Most important to you",
+    simple: "Most important to you",
+  },
+  goalNotChosen: "Not chosen yet",
+  countAnswered: "Answered",
+  countDontKnow: { standard: "Marked as not known", simple: "Don't know" },
+  countUnanswered: { standard: "Not answered yet", simple: "Skipped" },
+
+  // "Why we ask this" (side panel on wide screens)
+  whyHousehold: {
+    standard:
+      "A household groups the adults who plan money together. Joining one shares nothing by itself.",
+    simple: "A family group is the people who plan money together.",
+  },
+  whyHouseholdName: {
+    standard: "Only to tell households apart. It is optional.",
+    simple: "Just so you know which group it is.",
+  },
+  whyInviteCode: {
+    standard:
+      "An invite code shows a family member asked you to join their household.",
+    simple: "The code shows a family member invited you.",
+  },
+  whyContext: {
+    standard:
+      "A little context lets DhanYukti explain your picture in terms that fit your household.",
+    simple: "This helps us explain things in a way that fits you.",
+  },
+  whyRole: {
+    standard:
+      "Earning and non-earning members plan differently. It never limits what you can see.",
+    simple: "It helps us give the right tips.",
+  },
+  whyOccupation: {
+    standard: "The kind of work you do shapes how steady money can be.",
+    simple: "Some work pays every month, some doesn't.",
+  },
+  whyIncomePattern: {
+    standard:
+      "Steady and changing incomes need different safety margins before a bill.",
+    simple: "Changing pay needs a bigger cushion.",
+  },
+  whyDependents: {
+    standard:
+      "How many people rely on this income affects how much cushion is sensible. No names needed.",
+    simple: "More people means more to plan for.",
+  },
+  whyGoal: {
+    standard:
+      "Your own view of what matters most. It is kept as your choice, separate from anything DhanYukti works out.",
+    simple: "What matters to you. It is your choice.",
+  },
+  whyMoney: {
+    standard:
+      "A few amounts and dates let DhanYukti check whether cash lasts until the next income.",
+    simple: "This helps check if money lasts till the next payday.",
+  },
+  whyCashAmount: {
+    standard:
+      "Money you can use now is the starting point for checking the coming days.",
+    simple: "We start from the money you have now.",
+  },
+  whyCashDate: {
+    standard:
+      "Balances change daily. The date tells us how fresh this amount is.",
+    simple: "Money changes every day, so the day matters.",
+  },
+  whyIncomeAmount: {
+    standard: "Income is what refills cash. Skip it if you're not sure.",
+    simple: "Pay fills your money back up.",
+  },
+  whyFrequency: {
+    standard: "How often money arrives decides how long cash must last.",
+    simple: "It tells us how long money must last.",
+  },
+  whyNextIncome: {
+    standard: "The next income date ends the stretch cash must cover.",
+    simple: "Money must last until this day.",
+  },
+  whyBillAmount: {
+    standard: "One important bill shows whether cash covers what must be paid.",
+    simple: "We check if you can pay this bill.",
+  },
+  whyBillName: {
+    standard: "Only so you recognise it later. A short word is enough.",
+    simple: "So you know which bill it is.",
+  },
+  whyBillDue: {
+    standard:
+      "Whether the bill falls before or after your income matters most.",
+    simple: "Is the bill before or after payday?",
+  },
+  whyReview: {
+    standard:
+      "Checking your answers before anything uses them keeps mistakes out of your picture.",
+    simple: "Check before we use your answers.",
+  },
 } satisfies Record<string, ModeText>;
 
 export type CopyKey = keyof typeof onboardingCopy;

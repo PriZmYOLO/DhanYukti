@@ -2,10 +2,15 @@
 
 import { useText } from "@/components/onboarding/onboarding-provider";
 import type { Answer } from "@/lib/onboarding/answer";
+import type { CopyKey } from "@/lib/onboarding/copy";
 
 interface ChoiceFieldProps<T extends string> {
   name: string;
   legend: string;
+  /** Muted text under the question. */
+  description?: string;
+  /** Copy key for the side panel's "Why we ask this" while focused. */
+  why?: CopyKey;
   options: { value: T; label: string }[];
   value: Answer<T>;
   onChange: (answer: Answer<T>) => void;
@@ -37,6 +42,8 @@ function toRadio<T extends string>(answer: Answer<T>): RadioValue {
 export function ChoiceField<T extends string>({
   name,
   legend,
+  description,
+  why,
   options,
   value,
   onChange,
@@ -72,8 +79,17 @@ export function ChoiceField<T extends string>({
   ];
 
   return (
-    <fieldset className="space-y-2">
-      <legend className="mb-2 text-sm font-medium">{legend}</legend>
+    <fieldset
+      className="space-y-2"
+      data-why={why}
+      aria-describedby={description ? `${name}-description` : undefined}
+    >
+      <legend className="text-sm font-medium">{legend}</legend>
+      {description && (
+        <p id={`${name}-description`} className="text-muted-foreground text-sm">
+          {description}
+        </p>
+      )}
       <div className="grid gap-2 sm:grid-cols-2">
         {rows.map((row) => {
           const id = `${name}-${row.radio}`;

@@ -109,3 +109,13 @@ export function formatTimestamp(value: IsoTimestamp): string | null {
   if (Number.isNaN(date.getTime())) return null;
   return `${timestampFormatter.format(date)} IST`;
 }
+
+// en-CA formats as YYYY-MM-DD; calendar dates follow Asia/Kolkata (Guide §2).
+const isoDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Kolkata",
+});
+
+/** Today's calendar date in India, e.g. "2026-09-27". */
+export function todayIsoDate(now: Date = new Date()): IsoDate {
+  return isoDayFormatter.format(now);
+}

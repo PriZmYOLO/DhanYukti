@@ -167,11 +167,14 @@ export function HealthCardSection({
           <div
             className={cn(
               "grid gap-8",
-              known.length > 0 && gaps.length > 0 && "lg:grid-cols-2 lg:gap-12",
+              // Same 5/7 split as Money right now / Coming up above.
+              known.length > 0 &&
+                gaps.length > 0 &&
+                "lg:grid-cols-12 lg:gap-12",
             )}
           >
             {known.length > 0 && (
-              <ul className="border-foreground divide-y self-start border-t-[1.5px] border-b">
+              <ul className="border-foreground divide-y self-start border-t-[1.5px] border-b lg:col-span-5">
                 {known.map((row) => (
                   <DomainRow
                     key={row.domain}
@@ -183,7 +186,7 @@ export function HealthCardSection({
             )}
 
             {gaps.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-3 lg:col-span-7">
                 <h3 className="flex items-center gap-2 text-base font-semibold">
                   <CircleDashed aria-hidden className="size-4" />
                   <HomeText k="healthGapsHeading" />
@@ -217,7 +220,7 @@ export function HealthCardSection({
             )}
           </div>
 
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground max-w-[70ch] text-xs">
             <HomeText k="healthUnknownNote" />
             {noneAssessed && (
               <>

@@ -84,6 +84,12 @@ Home decision view (paths relative to `web/`):
 Onboarding (L02) goes through the provisional `OnboardingPort` in
 `lib/provisional/h01/`, currently backed by a sessionStorage demo adapter
 (`demoOnboardingAdapter`) — not real authentication or authorisation.
+Setup steps use `SetupFrame`: one column below 1280px; at ≥1280 the form
+(≤680px) aligns with the header and a sticky side panel shows progress,
+"Why we ask this" for the focused field (`data-why` → `SetupPanel`), the
+privacy promise and a live summary. Money inputs group en-IN on blur with
+an Indian-unit helper ("5 lakh"; display only, stored as exact paise), and
+"As of which date?" defaults to today (IST), saved as an explicit date.
 
 Permissions and imports (L04) go through the provisional `ConsentPort` in
 `lib/provisional/h03/`. By default it is the sessionStorage demo adapter
