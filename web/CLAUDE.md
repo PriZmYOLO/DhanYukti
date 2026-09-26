@@ -86,10 +86,13 @@ Onboarding (L02) goes through the provisional `OnboardingPort` in
 (`demoOnboardingAdapter`) — not real authentication or authorisation.
 
 Permissions and imports (L04) go through the provisional `ConsentPort` in
-`lib/provisional/h03/`, backed by a sessionStorage demo adapter keyed to the
-demo member. Approval in the Account Aggregator app is simulated and labelled
-("Simulated approval, no bank contacted"); nothing is fetched. Display states
-come from `lib/consent/status.ts`. Screens live under `/privacy`.
+`lib/provisional/h03/`. By default it is the sessionStorage demo adapter
+(simulated approval, labelled, nothing fetched). With
+`NEXT_PUBLIC_AA_LIVE=true` it is the live adapter: `/api/aa/*` routes call
+the Anumati FIU module server-side (consent, webhooks, fetch, Node
+decryption verified against Anumati's jar). Runbook:
+`docs/AA_INTEGRATION.md`. Display states come from `lib/consent/status.ts`.
+Screens live under `/privacy`.
 
 Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration. The
@@ -98,16 +101,17 @@ seams, interfaces and never-do rules for the backend are in
 
 What this build can do lives in `lib/capabilities.ts`. `CONFIRMATION_CONNECTED`
 is false until the action service (Y08/H09/L08) exists: the next step stays
-"Preview only" and its confirm button stays disabled. `AA_CONNECTED` and
-`STATEMENT_UPLOAD_CONNECTED` are false: bank approval is simulated and
-statement upload shows "Not available in this build" with no file input.
+"Preview only" and its confirm button stays disabled. `AA_CONNECTED` follows
+`NEXT_PUBLIC_AA_LIVE` (off by default). `STATEMENT_UPLOAD_CONNECTED` is
+false: statement upload shows "Not available in this build".
 
 ## Current implementation status
 
 - L01: complete
 - L02: complete
 - L03: PASS
-- L04: complete against the demo adapter (awaiting real backend)
+- L04: complete against the demo adapter; live Anumati AA adapter built
+  and tested against a local mock (awaiting Anumati credentials)
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -145,11 +149,12 @@ Backend & integrations (Anish, provisional):
 - L04 needs the real grants and consent routes (four grants, default deny),
   provider state mapping onto `ConsentStatus`/`ImportStatus`, the approval
   handoff mechanism, revoke with invalidation and recompute, and
-  correction/report intake. The AA partner name is still unknown.
+  correction/report intake. AA partner: Anumati (Perfios AA).
 - The Home projection's `ConnectionStatus` lacks `awaiting_approval` and
   `expired`; agree how they map.
-- Real AA access is pending from Perfios/Anumati (the Hub sandbox has no
-  AA/Anumati APIs; BSA returns 403).
+- Real AA access: the Anumati FIU module (not the Perfios Hub, which has
+  no AA APIs; BSA returns 403). Credentials, webhook registration and a
+  test user are pending from Anumati.
 
 ## Development workflow
 

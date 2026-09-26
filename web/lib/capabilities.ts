@@ -15,15 +15,17 @@
 export const CONFIRMATION_CONNECTED = false;
 
 /**
- * Whether bank linking goes through a real Account Aggregator flow.
+ * Whether bank linking goes through the real Account Aggregator flow
+ * (Anumati FIU module, `lib/provisional/h03/live-adapter.ts` →
+ * `/api/aa/*`).
  *
- * false: the Perfios Hub sandbox has no AA/Anumati APIs and real AA access
- * is still pending, so approval is simulated by the labelled demo adapter
- * (`lib/provisional/h03`) and nothing is fetched. Flip only when a real
- * ConsentPort adapter (consent request, approval handoff, fetch status and
- * revoke) is wired in `lib/provisional/h03/index.ts` and tested end to end.
+ * Off by default: approval is simulated by the labelled demo adapter and
+ * nothing is fetched. Set NEXT_PUBLIC_AA_LIVE=true on a deployment only
+ * once ANUMATI_CLIENT_ID/SECRET and Redis are configured there and
+ * /api/aa/status reports ready (the value is fixed at build time, so
+ * redeploy after changing it).
  */
-export const AA_CONNECTED = false;
+export const AA_CONNECTED = process.env.NEXT_PUBLIC_AA_LIVE === "true";
 
 /**
  * Whether a bank statement file can be uploaded (Task Pack L04 upload

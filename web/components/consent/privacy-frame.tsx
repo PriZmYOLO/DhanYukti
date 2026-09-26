@@ -10,6 +10,7 @@ import { DisplayModeToggle } from "@/components/onboarding/display-mode-toggle";
 import { useOnboarding } from "@/components/onboarding/onboarding-provider";
 import { FixtureNotice } from "@/components/shell/fixture-notice";
 import { buttonVariants } from "@/components/ui/button";
+import { AA_CONNECTED } from "@/lib/capabilities";
 import { cn } from "@/lib/utils";
 
 interface PrivacyFrameProps {
@@ -39,7 +40,17 @@ export function PrivacyFrame({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <FixtureNotice label={text("demoLabel")} description={text("demoBody")} />
+      {AA_CONNECTED ? (
+        <FixtureNotice
+          label={text("liveLabel")}
+          description={text("liveBody")}
+        />
+      ) : (
+        <FixtureNotice
+          label={text("demoLabel")}
+          description={text("demoBody")}
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {back ? (
           <Link

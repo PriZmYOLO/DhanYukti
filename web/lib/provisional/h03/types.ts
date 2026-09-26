@@ -15,8 +15,9 @@ import type {
 } from "@/lib/contracts/common";
 
 /**
- * Guide §5 source-consent lifecycle. "paused" is left out: nothing says the
- * provider supports it. A request alone never authorises a fetch.
+ * Guide §5 source-consent lifecycle. A request alone never authorises a
+ * fetch. "paused" and "failed" come from the Anumati FIU module's consent
+ * lifecycle webhook; screens show them as "Status not known", never active.
  */
 export type ConsentStatus =
   | "requested"
@@ -24,7 +25,9 @@ export type ConsentStatus =
   | "active"
   | "denied"
   | "expired"
-  | "revoked";
+  | "revoked"
+  | "paused"
+  | "failed";
 
 /** What has arrived under an active consent (N04/N05 job state). */
 export type ImportStatus =
@@ -65,8 +68,8 @@ export interface ConsentRequestTerms {
   data_kind: "savings_account_transactions";
   /** How far back transactions are requested. */
   history_months: number;
-  purposes: ("budgeting" | "bill_protection")[];
-  fetch_frequency: "on_approval_then_daily";
+  purposes: ("budgeting" | "bill_protection" | "aggregated_statement")[];
+  fetch_frequency: "on_approval_then_daily" | "once_on_approval";
   /** How long the consent lasts unless revoked earlier. */
   consent_months: number;
   retention: "while_consent_active";
@@ -90,6 +93,30 @@ export interface ImportedAccount {
   error: ErrorEnvelope | null;
 }
 
+/**
+ * One step in a live link's history, for the "What happened" trail. Codes,
+ * not sentences; `ref` is a shortened, non-secret reference (never a consent
+ * handle or token).
+ */
+export interface LinkActivity {
+  at: IsoTimestamp;
+  event:
+    | "requested"
+    | "sent_to_aa"
+    | "approved"
+    | "declined"
+    | "data_ready"
+    | "fetched"
+    | "fetch_failed"
+    | "decrypt_failed"
+    | "revoked"
+    | "expired"
+    | "paused"
+    | "consent_failed";
+  /** e.g. number of accounts, or a short reference like "…u3i". */
+  ref: string | null;
+}
+
 /** One member's link to one source: its consent plus what was imported. */
 export interface SourceLink {
   link_id: string;
@@ -111,6 +138,10 @@ export interface SourceLink {
     last_attempt_at: IsoTimestamp | null;
     accounts: ImportedAccount[];
   };
+  /** Live links only: what happened with the Account Aggregator, in order. */
+  activity?: LinkActivity[];
+  /** Live links only: data came from the provider's test sandbox. */
+  is_sandbox?: boolean;
 }
 
 export type RequestConsentResult =
@@ -118,12 +149,22 @@ export type RequestConsentResult =
   | { ok: false; reason: "source_access_required" };
 
 /**
- * How the member approves. The demo only simulates; a real adapter adds the
- * provider's own handoff here once its contract is known.
+ * How the member approves. The demo only simulates. The live Anumati adapter
+ * first asks for the mobile number registered with the bank
+ * ("needs_details"), then hands the member to Anumati's hosted consent page
+ * ("redirect").
  */
 export type ApprovalHandoff =
   | { mode: "simulated"; link: SourceLink }
+  | { mode: "needs_details"; link: SourceLink }
+  | { mode: "redirect"; link: SourceLink; redirect_url: string }
   | { mode: "unavailable"; reason: string };
+
+/** What the Account Aggregator needs to identify the customer. */
+export interface ApprovalDetails {
+  /** 10-digit mobile number registered with the bank / AA. */
+  mobile_number: string;
+}
 
 export type ReportReason =
   "wrong_fact" | "not_suitable" | "unclear" | "privacy" | "other";

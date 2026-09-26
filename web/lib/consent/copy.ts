@@ -516,6 +516,122 @@ export const consentCopy = {
   },
   feedbackSavedOn: { standard: "Saved", simple: "Saved on" },
   feedbackAnother: { standard: "Write another", simple: "Write another" },
+
+  // Live Account Aggregator (Anumati FIU module)
+  liveLabel: "LIVE ACCOUNT AGGREGATOR · ANUMATI SANDBOX",
+  liveBody: {
+    standard:
+      "Bank linking uses the real Account Aggregator flow on Anumati's test sandbox. Accounts and balances come from Anumati's test banks, not real money.",
+    simple:
+      "This uses the real approval app, with test banks. The money shown is not real.",
+  },
+  frequency_once_on_approval: {
+    standard: "Once, when you approve",
+    simple: "Once, when you say yes",
+  },
+  purpose_aggregated_statement: {
+    standard: "A combined statement of your accounts",
+    simple: "One statement of all your accounts",
+  },
+  mobileHeading: {
+    standard: "Your mobile number",
+    simple: "Your phone number",
+  },
+  mobileLabel: {
+    standard: "Mobile number registered with your bank",
+    simple: "Phone number your bank knows",
+  },
+  mobileHint: {
+    standard:
+      "Anumati uses it to find your accounts and send you a one-time code. DhanYukti passes it to Anumati and doesn't keep it.",
+    simple: "Anumati uses it to find your accounts. We don't keep it.",
+  },
+  mobileInvalid: {
+    standard: "Enter a 10-digit mobile number.",
+    simple: "Please type 10 digits.",
+  },
+  mobileSubmit: {
+    standard: "Continue to Anumati",
+    simple: "Next",
+  },
+  redirectTitle: {
+    standard: "Approve in Anumati",
+    simple: "Say yes in Anumati",
+  },
+  redirectBody: {
+    standard:
+      "Anumati opens in a new tab. Approve or decline there. This page updates by itself when Anumati tells DhanYukti what you decided.",
+    simple:
+      "Anumati opens in a new tab. Answer there. This page will change by itself.",
+  },
+  openAnumati: { standard: "Open Anumati", simple: "Open Anumati" },
+  waitingForProvider: {
+    standard: "Checking for updates from Anumati…",
+    simple: "Waiting for Anumati…",
+  },
+  activityHeading: { standard: "What happened", simple: "What happened" },
+  activity_requested: {
+    standard: "Request created in DhanYukti",
+    simple: "Request made",
+  },
+  activity_sent_to_aa: {
+    standard: "Consent request sent to Anumati",
+    simple: "Sent to Anumati",
+  },
+  activity_approved: {
+    standard: "Approved in Anumati",
+    simple: "You said yes",
+  },
+  activity_declined: {
+    standard: "Declined in Anumati",
+    simple: "You said no",
+  },
+  activity_data_ready: {
+    standard: "Anumati said the data is ready",
+    simple: "Data ready",
+  },
+  activity_fetched: {
+    standard: "Data collected and opened on DhanYukti's server",
+    simple: "Data received",
+  },
+  activity_fetch_failed: {
+    standard: "Collecting the data failed",
+    simple: "Couldn't get the data",
+  },
+  activity_decrypt_failed: {
+    standard: "Some data couldn't be opened",
+    simple: "Some data couldn't be opened",
+  },
+  activity_revoked: {
+    standard: "Revoked in DhanYukti; the data was deleted",
+    simple: "Stopped; data deleted",
+  },
+  activity_expired: {
+    standard: "Consent expired; the data was deleted",
+    simple: "Time ran out; data deleted",
+  },
+  activity_paused: {
+    standard: "Consent paused in Anumati",
+    simple: "Paused in Anumati",
+  },
+  activity_consent_failed: {
+    standard: "Anumati reported the consent failed",
+    simple: "Anumati said it failed",
+  },
+  revokeLiveNote: {
+    standard:
+      "DhanYukti has deleted its copy and will refuse any late data. To end the consent at the Account Aggregator too, revoke it in the Anumati app.",
+    simple:
+      "We deleted our copy. To stop it in Anumati too, stop it in the Anumati app.",
+  },
+  sourceAnumatiSandbox: {
+    standard: "Anumati AA sandbox (test bank)",
+    simple: "Anumati test bank",
+  },
+  sourceAnumati: {
+    standard: "Anumati Account Aggregator",
+    simple: "Anumati",
+  },
 } satisfies Record<string, ModeText>;
 
 export type ConsentCopyKey = keyof typeof consentCopy;

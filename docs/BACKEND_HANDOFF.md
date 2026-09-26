@@ -110,20 +110,24 @@ interface OnboardingPort {
 
 ## 3. Consent and imports: permissions, bank linking, revoke
 
-|                 |                                                                                                               |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
-| Seam            | `lib/provisional/h03/index.ts` exports `consentPort` and `demoConsentControls`                                |
-| Interface       | `ConsentPort` in `lib/provisional/h03/port.ts`; shapes in `types.ts`                                          |
-| Display mapping | `lib/consent/status.ts` (`linkState`, `LINK_STATE_INFO`, `grantCounts`)                                       |
-| Today           | `demoConsentAdapter`: sessionStorage, keyed to the demo member; approval is **simulated**; nothing is fetched |
+|                 |                                                                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Seam            | `lib/provisional/h03/index.ts` exports `consentPort` and `demoConsentControls`                                                                                                         |
+| Interface       | `ConsentPort` in `lib/provisional/h03/port.ts`; shapes in `types.ts`                                                                                                                   |
+| Display mapping | `lib/consent/status.ts` (`linkState`, `LINK_STATE_INFO`, `grantCounts`)                                                                                                                |
+| Today           | `demoConsentAdapter` by default. With `NEXT_PUBLIC_AA_LIVE=true`, `liveConsentAdapter` → `/api/aa/*` → Anumati FIU module (real consent, fetch, decrypt). See `docs/AA_INTEGRATION.md` |
 
-**To swap:** implement `ConsentPort`, export it from `index.ts` with
-`implementation: "h03"`, and set `demoConsentControls` to `null`. The
-simulated-approval panel and the "Show every state" examples then disappear.
-Also add your real approval handoff to the `ApprovalHandoff` union, for
-example a redirect to the Account Aggregator's hosted flow. Only the
-`"simulated"` and `"unavailable"` variants exist today, because we don't know
-the provider's mechanism yet.
+**Live adapter (27 Sep 2026):** `lib/provisional/h03/live-adapter.ts`
+implements `ConsentPort` against DhanYukti's own routes (`app/api/aa/*`),
+which call the Anumati FIU module server-side. `index.ts` picks it when
+`AA_CONNECTED` is true, and `demoConsentControls` becomes `null`.
+`ApprovalHandoff` gained `"needs_details"` (ask for the mobile number) and
+`"redirect"` (Anumati's hosted consent page); `startApproval` takes optional
+`{ mobile_number }`. `ConsentStatus` gained `"paused"` and `"failed"` (from
+the lifecycle webhook; shown as "Status not known"). `SourceLink` gained
+optional `activity` (the "What happened" trail, codes only) and
+`is_sandbox`. When H03 grants and H01 sign-in exist, move the link records
+from the `dy_aa_session` cookie to the signed-in member.
 
 ```ts
 interface ConsentPort {
@@ -183,11 +187,11 @@ add them or tell the frontend how they collapse.
 
 ## 4. Capability flags (`lib/capabilities.ts`)
 
-| Flag                         | Today                                                                                       | Flip to `true` only when                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `CONFIRMATION_CONNECTED`     | `false`: next step is "Preview only"; confirm button disabled                               | The action service (Y08/H09/L08) confirms, records and reports outcomes end to end                 |
-| `AA_CONNECTED`               | `false`: bank approval is simulated and labelled                                            | A real `ConsentPort` adapter (request, approval handoff, fetch status, revoke) is wired and tested |
-| `STATEMENT_UPLOAD_CONNECTED` | `false`: "Upload a bank statement" says "Not available in this build"; no file input exists | An authorised server-side upload route keeps files private and reports processing/failed states    |
+| Flag                         | Today                                                                                       | Flip to `true` only when                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `CONFIRMATION_CONNECTED`     | `false`: next step is "Preview only"; confirm button disabled                               | The action service (Y08/H09/L08) confirms, records and reports outcomes end to end                |
+| `AA_CONNECTED`               | `NEXT_PUBLIC_AA_LIVE === "true"`; off by default (simulated, labelled)                      | Set on a deployment once Anumati credentials + Redis are configured and `/api/aa/status` is ready |
+| `STATEMENT_UPLOAD_CONNECTED` | `false`: "Upload a bank statement" says "Not available in this build"; no file input exists | An authorised server-side upload route keeps files private and reports processing/failed states   |
 
 ## 5. Open contract requests
 
@@ -202,11 +206,17 @@ add them or tell the frontend how they collapse.
    confirmed → handed-off → completed/failed states with evidence, and version
    checks. Until then `CONFIRMATION_CONNECTED` stays `false`.
 
-## 6. Provider access (as of 26 Sep 2026)
+## 6. Provider access (as of 27 Sep 2026)
 
-- The **Perfios Hub sandbox has no AA/Anumati APIs**, so real Account
-  Aggregator consent can't be built against it.
+- The **Perfios Hub sandbox has no AA/Anumati APIs**. The AA flow goes
+  through the separate **Anumati FIU module**
+  (`https://fiu-module-uat.anumati.co.in`), per Anumati's Integration Guide
+  v1.1. The integration is built and tested against a local mock and
+  against Anumati's crypto jar; **credentials, webhook registration and a
+  test user are pending from Anumati** (requested 27 Sep).
 - The **BSA (bank statement analysis) endpoints currently return 403**.
-- Real AA access is **pending from Perfios/Anumati**. Until it arrives, the
-  consent screens stay on the labelled demo adapter, and nothing may be
-  described as a live integration.
+- Until the credentials arrive and a real sandbox run succeeds, don't
+  describe the flow as live. The local mock is labelled "LOCAL MOCK".
+- Fetched account data is available server-side through
+  `readAccountData()` in `lib/server/aa/links.ts` for the engines (E01/E03);
+  Home still uses labelled fixtures until they consume it.

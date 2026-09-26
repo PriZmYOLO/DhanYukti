@@ -46,3 +46,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Anumati crypto jar (provided to participants; not ours to commit)
+*.jar
+fiu-crypto-lib.txt
