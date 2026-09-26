@@ -1,12 +1,12 @@
 "use client";
 
+import { PencilLine } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
-import { SourceBadge } from "@/components/finance/source-badge";
 import { AnswerValue } from "@/components/onboarding/answer-value";
 import { MembershipNote } from "@/components/onboarding/membership-note";
 import {
@@ -15,8 +15,9 @@ import {
 } from "@/components/onboarding/onboarding-provider";
 import { RequireSession } from "@/components/onboarding/require-session";
 import { SetupFrame } from "@/components/onboarding/setup-frame";
+import { SetupPanel } from "@/components/onboarding/setup-panel";
 import { buttonVariants } from "@/components/ui/button";
-import { UNANSWERED } from "@/lib/onboarding/answer";
+import { UNANSWERED, type Answer } from "@/lib/onboarding/answer";
 import type { CopyKey } from "@/lib/onboarding/copy";
 import {
   frequencyOptions,
@@ -25,6 +26,8 @@ import {
   occupationOptions,
   roleOptions,
 } from "@/lib/onboarding/options";
+import type { OnboardingSnapshot } from "@/lib/provisional/h01";
+import { cn } from "@/lib/utils";
 
 function ReviewSection({
   title,
@@ -55,13 +58,104 @@ function ReviewSection({
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * label | value | date. Rows share one column grid (subgrid), so every
+ * label, value and date lines up; labels never wrap.
+ */
+function SummaryGrid({
+  withDates = false,
+  children,
+}: {
+  withDates?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
-      <dt className="text-muted-foreground text-sm">{label}</dt>
-      <dd className="flex flex-wrap items-center gap-2">{children}</dd>
+    <dl
+      className={cn(
+        "grid gap-x-3 sm:gap-x-4",
+        withDates
+          ? "grid-cols-[max-content_minmax(0,1fr)_max-content]"
+          : "grid-cols-[max-content_minmax(0,1fr)]",
+      )}
+    >
+      {children}
+    </dl>
+  );
+}
+
+function Row({
+  label,
+  date,
+  children,
+}: {
+  label: string;
+  /** Third column; omitted for grids without dates. */
+  date?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="col-span-full grid grid-cols-subgrid items-baseline border-t py-2.5 first:border-t-0">
+      <dt className="text-muted-foreground text-sm whitespace-nowrap">
+        {label}
+      </dt>
+      <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        {children}
+      </dd>
+      {date !== undefined && (
+        <dd className="text-muted-foreground text-right text-sm whitespace-nowrap">
+          {date}
+        </dd>
+      )}
     </div>
   );
+}
+
+/** "as of 27 Sept" on phones, "as of 27 Sept 2026" from 640px. */
+function RowDate({ prefix, value }: { prefix: string; value: string }) {
+  return (
+    <>
+      {prefix}{" "}
+      <DateDisplay value={value} format="short" className="sm:hidden" />
+      <DateDisplay value={value} className="hidden sm:inline" />
+    </>
+  );
+}
+
+/** How many saved answers are given, "don't know" or still unanswered. */
+function countAnswers(snapshot: OnboardingSnapshot) {
+  const context = snapshot.context;
+  const money = snapshot.money?.draft;
+  const answers: Answer<unknown>[] = [
+    context?.member_role ?? UNANSWERED,
+    context?.occupation ?? UNANSWERED,
+    context?.income_pattern ?? UNANSWERED,
+    context?.dependents ?? UNANSWERED,
+    context?.goal_intent ?? UNANSWERED,
+    money?.cash.amount ?? UNANSWERED,
+    money?.cash.as_of ?? UNANSWERED,
+    money?.income.amount ?? UNANSWERED,
+    money?.bill.amount ?? UNANSWERED,
+  ];
+  // Follow-up questions only count when their parent wasn't "none".
+  if (money?.income.amount.state !== "none") {
+    answers.push(
+      money?.income.frequency ?? UNANSWERED,
+      money?.income.next_on ?? UNANSWERED,
+    );
+  }
+  if (money?.bill.amount.state !== "none") {
+    answers.push(
+      money?.bill.name ?? UNANSWERED,
+      money?.bill.due_on ?? UNANSWERED,
+    );
+  }
+  const count = (states: Answer<unknown>["state"][]) =>
+    answers.filter((answer) => states.includes(answer.state)).length;
+  return {
+    answered: count(["answered", "none"]),
+    dontKnow: count(["dont_know"]),
+    unanswered: count(["unanswered"]),
+  };
 }
 
 function ReviewContent() {
@@ -72,17 +166,22 @@ function ReviewContent() {
   const membership = snapshot.membership;
   const context = snapshot.context;
   const money = snapshot.money;
-  const declared = (
-    <SourceBadge kind="declared" sourceLabel={text("entrySource")} />
-  );
-  const candidate = (
-    <span className="text-muted-foreground rounded-full border border-dashed px-2 py-0.5 text-xs">
-      {text("candidateStatus")}
-    </span>
-  );
+  const bill = money?.draft.bill;
+  const income = money?.draft.income;
+  const counts = countAnswers(snapshot);
+  const goal = context?.goal_intent ?? UNANSWERED;
 
   return (
     <div className="space-y-4">
+      <SetupPanel
+        why="whyReview"
+        summaryNote={false}
+        summary={[
+          { label: text("countAnswered"), value: counts.answered },
+          { label: text("countDontKnow"), value: counts.dontKnow },
+          { label: text("countUnanswered"), value: counts.unanswered },
+        ]}
+      />
       {membership && (
         <ReviewSection title={text("reviewHousehold")}>
           <p className="font-medium">
@@ -99,7 +198,7 @@ function ReviewContent() {
       )}
 
       <ReviewSection title={text("reviewContext")} editHref="/setup/context">
-        <dl className="divide-y">
+        <SummaryGrid>
           <Row label={text("labelRole")}>
             <AnswerValue
               answer={context?.member_role ?? UNANSWERED}
@@ -127,86 +226,85 @@ function ReviewContent() {
               )}
             />
           </Row>
+          {/* Only ever the person's own choice; never inferred. */}
           <Row label={text("labelGoal")}>
-            <AnswerValue
-              answer={context?.goal_intent ?? UNANSWERED}
-              render={(value) => label(goalOptions[value])}
-            />
+            {goal.state === "unanswered" ? (
+              <span className="text-muted-foreground">
+                {text("goalNotChosen")}
+              </span>
+            ) : (
+              <AnswerValue
+                answer={goal}
+                render={(value) => label(goalOptions[value])}
+              />
+            )}
           </Row>
-        </dl>
+        </SummaryGrid>
       </ReviewSection>
 
       <ReviewSection title={text("reviewMoney")} editHref="/setup/money">
-        <dl className="divide-y">
-          <Row label={text("labelCash")}>
+        {money && (
+          <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+            <PencilLine aria-hidden className="mt-px size-3.5 shrink-0" />
+            {text("moneyEntryLine")}
+          </p>
+        )}
+        <SummaryGrid withDates>
+          <Row
+            label={text("labelCash")}
+            date={
+              money?.draft.cash.as_of.state === "answered" ? (
+                <RowDate
+                  prefix={text("asOf")}
+                  value={money.draft.cash.as_of.value}
+                />
+              ) : null
+            }
+          >
             <AnswerValue
               answer={money?.draft.cash.amount ?? UNANSWERED}
               render={(value) => <Money value={value} />}
             />
-            {money?.draft.cash.as_of.state === "answered" && (
-              <span className="text-muted-foreground text-sm">
-                {text("asOf")}{" "}
-                <DateDisplay value={money.draft.cash.as_of.value} />
-              </span>
-            )}
-            {money?.draft.cash.amount.state === "answered" && (
-              <>
-                {declared}
-                {candidate}
-              </>
-            )}
-          </Row>
-          <Row label={text("labelIncome")}>
-            <AnswerValue
-              answer={money?.draft.income.amount ?? UNANSWERED}
-              render={(value) => <Money value={value} />}
-              noneText={text("incomeNone")}
-            />
-            {money?.draft.income.frequency.state === "answered" && (
-              <span className="text-muted-foreground text-sm">
-                {label(frequencyOptions[money.draft.income.frequency.value])}
-              </span>
-            )}
-            {money?.draft.income.next_on.state === "answered" && (
-              <span className="text-muted-foreground text-sm">
-                {text("nextOn")}{" "}
-                <DateDisplay value={money.draft.income.next_on.value} />
-              </span>
-            )}
-            {money?.draft.income.amount.state === "answered" && (
-              <>
-                {declared}
-                {candidate}
-              </>
-            )}
           </Row>
           <Row
-            label={
-              money?.draft.bill.name.state === "answered"
-                ? `${text("labelBill")}: ${money.draft.bill.name.value}`
-                : text("labelBill")
+            label={text("labelIncome")}
+            date={
+              income?.next_on.state === "answered" ? (
+                <RowDate prefix={text("nextOn")} value={income.next_on.value} />
+              ) : null
             }
           >
             <AnswerValue
-              answer={money?.draft.bill.amount ?? UNANSWERED}
+              answer={income?.amount ?? UNANSWERED}
+              render={(value) => <Money value={value} />}
+              noneText={text("incomeNone")}
+            />
+            {income?.frequency.state === "answered" && (
+              <span className="text-muted-foreground text-sm whitespace-nowrap">
+                {label(frequencyOptions[income.frequency.value])}
+              </span>
+            )}
+          </Row>
+          <Row
+            label={text("labelBill")}
+            date={
+              bill?.due_on.state === "answered" ? (
+                <RowDate prefix={text("dueOn")} value={bill.due_on.value} />
+              ) : null
+            }
+          >
+            <AnswerValue
+              answer={bill?.amount ?? UNANSWERED}
               render={(value) => <Money value={value} />}
               noneText={text("billNone")}
             />
-            {money?.draft.bill.due_on.state === "answered" && (
+            {bill?.name.state === "answered" && (
               <span className="text-muted-foreground text-sm">
-                {text("dueOn")}{" "}
-                <DateDisplay value={money.draft.bill.due_on.value} />
+                {bill.name.value}
               </span>
             )}
-            {money?.draft.bill.amount.state === "answered" && (
-              <>
-                {declared}
-                {candidate}
-              </>
-            )}
           </Row>
-        </dl>
-        <p className="text-muted-foreground text-xs">{text("modeNote")}</p>
+        </SummaryGrid>
       </ReviewSection>
 
       <ReviewSection title={text("reviewMembers")}>
@@ -227,7 +325,7 @@ function ReviewContent() {
             </li>
           ))}
         </ul>
-        <MembershipNote />
+        <MembershipNote className="xl:hidden" />
       </ReviewSection>
 
       <AvailabilityState
