@@ -8,6 +8,7 @@ import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
 import { SourceBadge } from "@/components/finance/source-badge";
 import { useConsentText } from "@/components/consent/consent-text";
+import { SchemeCheckCard } from "@/components/consent/scheme-check-card";
 import { Button } from "@/components/ui/button";
 import {
   LINK_STATE_INFO,
@@ -55,6 +56,9 @@ export function LinkStateNote({
     >
       {state === "revoked" && link.is_demo && (
         <p className="text-xs">{text("revokeDemoNote")}</p>
+      )}
+      {state === "revoked" && !link.is_demo && (
+        <p className="text-xs">{text("revokeLiveNote")}</p>
       )}
     </AvailabilityState>
   );
@@ -204,9 +208,11 @@ function AccountBalance({
 function AccountRow({
   account,
   isDemo,
+  isSandbox,
 }: {
   account: ImportedAccount;
   isDemo: boolean;
+  isSandbox: boolean;
 }) {
   const { text } = useConsentText();
 
@@ -219,7 +225,11 @@ function AccountRow({
         {account.status === "received" ? (
           <SourceBadge
             kind="observed"
-            sourceLabel={isDemo ? "Demo fixture, not a real bank" : null}
+            sourceLabel={
+              isDemo
+                ? "Demo fixture, not a real bank"
+                : text(isSandbox ? "sourceAnumatiSandbox" : "sourceAnumati")
+            }
           />
         ) : (
           <AvailabilityState
@@ -291,10 +301,48 @@ function Accounts({ link }: { link: SourceLink }) {
             key={account.account_id}
             account={account}
             isDemo={link.is_demo}
+            isSandbox={link.is_sandbox === true}
           />
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Live links: the provider trail, oldest first. Codes only, no handles. */
+function Activity({ link }: { link: SourceLink }) {
+  const { text } = useConsentText();
+  const events = link.activity ?? [];
+  if (events.length === 0) return null;
+
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer font-semibold">
+        {text("activityHeading")}
+      </summary>
+      <ol className="mt-2 space-y-1.5 border-l pl-3">
+        {events.map((event, index) => (
+          <li
+            key={`${event.at}-${index}`}
+            className="flex flex-wrap gap-x-2"
+            data-activity={event.event}
+          >
+            <span className="text-muted-foreground tabular-nums">
+              <DateDisplay value={event.at} />
+            </span>
+            <span>
+              {text(`activity_${event.event}`)}
+              {event.ref && (
+                <span className="text-muted-foreground font-mono">
+                  {" "}
+                  · {event.ref}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
@@ -422,7 +470,14 @@ export function LinkCard({ link, onRevoke }: LinkCardProps) {
       <LinkStateNote link={link} state={state} />
       <ConsentDetails link={link} state={state} />
       {info.showAccounts && <Accounts link={link} />}
+      {!link.is_demo && (state === "active" || state === "partial") && (
+        <SchemeCheckCard
+          linkId={link.link_id}
+          isSandbox={link.is_sandbox === true}
+        />
+      )}
       {showGrants && <GrantsSummary link={link} />}
+      <Activity link={link} />
       {info.revocable && <RevokeControl link={link} onRevoke={onRevoke} />}
     </article>
   );

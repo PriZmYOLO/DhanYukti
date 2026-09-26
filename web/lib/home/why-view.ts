@@ -23,6 +23,8 @@ import type {
 import type { FactSummary } from "@/lib/contracts/household-projection";
 
 export interface WhyEvidenceItem {
+  /** Set only for the viewer's own facts, which they may correct (L05). */
+  correctable_fact_id: string | null;
   label: string;
   amount: MoneyPaise | null;
   per: "day" | "month" | null;
@@ -57,6 +59,7 @@ export function buildWhyView(
   need: Need,
   evidence: FactSummary[],
   isUiPreview: boolean,
+  viewerMemberId: string | null,
 ): WhyView {
   const proposal =
     packet.action.status === "released" ? packet.action.proposal : null;
@@ -68,6 +71,10 @@ export function buildWhyView(
     formula: packet.consequence?.formula ?? null,
     horizon: packet.consequence?.horizon ?? need.cash_flow?.horizon ?? null,
     evidence: evidence.map((fact) => ({
+      correctable_fact_id:
+        viewerMemberId !== null && fact.owner_member_id === viewerMemberId
+          ? fact.fact_id
+          : null,
       label: fact.label,
       amount: fact.amount,
       per: fact.per,

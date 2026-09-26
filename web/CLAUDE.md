@@ -86,10 +86,22 @@ Onboarding (L02) goes through the provisional `OnboardingPort` in
 (`demoOnboardingAdapter`) — not real authentication or authorisation.
 
 Permissions and imports (L04) go through the provisional `ConsentPort` in
-`lib/provisional/h03/`, backed by a sessionStorage demo adapter keyed to the
-demo member. Approval in the Account Aggregator app is simulated and labelled
-("Simulated approval, no bank contacted"); nothing is fetched. Display states
-come from `lib/consent/status.ts`. Screens live under `/privacy`.
+`lib/provisional/h03/`. By default it is the sessionStorage demo adapter
+(simulated approval, labelled, nothing fetched). With
+`NEXT_PUBLIC_AA_LIVE=true` it is the live adapter: `/api/aa/*` routes call
+the Anumati FIU module server-side (consent, webhooks, fetch, Node
+decryption verified against Anumati's jar). Runbook:
+`docs/AA_INTEGRATION.md`. Display states come from `lib/consent/status.ts`.
+Screens live under `/privacy`.
+
+Corrections and recalculation (L05) go through the provisional
+`CorrectionPort` in `lib/provisional/h07/` (sessionStorage demo adapter; the
+review is simulated). The owner-only view goes through `PrivateViewPort` in
+`lib/provisional/h03/`; each member's private fixture is a separate
+`import()` chunk loaded only in that member's tab. After a revoke or an
+accepted correction, `PictureGate` (`components/correction/picture-status.tsx`)
+replaces every Home/Why figure with "Your household picture will be
+recalculated" until session end or the labelled demo Reset.
 
 Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration. The
@@ -98,16 +110,24 @@ seams, interfaces and never-do rules for the backend are in
 
 What this build can do lives in `lib/capabilities.ts`. `CONFIRMATION_CONNECTED`
 is false until the action service (Y08/H09/L08) exists: the next step stays
-"Preview only" and its confirm button stays disabled. `AA_CONNECTED` and
-`STATEMENT_UPLOAD_CONNECTED` are false: bank approval is simulated and
-statement upload shows "Not available in this build" with no file input.
+"Preview only" and its confirm button stays disabled. `AA_CONNECTED` follows
+`NEXT_PUBLIC_AA_LIVE` (off by default). `STATEMENT_UPLOAD_CONNECTED` is
+false: statement upload shows "Not available in this build".
 
 ## Current implementation status
 
 - L01: complete
 - L02: complete
 - L03: PASS
-- L04: complete against the demo adapter (awaiting real backend)
+- L04: complete against the demo adapter; live Anumati AA adapter built
+  and tested against a local mock (awaiting Anumati credentials)
+- L05: complete against the demo adapters (awaiting real backend)
+- Job 2a (government insurance check, PMJJBY/PMSBY on AA data):
+  complete on live links; consent-gated by "Alerts and suggested actions"
+- Job 2a upgrade: private premiums detected by insurer/IRDAI licence;
+  member tags who each policy covers under DPDP consent
+- Job 2b: DPDP notice (`/privacy/notice`), hash-chained Value Ledger,
+  Consent Passport (`/privacy/passport`) with one-tap revoke/withdraw
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -119,6 +139,15 @@ Aggregator handoff with a simulated approval, nine import/consent states with
 source dates, the Privacy dashboard with Revoke, and entry points for
 "Correct a fact" and "Report a recommendation". `tests/e2e/consent.spec.ts`
 covers states, revoke, Simple words, storage and axe at 375 and 1280.
+
+L05 covers the fact-correction flow (`/privacy/correct`, also from each own
+fact in the Why sheet): pick a fact → current value and source → proposed
+value and reason → text-only "what would change" → proposal. Proposed,
+accepted and rejected (with reason) states sit beside the unchanged original.
+Revoke or acceptance hides stale Home/Why figures. `/privacy/private` ("Only
+you can see this") shows the member's own private holdings and nudges.
+`tests/e2e/correction.spec.ts` and `tests/e2e/private-view.spec.ts` cover
+these, including a two-member DOM and network-payload leak check.
 
 Known follow-ups:
 
@@ -139,17 +168,31 @@ Known follow-ups:
 - Revoke only works on active consents; a pending request can't be
   withdrawn from the app yet. Grants can't be edited after linking.
 - Wrap brand/product names (DhanYukti, Anumati) in `translate="no"`.
+- L05 demo limitation: Home is server-rendered from fixtures, so after a demo
+  revoke/acceptance its HTML and RSC payload still carry the old figures;
+  only the DOM is cleaned (a demo-only pre-paint script,
+  `components/correction/picture-prepaint.tsx`, hides them before first
+  paint). The real fix is `loadHomeView()` returning the recalculating
+  release; delete the pre-paint script and its CSS rule then.
+- Pending corrections are shown in the Why sheet and on `/privacy/correct`,
+  not yet on Home's own Money now / Coming up rows.
 
 Backend & integrations (Anish, provisional):
 
 - L04 needs the real grants and consent routes (four grants, default deny),
   provider state mapping onto `ConsentStatus`/`ImportStatus`, the approval
-  handoff mechanism, revoke with invalidation and recompute, and
-  correction/report intake. The AA partner name is still unknown.
+  handoff mechanism, revoke with invalidation and recompute, and report
+  intake. AA partner: Anumati (Perfios AA).
+- L05 needs H07 correction intake and review (proposed → accepted/rejected
+  with a safe reason), a picture status or recalculating Home release after
+  revoke/acceptance, and owner-only release of private items
+  (`docs/BACKEND_HANDOFF.md` §4–5). Until then a revoke (demo or live)
+  flips the h07 demo picture status in the browser.
 - The Home projection's `ConnectionStatus` lacks `awaiting_approval` and
   `expired`; agree how they map.
-- Real AA access is pending from Perfios/Anumati (the Hub sandbox has no
-  AA/Anumati APIs; BSA returns 403).
+- Real AA access: the Anumati FIU module (not the Perfios Hub, which has
+  no AA APIs; BSA returns 403). Credentials, webhook registration and a
+  test user are pending from Anumati.
 
 ## Development workflow
 
@@ -183,8 +226,8 @@ When reporting completion, state:
 
 ## GitHub status
 
-- Repository: https://github.com/PriZmYOLO/DhanYukti (private, owner
-  `PriZmYOLO`).
+- Repository: https://github.com/PriZmYOLO/DhanYukti (**public**, owner
+  `PriZmYOLO`). Never commit secrets, `.env` files or real customer data.
 - The Git root is the project folder (`DhanYukti/`), not `web/`. Root
   `.gitignore` excludes `.claude/settings.local.json`; root `.gitattributes`
   enforces LF line endings to match Prettier.

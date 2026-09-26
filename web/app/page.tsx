@@ -1,3 +1,8 @@
+import { PicturePrepaint } from "@/components/correction/picture-prepaint";
+import {
+  PictureGate,
+  RecalculatingNotice,
+} from "@/components/correction/picture-status";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { CashStrip } from "@/components/home/cash-strip";
@@ -34,100 +39,111 @@ export default async function Home(props: PageProps<"/">) {
   const isUiPreview =
     view.origin === "fixture" && view.fixture.scenario.is_ui_preview;
 
+  // Everything computed from the household picture sits in a PictureGate:
+  // while this member's picture is being recalculated (after a revoke or an
+  // accepted correction) it is replaced, never shown stale.
   return (
-    <div className="space-y-6 lg:space-y-8">
-      {view.origin === "fixture" && (
-        <FixtureNotice label={view.fixture.label} compact>
-          <FixtureScenarioSwitch fixture={view.fixture} />
-        </FixtureNotice>
-      )}
+    <>
+      <PicturePrepaint />
+      <div data-picture-gated className="space-y-6 lg:space-y-8">
+        {view.origin === "fixture" && (
+          <FixtureNotice label={view.fixture.label} compact>
+            <FixtureScenarioSwitch fixture={view.fixture} />
+          </FixtureNotice>
+        )}
 
-      {/* The tagline stays the page's h1; it is shown as the sign-off. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="sr-only">{brand.tagline}</h1>
-        <p className="text-muted-foreground max-w-2xl text-xs sm:text-sm">
-          {projection && (
-            <>
-              <HomeText k="pictureAsOf" />{" "}
-              <DateDisplay value={projection.as_of} />.{" "}
-            </>
-          )}
-          <HomeText k="sharedOnly" />
-        </p>
-        <DisplayModeToggle />
-      </header>
+        {/* The tagline stays the page's h1; it is shown as the sign-off. */}
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h1 className="sr-only">{brand.tagline}</h1>
+          <p className="text-muted-foreground max-w-2xl text-xs sm:text-sm">
+            {projection && (
+              <PictureGate>
+                <HomeText k="pictureAsOf" />{" "}
+                <DateDisplay value={projection.as_of} />.{" "}
+              </PictureGate>
+            )}
+            <HomeText k="sharedOnly" />
+          </p>
+          <DisplayModeToggle />
+        </header>
 
-      {view.partially_unreadable && (
-        <AvailabilityState
-          status="partial"
-          title={<HomeText k="partlyUnreadableTitle" />}
-          description={<HomeText k="partlyUnreadableBody" />}
-        />
-      )}
-
-      <PriorityCard
-        decision={decision}
-        evidence={evidence}
-        isUiPreview={isUiPreview}
-      />
-
-      {projection ? (
-        <div className="grid gap-10 pt-6 lg:grid-cols-12 lg:gap-12 lg:pt-10">
-          <div className="min-w-0 lg:col-span-5">
-            <MoneyNow
-              facts={projection.facts}
-              safeToSpend={packet?.safe_to_spend ?? null}
+        <PictureGate replacement={<RecalculatingNotice />}>
+          {view.partially_unreadable && (
+            <AvailabilityState
+              status="partial"
+              title={<HomeText k="partlyUnreadableTitle" />}
+              description={<HomeText k="partlyUnreadableBody" />}
             />
-          </div>
-          {/* min-w-0 keeps the strip's sideways scroll inside this column. */}
-          <div className="min-w-0 lg:col-span-7">
-            <ComingUp
-              facts={projection.facts}
-              asOf={projection.as_of}
-              summary={
-                need?.cash_flow && (
-                  <>
-                    <CashFlowFigures
-                      cashFlow={need.cash_flow}
-                      consequence={packet?.consequence ?? null}
-                    />
-                    <CashStrip
-                      cashFlow={need.cash_flow}
-                      facts={projection.facts}
-                    />
-                  </>
-                )
+          )}
+
+          <PriorityCard
+            decision={decision}
+            evidence={evidence}
+            isUiPreview={isUiPreview}
+            viewerMemberId={projection?.viewer_member_id ?? null}
+          />
+
+          {projection ? (
+            <div className="grid gap-10 pt-6 lg:grid-cols-12 lg:gap-12 lg:pt-10">
+              <div className="min-w-0 lg:col-span-5">
+                <MoneyNow
+                  facts={projection.facts}
+                  safeToSpend={packet?.safe_to_spend ?? null}
+                />
+              </div>
+              {/* min-w-0 keeps the strip's sideways scroll inside this column. */}
+              <div className="min-w-0 lg:col-span-7">
+                <ComingUp
+                  facts={projection.facts}
+                  asOf={projection.as_of}
+                  summary={
+                    need?.cash_flow && (
+                      <>
+                        <CashFlowFigures
+                          cashFlow={need.cash_flow}
+                          consequence={packet?.consequence ?? null}
+                        />
+                        <CashStrip
+                          cashFlow={need.cash_flow}
+                          facts={projection.facts}
+                        />
+                      </>
+                    )
+                  }
+                />
+              </div>
+            </div>
+          ) : (
+            <AvailabilityState
+              status="failed"
+              title={<HomeText k="pictureUnavailableTitle" />}
+              description={
+                view.projection.status === "unavailable"
+                  ? view.projection.reason
+                  : undefined
+              }
+              error={
+                view.projection.status === "unavailable"
+                  ? (view.projection.error ?? undefined)
+                  : undefined
               }
             />
-          </div>
-        </div>
-      ) : (
-        <AvailabilityState
-          status="failed"
-          title={<HomeText k="pictureUnavailableTitle" />}
-          description={
-            view.projection.status === "unavailable"
-              ? view.projection.reason
-              : undefined
-          }
-          error={
-            view.projection.status === "unavailable"
-              ? (view.projection.error ?? undefined)
-              : undefined
-          }
-        />
-      )}
+          )}
+        </PictureGate>
 
-      {/* Two full-width bands that meet without a gap. */}
-      <div className="pt-10 lg:pt-12">
-        <div className="bg-card bleed-band py-12 [--band-color:var(--card)]">
-          <HealthCardSection
-            health={health}
-            missingAbove={packet?.missing_facts.length ?? 0}
-          />
+        {/* Two full-width bands that meet without a gap. */}
+        <div className="pt-10 lg:pt-12">
+          <PictureGate>
+            <div className="bg-card bleed-band py-12 [--band-color:var(--card)]">
+              <HealthCardSection
+                health={health}
+                missingAbove={packet?.missing_facts.length ?? 0}
+              />
+            </div>
+          </PictureGate>
+          <TrustFooter projection={projection} />
         </div>
-        <TrustFooter projection={projection} />
       </div>
-    </div>
+    </>
   );
 }
