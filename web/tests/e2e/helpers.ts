@@ -117,3 +117,11 @@ export function rupeeTextToPaise(text: string): number {
   const paise = Number(rupees) * 100 + Number(fraction.padEnd(2, "0"));
   return negative ? -paise : paise;
 }
+
+/** Starts a labelled demo session in this tab (L02 welcome screen). */
+export async function startDemoSession(page: Page, name = "Asha") {
+  await page.goto("/welcome");
+  await page.locator("#demo-name").fill(name);
+  await page.getByRole("button", { name: "Start a demo session" }).click();
+  await expect(page).toHaveURL(/\/setup\/household$/);
+}
