@@ -6,6 +6,8 @@
  * screens consume. When the backend publishes generated schemas, map them
  * onto these types (or replace these types) inside the adapter; screens stay
  * unchanged. Names are snake_case so that swap stays mechanical.
+ *
+ * Fact corrections moved to the H07 port in L05 (lib/provisional/h07).
  */
 import type {
   ErrorEnvelope,
@@ -128,20 +130,15 @@ export type ApprovalHandoff =
 export type ReportReason =
   "wrong_fact" | "not_suitable" | "unclear" | "privacy" | "other";
 
-export interface FactCorrectionDraft {
-  which_fact: string;
-  correct_value: string;
-}
-
 export interface RecommendationReportDraft {
   reason: ReportReason;
   details: string;
 }
 
-/** A saved proposal or report. It is never a completed correction. */
+/** A saved report. Saving is not resolving. */
 export interface FeedbackReceipt {
   receipt_id: string;
-  kind: "fact_correction" | "recommendation_report";
+  kind: "recommendation_report";
   status: "demo_not_sent";
   saved_at: IsoTimestamp;
 }

@@ -91,6 +91,15 @@ demo member. Approval in the Account Aggregator app is simulated and labelled
 ("Simulated approval, no bank contacted"); nothing is fetched. Display states
 come from `lib/consent/status.ts`. Screens live under `/privacy`.
 
+Corrections and recalculation (L05) go through the provisional
+`CorrectionPort` in `lib/provisional/h07/` (sessionStorage demo adapter; the
+review is simulated). The owner-only view goes through `PrivateViewPort` in
+`lib/provisional/h03/`; each member's private fixture is a separate
+`import()` chunk loaded only in that member's tab. After a revoke or an
+accepted correction, `PictureGate` (`components/correction/picture-status.tsx`)
+replaces every Home/Why figure with "Your household picture will be
+recalculated" until session end or the labelled demo Reset.
+
 Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration. The
 seams, interfaces and never-do rules for the backend are in
@@ -108,6 +117,7 @@ statement upload shows "Not available in this build" with no file input.
 - L02: complete
 - L03: PASS
 - L04: complete against the demo adapter (awaiting real backend)
+- L05: complete against the demo adapters (awaiting real backend)
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -119,6 +129,15 @@ Aggregator handoff with a simulated approval, nine import/consent states with
 source dates, the Privacy dashboard with Revoke, and entry points for
 "Correct a fact" and "Report a recommendation". `tests/e2e/consent.spec.ts`
 covers states, revoke, Simple words, storage and axe at 375 and 1280.
+
+L05 covers the fact-correction flow (`/privacy/correct`, also from each own
+fact in the Why sheet): pick a fact → current value and source → proposed
+value and reason → text-only "what would change" → proposal. Proposed,
+accepted and rejected (with reason) states sit beside the unchanged original.
+Revoke or acceptance hides stale Home/Why figures. `/privacy/private` ("Only
+you can see this") shows the member's own private holdings and nudges.
+`tests/e2e/correction.spec.ts` and `tests/e2e/private-view.spec.ts` cover
+these, including a two-member DOM and network-payload leak check.
 
 Known follow-ups:
 
@@ -139,13 +158,25 @@ Known follow-ups:
 - Revoke only works on active consents; a pending request can't be
   withdrawn from the app yet. Grants can't be edited after linking.
 - Wrap brand/product names (DhanYukti, Anumati) in `translate="no"`.
+- L05 demo limitation: Home is server-rendered from fixtures, so after a demo
+  revoke/acceptance its HTML and RSC payload still carry the old figures;
+  only the DOM is cleaned (a demo-only pre-paint script,
+  `components/correction/picture-prepaint.tsx`, hides them before first
+  paint). The real fix is `loadHomeView()` returning the recalculating
+  release; delete the pre-paint script and its CSS rule then.
+- Pending corrections are shown in the Why sheet and on `/privacy/correct`,
+  not yet on Home's own Money now / Coming up rows.
 
 Backend & integrations (Anish, provisional):
 
 - L04 needs the real grants and consent routes (four grants, default deny),
   provider state mapping onto `ConsentStatus`/`ImportStatus`, the approval
-  handoff mechanism, revoke with invalidation and recompute, and
-  correction/report intake. The AA partner name is still unknown.
+  handoff mechanism, revoke with invalidation and recompute, and report
+  intake. The AA partner name is still unknown.
+- L05 needs H07 correction intake and review (proposed → accepted/rejected
+  with a safe reason), a picture status or recalculating Home release after
+  revoke/acceptance, and owner-only release of private items
+  (`docs/BACKEND_HANDOFF.md` §4–5).
 - The Home projection's `ConnectionStatus` lacks `awaiting_approval` and
   `expired`; agree how they map.
 - Real AA access is pending from Perfios/Anumati (the Hub sandbox has no

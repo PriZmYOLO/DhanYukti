@@ -6,6 +6,7 @@ import {
   Flag,
   FlaskConical,
   Landmark,
+  LockKeyhole,
   PencilLine,
   type LucideIcon,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import { AvailabilityState } from "@/components/finance/availability-state";
 import { useConsentText } from "@/components/consent/consent-text";
 import { LinkCard } from "@/components/consent/link-card";
 import { PrivacyFrame } from "@/components/consent/privacy-frame";
+import { useInvalidateHouseholdView } from "@/components/correction/picture-status";
 import { useOnboarding } from "@/components/onboarding/onboarding-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { STATEMENT_UPLOAD_CONNECTED } from "@/lib/capabilities";
@@ -173,6 +175,7 @@ function Dashboard() {
   const memberId = snapshot.session?.member_id ?? null;
   const [links, setLinks] = useState<SourceLink[] | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const invalidateHouseholdView = useInvalidateHouseholdView();
 
   useEffect(() => {
     let cancelled = false;
@@ -189,6 +192,8 @@ function Dashboard() {
     setLinks((current) =>
       (current ?? []).map((link) => (link.link_id === linkId ? updated : link)),
     );
+    // Home and Why must not reuse figures built with the revoked data.
+    await invalidateHouseholdView();
     setAnnouncement(
       `${text("revokedAnnouncement")} ${text("state_revoked_body")}`,
     );
@@ -264,6 +269,17 @@ function Dashboard() {
             )}
           </div>
         </div>
+      </Section>
+
+      <Section id="private-heading" title={text("privateHeading")}>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          <EntryCard
+            href="/privacy/private"
+            icon={LockKeyhole}
+            title={text("privateCardTitle")}
+            body={text("privateCardBody")}
+          />
+        </ul>
       </Section>
 
       <Section id="feedback-heading" title={text("feedbackHeading")}>

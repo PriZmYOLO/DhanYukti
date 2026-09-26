@@ -10,7 +10,6 @@ import type {
   ApprovalHandoff,
   ConsentChoices,
   ConsentRequestTerms,
-  FactCorrectionDraft,
   FeedbackReceipt,
   RecommendationReportDraft,
   RequestConsentResult,
@@ -36,12 +35,10 @@ export interface ConsentPort {
 
   /**
    * H07: withdraws source access. The backend cancels jobs, removes the data
-   * from the plan and recomputes; the returned link shows "revoked".
+   * from the plan and recomputes; the returned link shows "revoked", and
+   * the H07 picture status turns "recalculating" (lib/provisional/h07).
    */
   revoke(linkId: string): Promise<SourceLink>;
-
-  /** H07: a correction stays a proposal until accepted. */
-  proposeCorrection(draft: FactCorrectionDraft): Promise<FeedbackReceipt>;
 
   /** Grievance/report entry (Y08/H09 later). Saving is not resolving. */
   reportRecommendation(

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PictureGate } from "@/components/correction/picture-status";
 import { HouseholdOverview } from "@/components/home/household-overview";
 import { BrandSeal } from "@/components/shell/brand-seal";
 import { brand } from "@/lib/brand";
@@ -34,7 +35,11 @@ export function TrustFooter({
           </p>
         </div>
       </div>
-      {projection && <HouseholdOverview projection={projection} />}
+      {projection && (
+        <PictureGate>
+          <HouseholdOverview projection={projection} />
+        </PictureGate>
+      )}
       <p className="text-sm">
         <Link
           href={privacy.href}
