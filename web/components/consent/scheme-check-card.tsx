@@ -8,6 +8,7 @@ import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
 import { SourceBadge } from "@/components/finance/source-badge";
+import { ExistingCoverSection } from "@/components/consent/existing-cover";
 import type {
   SchemeCheckResult,
   SchemeFinding,
@@ -29,6 +30,7 @@ export function SchemeCheckCard({
 }) {
   const { text } = useConsentText();
   const [result, setResult] = useState<SchemeCheckResult | null>(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +63,7 @@ export function SchemeCheckCard({
     return () => {
       cancelled = true;
     };
-  }, [linkId, text]);
+  }, [linkId, text, version]);
 
   if (!result || result.status === "no_data") return null;
 
@@ -87,7 +89,12 @@ export function SchemeCheckCard({
       ) : result.status === "unavailable" ? (
         <AvailabilityState status="unavailable" title={result.safe_message} />
       ) : (
-        <ReadyView result={result} isSandbox={isSandbox} />
+        <ReadyView
+          result={result}
+          isSandbox={isSandbox}
+          linkId={linkId}
+          onChanged={() => setVersion((v) => v + 1)}
+        />
       )}
     </section>
   );
@@ -96,11 +103,16 @@ export function SchemeCheckCard({
 function ReadyView({
   result,
   isSandbox,
+  linkId,
+  onChanged,
 }: {
   result: Ready;
   isSandbox: boolean;
+  linkId: string;
+  onChanged: () => void;
 }) {
   const { text } = useConsentText();
+  const hasPrivate = (result.existing_cover?.policies.length ?? 0) > 0;
   const seen = result.findings.filter((f) => f.status === "premium_seen");
   const allUnknown = result.findings.every((f) => f.status === "unknown");
 
@@ -108,9 +120,22 @@ function ReadyView({
     <div className="space-y-3 text-sm">
       <p className="text-muted-foreground">{text("schemeLead")}</p>
 
+      {result.existing_cover && (
+        <ExistingCoverSection
+          linkId={linkId}
+          cover={result.existing_cover}
+          pmsbySeen={result.findings.some(
+            (f) => f.scheme === "pmsby" && f.status === "premium_seen",
+          )}
+          onChanged={onChanged}
+        />
+      )}
+
       {result.suggest.length > 0 && (
         <div className="bg-primary/5 border-primary/30 space-y-2 rounded-lg border p-3">
-          <p className="font-semibold">{text("schemeSuggestTitle")}</p>
+          <p className="font-semibold">
+            {text(hasPrivate ? "schemeTopUpTitle" : "schemeSuggestTitle")}
+          </p>
           <p>
             {text("schemeSuggestTotalLead")}{" "}
             <Money

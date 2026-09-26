@@ -124,6 +124,10 @@ false: statement upload shows "Not available in this build".
 - L05: complete against the demo adapters (awaiting real backend)
 - Job 2a (government insurance check, PMJJBY/PMSBY on AA data):
   complete on live links; consent-gated by "Alerts and suggested actions"
+- Job 2a upgrade: private premiums detected by insurer/IRDAI licence;
+  member tags who each policy covers under DPDP consent
+- Job 2b: DPDP notice (`/privacy/notice`), hash-chained Value Ledger,
+  Consent Passport (`/privacy/passport`) with one-tap revoke/withdraw
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03

@@ -26,6 +26,9 @@ import {
   type ParsedDepositAccount,
 } from "@/lib/server/aa/rebit";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
+import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
+import { detectPolicies, summariseCover } from "@/lib/server/insurance/cover";
+import { readTags, saveTags, validTags } from "@/lib/server/insurance/tags";
 import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
 
 /**
@@ -102,6 +105,27 @@ function istDate(date = new Date()): string {
 
 function shortRef(value: string | null): string | null {
   return value ? `…${value.slice(-4)}` : null;
+}
+
+/** Value Ledger subject for an AA link (short, non-secret). */
+function aaSubject(record: { link_id: string }) {
+  return `aa:${record.link_id.slice(-4)}`;
+}
+
+/** Ledger writes never block the AA flow. */
+async function ledger(
+  sid: string,
+  kind: "aa_requested" | "aa_approved" | "aa_revoked" | "aa_ended",
+  record: { link_id: string },
+) {
+  try {
+    await appendLedger(sid, kind, aaSubject(record));
+  } catch (error) {
+    log("ledger_failed", {
+      kind,
+      reason: error instanceof Error ? error.message : "?",
+    });
+  }
 }
 
 function envelope(code: string, safe_message: string, retryable = true) {
@@ -241,6 +265,7 @@ export async function createLink(
     pending: null,
   };
   await saveLink(record);
+  await ledger(sid, "aa_requested", record);
   const ids = await sessionLinkIds(sid);
   await kvSet(keys.session(sid), [...ids, record.link_id].slice(-20), LINK_TTL);
   return toSourceLink(record);
@@ -336,6 +361,7 @@ export async function revokeLink(
     addActivity(record, "revoked");
     await purgeData(record);
     await saveLink(record);
+    await ledger(sid, "aa_revoked", record);
   }
   return toSourceLink(record);
 }
@@ -368,8 +394,9 @@ const LIFECYCLE_EVENT: Record<ConsentStatus, LinkActivity["event"] | null> = {
   failed: "consent_failed",
 };
 
-function markActive(record: LinkRecord) {
-  if (record.consent_status === "active") return;
+/** true when this call moved the consent to active. */
+function markActive(record: LinkRecord): boolean {
+  if (record.consent_status === "active") return false;
   setConsent(record, "active");
   const today = istDate();
   record.active_from ??= today;
@@ -382,6 +409,7 @@ function markActive(record: LinkRecord) {
     record.import_status = "processing";
   }
   addActivity(record, "approved");
+  return true;
 }
 
 export async function handleConsentLifecycle(payload: unknown) {
@@ -393,12 +421,17 @@ export async function handleConsentLifecycle(payload: unknown) {
   record.provider_status = providerStatus || record.provider_status;
   if (typeof body.consentId === "string") record.consent_id = body.consentId;
   if (status === "active") {
-    markActive(record);
+    if (markActive(record)) {
+      await ledger(record.session_id, "aa_approved", record);
+    }
   } else if (status && status !== record.consent_status) {
     setConsent(record, status);
     const event = LIFECYCLE_EVENT[status];
     if (event) addActivity(record, event);
-    if (isEnded(status)) await purgeData(record);
+    if (isEnded(status)) {
+      await purgeData(record);
+      await ledger(record.session_id, "aa_ended", record);
+    }
   }
   await saveLink(record);
   log("lifecycle", { link: shortRef(record.link_id), status: providerStatus });
@@ -420,7 +453,9 @@ export async function handleDataReady(payload: unknown) {
   if (typeof body.id !== "string" || typeof body.secret !== "string") {
     return { accepted: false, record: null };
   }
-  markActive(record);
+  if (markActive(record)) {
+    await ledger(record.session_id, "aa_approved", record);
+  }
   record.pending = {
     id: body.id,
     secret: body.secret,
@@ -691,5 +726,48 @@ export async function schemeCheck(
   if (record.consent_status !== "active") return { status: "no_data" };
   const data = await kvGet<StoredAccountData>(keys.data(linkId));
   if (!data || data.accounts.length === 0) return { status: "no_data" };
-  return checkJanSuraksha(data.accounts, { isSandbox: aaConfig.isSandbox });
+  const taggingAllowed = await hasConsent(sid, "insurance_tags");
+  const tags = taggingAllowed ? await readTags(sid) : {};
+  const policies = detectPolicies(data.accounts, tags);
+  return {
+    ...checkJanSuraksha(data.accounts, { isSandbox: aaConfig.isSandbox }),
+    existing_cover: {
+      policies,
+      summary: summariseCover(policies),
+      tagging_allowed: taggingAllowed,
+    },
+  };
+}
+
+/**
+ * Saves who a detected policy covers, as the member says. Requires DPDP
+ * consent "insurance_tags"; the kind must be one the insurer's IRDAI
+ * licence allows (a life insurer can't sell motor cover).
+ */
+export async function tagPolicy(
+  sid: string,
+  linkId: string,
+  policyKey: string,
+  input: { covers?: unknown; kind?: unknown },
+): Promise<
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "consent_required" | "invalid" }
+> {
+  const record = await loadLink(linkId);
+  if (!record || record.session_id !== sid)
+    return { ok: false, reason: "not_found" };
+  if (record.consent_status !== "active")
+    return { ok: false, reason: "not_found" };
+  if (!(await hasConsent(sid, "insurance_tags"))) {
+    return { ok: false, reason: "consent_required" };
+  }
+  const data = await kvGet<StoredAccountData>(keys.data(linkId));
+  const policy = detectPolicies(data?.accounts ?? []).find(
+    (p) => p.policy_key === policyKey,
+  );
+  if (!policy) return { ok: false, reason: "not_found" };
+  const tags = validTags(policy.licence, input);
+  if (!tags) return { ok: false, reason: "invalid" };
+  await saveTags(sid, policyKey, tags);
+  return { ok: true };
 }

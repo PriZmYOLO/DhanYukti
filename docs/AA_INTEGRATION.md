@@ -120,6 +120,43 @@ Financial Services).
 costs ₹456 a year for ₹4 lakh, we earn nothing from it, and we only ran the
 check because the user allowed suggestions."
 
+## Existing insurance and the DPDP link (upgrade to Job 2a)
+
+The insurance card now also lists **private premiums** found in the linked
+bank data (`lib/server/insurance/`): the insurer is matched on the debit
+narration and classed by its IRDAI licence (life / general / standalone
+health). Two policies with the same insurer are told apart by premium size.
+Frequency (monthly…yearly) comes from how often it was paid.
+
+Who a policy covers and what kind it is (health, life, motor…) are **only
+what the member tells us**, saved under DPDP consent "Who your insurance
+covers" (`PUT /api/aa/links/{id}/policies/{key}`). The card offers that
+consent inline; granting it writes a receipt to the Value Ledger;
+withdrawing deletes every tag at once. The kinds offered are limited by the
+insurer's licence (a life insurer can't sell motor cover).
+
+With private cover present, the government-scheme suggestion is framed as a
+low-cost top-up, not "you're uninsured". DhanYukti never recommends or
+sells a private product.
+
+Mock: a mobile number ending in **7** gives the team's example household
+(HDFC ERGO, ICICI Lombard, ACKO, Axis Max Life monthly, SBI General).
+
+## DPDP consent, Value Ledger, Consent Passport (Job 2b)
+
+- `/privacy/notice`: the itemised DPDP notice (`lib/dpdp/notice.ts`), one
+  card per purpose with purpose, data, retention, processor, an honest
+  "in this build / enforced" line and a Give/Withdraw button.
+- `/privacy/passport`: every consent in one place: AA bank links (one-tap
+  Revoke), DPDP purposes (one-tap Withdraw/Give), Perfios Hub APIs (none
+  used, stated), and the Value Ledger.
+- Value Ledger (`lib/server/dpdp/ledger.ts`): append-only, SHA-256
+  hash-chained receipts for DPDP grants/withdrawals and AA link events
+  (requested, approved, revoked, ended). The Passport shows "Chain verified".
+  Receipts download as JSON with the notice version and hash.
+- Needs the same Redis storage as the AA flow on Vercel; without it the
+  screens say consent records can't be loaded (nothing is faked).
+
 ## Rehearse locally without credentials
 
 ```bash
