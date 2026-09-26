@@ -363,10 +363,12 @@ export const onboardingCopy = {
     standard: "Connect a bank account",
     simple: "Link your bank",
   },
-  pathBankUnavailable: {
-    standard: "Bank connection is not available in this build yet.",
-    simple: "Bank linking is not ready yet.",
+  pathBankBody: {
+    standard:
+      "See what would be asked and make your four choices. In this build approval is simulated and no bank is contacted.",
+    simple: "Practise the steps. No bank is contacted.",
   },
+  pathBankAction: { standard: "Link your bank", simple: "Link your bank" },
   cashSection: {
     standard: "Money you have now",
     simple: "Money you have now",

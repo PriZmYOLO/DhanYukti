@@ -1,5 +1,6 @@
 import {
   Ban,
+  CalendarX,
   CircleAlert,
   CircleDashed,
   CircleHelp,
@@ -32,6 +33,7 @@ export type AvailabilityStatus =
   | "not_shared"
   | "denied"
   | "revoked"
+  | "expired"
   | "failed";
 
 type Tone = "neutral" | "warning" | "destructive";
@@ -108,6 +110,13 @@ const statusCopy: Record<
     title: "Permission withdrawn",
     description: "Access was withdrawn, so this is no longer used.",
     icon: Ban,
+    tone: "warning",
+  },
+  expired: {
+    title: "Permission ended",
+    description:
+      "The time this was allowed for has passed, so it is no longer used.",
+    icon: CalendarX,
     tone: "warning",
   },
   failed: {

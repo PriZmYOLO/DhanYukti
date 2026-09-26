@@ -1,10 +1,10 @@
 "use client";
 
 import { Landmark, PencilLine } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { AvailabilityState } from "@/components/finance/availability-state";
 import { AnswerField } from "@/components/onboarding/answer-field";
 import { ChoiceField } from "@/components/onboarding/choice-field";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/components/onboarding/onboarding-provider";
 import { RequireSession } from "@/components/onboarding/require-session";
 import { SetupFrame } from "@/components/onboarding/setup-frame";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   UNANSWERED,
   answerFromDraft,
@@ -34,6 +34,7 @@ import {
   type IncomeFrequency,
   type ManualMoneyDraft,
 } from "@/lib/provisional/h01";
+import { cn } from "@/lib/utils";
 
 const identity = (value: string) => value;
 
@@ -276,14 +277,21 @@ export function MoneyScreen() {
               {text("pathManualBody")}
             </p>
           </section>
-          <section className="bg-card space-y-2 rounded-xl border p-4">
+          <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
             <Landmark aria-hidden className="text-muted-foreground size-5" />
             <h2 className="font-semibold">{text("pathBankTitle")}</h2>
-            <AvailabilityState
-              status="not_connected"
-              compact
-              description={text("pathBankUnavailable")}
-            />
+            <p className="text-muted-foreground flex-1 text-sm">
+              {text("pathBankBody")}
+            </p>
+            <Link
+              href="/privacy/connect?from=setup"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "xl" }),
+                "self-start",
+              )}
+            >
+              {text("pathBankAction")}
+            </Link>
           </section>
         </div>
         <MoneyForm />
