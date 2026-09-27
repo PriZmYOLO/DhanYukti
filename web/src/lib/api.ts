@@ -8,8 +8,18 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`${res.status} ${path}`);
+  if (!res.ok) throw apiError(res, path);
   return res.json() as Promise<T>;
+}
+
+/**
+ * FastAPI always answers with JSON. A non-JSON error (e.g. Next's own 404 page
+ * when no FastAPI is deployed / API_ORIGIN is unset) means "backend not there":
+ * throw a TypeError so the demo-data fallback below kicks in.
+ */
+function apiError(res: Response, path: string): Error {
+  const json = (res.headers.get("content-type") ?? "").includes("application/json");
+  return json ? new Error(`${res.status} ${path}`) : new TypeError(`api_unreachable ${res.status} ${path}`);
 }
 const post = <T,>(path: string, body: unknown = {}) => call<T>(path, { method: "POST", body: JSON.stringify(body) });
 
@@ -39,7 +49,7 @@ const real = {
   bsaUpload: async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
     const res = await fetch("/api/bsa/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error(`${res.status} /bsa/upload`);
+    if (!res.ok) throw apiError(res, "/bsa/upload");
     return res.json() as Promise<{ mode: string; status: string; report_id: string }>;
   },
   reset: () => post<{ ok: boolean }>("/admin/reset"),
