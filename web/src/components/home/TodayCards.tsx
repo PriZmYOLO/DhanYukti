@@ -7,12 +7,23 @@ import KyonSheet from "./KyonSheet";
 import ActionSheet from "./ActionSheet";
 import { useApp } from "@/lib/store";
 import type { NBA } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { inr } from "@/lib/format";
+import { LAST_KEY, type CoverSummary } from "@/components/gov/CoverCheck";
+
+/** The old E06 card offered one product (PMJJBY ₹2 lakh) to every family. It now opens the family cover check. */
+const isCoverCard = (n: NBA) => n.engine === "E06" || n.action.type === "protect";
+function lastCover(): CoverSummary | null {
+  try { const r = localStorage.getItem(LAST_KEY); const v = r ? (JSON.parse(r) as CoverSummary) : null; return v && typeof v.top_gap_paise === "number" ? v : null; } catch { return null; }
+}
 
 const DOT: Record<NBA["severity"], string> = { red: "bg-danger", amber: "bg-amber", green: "bg-leaf" };
 
 /** Aaj ka kaam — one calm white card per need; swipe for the next two. */
 export default function TodayCards({ nba }: { nba: NBA[] }) {
   const { t, lang, doneIds } = useApp();
+  const router = useRouter();
+  const [cover] = useState<CoverSummary | null>(() => lastCover());
   const [idx, setIdx] = useState(0);
   const [why, setWhy] = useState<NBA | null>(null);
   const [act, setAct] = useState<NBA | null>(null);
@@ -25,6 +36,36 @@ export default function TodayCards({ nba }: { nba: NBA[] }) {
         onScroll={(e) => { const el = e.currentTarget; setIdx(Math.round(el.scrollLeft / (el.clientWidth * 0.9))); }}>
         {cards.map((n) => {
           const done = doneIds.includes(n.id);
+          if (isCoverCard(n)) return (
+            <article key={n.id} className="snap-center shrink-0 w-[90%] lg:w-full rounded-[28px] bg-white p-5 shadow-soft relative overflow-hidden">
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${DOT[n.severity]}`} />
+                <span className="text-[13px] font-bold text-muted">{t(n.tier_label)}</span>
+                <span className="ml-auto rounded-full bg-mint text-leaf px-2 py-0.5 text-[10px] font-extrabold">₹0 COMMISSION</span>
+                <SpeakBtn v={cover && cover.gaps > 0 && cover.top ? { hi: `Bima mein ${cover.gaps} kami. Pehle ${cover.top.hi}: ${inr(Math.round(cover.top_gap_paise / 100))}`, en: `${cover.gaps} cover gaps. First, ${cover.top.en}: ${inr(Math.round(cover.top_gap_paise / 100))}` } : { hi: "Parivaar ko kitna bima chahiye? Check karein", en: "How much cover does your family need? Check it" }} />
+              </div>
+              <div className="mt-2 flex items-start gap-3">
+                <h3 className="flex-1 text-[21px] font-extrabold leading-snug text-ink">
+                  {cover && cover.gaps > 0 && cover.top
+                    ? t({ hi: `Bima mein ${cover.gaps} kami — pehle ${cover.top.hi}: ${inr(Math.round(cover.top_gap_paise / 100))}`, en: `${cover.gaps} cover gaps — first ${cover.top.en}: ${inr(Math.round(cover.top_gap_paise / 100))}` })
+                    : t({ hi: "Parivaar ko kitna bima chahiye? Check karein", en: "How much cover does your family need? Check it" })}
+                </h3>
+                <Scene kind="shield" size={60} />
+              </div>
+              <p className="mt-2 text-[15px] leading-snug text-ink/80">
+                {cover && cover.gaps > 0
+                  ? t({ hi: "Sarkari yojana pehle, phir aapke parivaar ke hisaab se spec — kisi company ke bina. Bima Sugam ya kisi bhi insurer ke paas le jaayein.", en: "Government schemes first, then a spec sized to your family — no insurer involved. Take it to Bima Sugam or any insurer." })
+                  : t({ hi: "Umar, aamdani aur nirbhar logon se ginti: kitna chahiye, kitna hai, kitna kam — aur Bima Sugam ke liye spec.", en: "From ages, income and dependants: what you need, what you have, the gap — and a spec for Bima Sugam." })}
+              </p>
+              <p className="mt-2 flex items-start gap-1.5 text-[13px] text-muted"><Clock size={14} className="mt-0.5 shrink-0" />{t(n.if_not)}</p>
+              <div className="mt-4 flex items-center gap-2">
+                <button onClick={() => setWhy(n)} className="min-h-12 rounded-[16px] bg-lav px-5 font-bold text-ink">Kyon?</button>
+                <button onClick={() => router.push("/app/goals#cover")} className="flex-1 min-h-12 rounded-[16px] bg-ink text-white font-bold flex items-center justify-center gap-2">
+                  {lang === "hi" ? "Bima check kholein" : "Open cover check"} <ArrowRight size={18} />
+                </button>
+              </div>
+            </article>
+          );
           return (
             <article key={n.id} className="snap-center shrink-0 w-[90%] lg:w-full rounded-[28px] bg-white p-5 shadow-soft relative overflow-hidden">
               <div className="flex items-center gap-2">

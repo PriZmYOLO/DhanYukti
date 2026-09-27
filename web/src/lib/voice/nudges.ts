@@ -92,13 +92,23 @@ export function cashShortKey(p: CashShortParams) {
   return `cash_short-${p.amount_paise}-${p.date}`;
 }
 
-const DEVANAGARI_DIGITS = "०१२३४५६७८९";
+/**
+ * First code point ("zero") of every decimal-digit block an Indian language
+ * uses: ASCII, Arabic-Indic and Extended (Urdu, Sindhi, Kashmiri),
+ * Devanagari, Bengali/Assamese, Gurmukhi, Gujarati, Odia, Tamil, Telugu,
+ * Kannada, Malayalam, Ol Chiki (Santali), Meetei Mayek (Manipuri).
+ */
+const DIGIT_ZEROS = [0x30, 0x660, 0x6f0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0x1c50, 0xabf0];
 
-/** Every number in a text, with grouping commas removed, Devanagari → ASCII. */
+function toAsciiDigit(ch: string): string {
+  const cp = ch.codePointAt(0) ?? 0;
+  const zero = DIGIT_ZEROS.find((z) => cp >= z && cp <= z + 9);
+  return zero === undefined ? ch : String(cp - zero);
+}
+
+/** Every number in a text, grouping commas removed, any Indian script's digits → ASCII. */
 export function numbersIn(text: string): string[] {
-  const ascii = text.replace(/[०-९]/g, (d) =>
-    String(DEVANAGARI_DIGITS.indexOf(d)),
-  );
+  const ascii = Array.from(text, toAsciiDigit).join("").replace(/[٬،]/g, ",");
   return (ascii.match(/\d[\d,]*/g) ?? []).map((n) => n.replace(/,/g, ""));
 }
 
