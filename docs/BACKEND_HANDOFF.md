@@ -383,17 +383,19 @@ DOM and every network response their browser received.
    confirmed → handed-off → completed/failed states with evidence, and version
    checks. Until then `CONFIRMATION_CONNECTED` stays `false`.
 
-## 8. Provider access (as of 27 Sep 2026)
+## 8. Provider access (as of 28 Sep 2026)
 
 - The **Perfios Hub sandbox has no AA/Anumati APIs**. The AA flow goes
   through the separate **Anumati FIU module**
   (`https://fiu-module-uat.anumati.co.in`), per Anumati's Integration Guide
-  v1.1. The integration is built and tested against a local mock and
-  against Anumati's crypto jar; **credentials, webhook registration and a
-  test user are pending from Anumati** (requested 27 Sep).
+  v1.1. Credentials and webhook registration arrived on 28 Sep, and the
+  **live flow is verified end to end on Anumati UAT** (consent → ACTIVE →
+  fetch → decrypt → accounts; revoke from the Anumati portal). See
+  `docs/AA_INTEGRATION.md`.
 - The **BSA (bank statement analysis) endpoints currently return 403**.
-- Until the credentials arrive and a real sandbox run succeeds, don't
-  describe the flow as live. The local mock is labelled "LOCAL MOCK".
+- Describe it as live on Anumati's UAT sandbox (test banks, not real
+  money). The local mock is labelled "LOCAL MOCK" and is never demoed as
+  the sandbox.
 - Fetched account data is available server-side through
   `readAccountData()` in `lib/server/aa/links.ts` for the engines (E01/E03);
   Home still uses labelled fixtures until they consume it.

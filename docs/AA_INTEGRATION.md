@@ -3,21 +3,33 @@
 Job 1 of the finals plan: a real consent → fetch → decrypt flow on the
 Anumati UAT sandbox, shown inside DhanYukti. This page is the runbook.
 
-## Status (27 Sep)
+## Status (28 Sep): live on Anumati UAT, verified
 
-- **Storage:** Upstash Redis `dhanyukti-aa` (Free plan, Mumbai `bom1`) is
-  connected to the Vercel project.
-- **Storage variables:** `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_URL`,
-  `REDIS_URL` and `KV_REST_API_READ_ONLY_TOKEN` are set for all
-  environments. They are not yet marked Sensitive. Follow-up: mark them
-  Sensitive and remove them from Development.
-- The tokens were rotated once after creation.
-- Production was redeployed; `/api/aa/status` shows `storage: "redis"` and
-  `storage_ready: true`.
-- **Still pending:** `ANUMATI_CLIENT_ID` / `ANUMATI_CLIENT_SECRET` from
-  Anumati, `NEXT_PUBLIC_AA_LIVE=true` (then redeploy), and webhook
-  registration with Anumati. Until then Production runs the labelled demo
-  adapter.
+- **Credentials:** Production has `ANUMATI_CLIENT_ID` (config),
+  `ANUMATI_CLIENT_SECRET` (Secret) and `NEXT_PUBLIC_AA_LIVE=true`.
+  Anumati confirmed webhook registration for our client.
+- **Deployment check:** `/api/aa/status` shows `credentials_configured`,
+  `live_ui_enabled` and `storage_ready` all `true`, with `storage: "redis"`.
+- **Verified end to end on 28 Sep** (production logs, `[aa]` lines):
+  `consent_started` → lifecycle `ACTIVE` → data-ready `collected`
+  `status: "complete"` (runs with 5 and 2 accounts). The link card turned
+  Active with accounts and balances; revoking from
+  `https://uat-web.anumati.co.in` flipped it to revoked.
+- **UAT test journey:** any mobile number → Anumati's default UAT OTP (in
+  the team chat) → pick **ACME Bank** → OTP again → approve.
+- **UAT facts from Anumati:** no return URL in UAT (the consent opens in a
+  new tab); ACME supports DEPOSIT, TERM-DEPOSIT, RECURRING_DEPOSIT,
+  EQUITIES, MUTUAL_FUNDS, SIP; 12 months of data; XML format; schema at
+  https://api.rebit.org.in/schema.
+- **Demo note:** run the demo in Chrome, not an embedded browser pane, so
+  the Anumati tab opens separately and the DhanYukti tab keeps its session.
+- **Storage:** Upstash Redis `dhanyukti-aa` (Free plan, Mumbai `bom1`).
+  `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_URL`, `REDIS_URL` and
+  `KV_REST_API_READ_ONLY_TOKEN` are set for all environments (tokens rotated
+  once).
+- **Follow-ups:** verify `x-jws-signature` (signing is enabled for our
+  client); mark the `KV_*` variables Sensitive and drop Development; ask
+  Anumati to rotate the client secret after 30 Sep.
 
 Never put the values of these variables in this repository, the docs, logs
 or chat.
