@@ -185,6 +185,8 @@ interface PriorityCardProps {
   /** Released facts the decision used, already filtered for this viewer. */
   evidence: FactSummary[];
   isUiPreview: boolean;
+  /** The projection's viewer; their own facts get a "Correct this" link. */
+  viewerMemberId: string | null;
 }
 
 /**
@@ -198,6 +200,7 @@ export function PriorityCard({
   decision,
   evidence,
   isUiPreview,
+  viewerMemberId,
 }: PriorityCardProps) {
   if (decision.status === "unavailable") {
     return (
@@ -261,7 +264,7 @@ export function PriorityCard({
   }
 
   const { need } = priority;
-  const why = buildWhyView(packet, need, evidence, isUiPreview);
+  const why = buildWhyView(packet, need, evidence, isUiPreview, viewerMemberId);
 
   // Four blocks, in DOM (reading and focus) order: title → consequence →
   // next step → explanation. Phones stack them, so all three first blocks

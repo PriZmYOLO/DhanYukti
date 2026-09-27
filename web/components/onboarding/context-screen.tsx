@@ -11,6 +11,11 @@ import {
 } from "@/components/onboarding/onboarding-provider";
 import { RequireSession } from "@/components/onboarding/require-session";
 import { SetupFrame } from "@/components/onboarding/setup-frame";
+import {
+  SetupPanel,
+  useFocusedWhy,
+  type SummaryRow,
+} from "@/components/onboarding/setup-panel";
 import { Button } from "@/components/ui/button";
 import {
   UNANSWERED,
@@ -18,6 +23,7 @@ import {
   draftFromAnswer,
   type Answer,
 } from "@/lib/onboarding/answer";
+import type { CopyKey } from "@/lib/onboarding/copy";
 import {
   goalOptions,
   incomePatternOptions,
@@ -42,6 +48,7 @@ function ContextForm() {
   const text = useText();
   const router = useRouter();
   const saved = snapshot.context;
+  const { why, onFocus } = useFocusedWhy("whyContext");
 
   const [role, setRole] = useState<Answer<MemberRole>>(
     saved?.member_role ?? UNANSWERED,
@@ -82,12 +89,76 @@ function ContextForm() {
     router.push("/setup/money");
   }
 
+  // Live summary for the side panel: the choices as made, not yet saved.
+  function choice<T extends string>(
+    answer: Answer<T>,
+    options: Record<T, CopyKey>,
+    unanswered: CopyKey = "statusUnanswered",
+    noneText = "",
+  ) {
+    switch (answer.state) {
+      case "answered":
+        return text(options[answer.value]);
+      case "none":
+        return noneText;
+      case "dont_know":
+        return (
+          <span className="text-muted-foreground">
+            {text("statusDontKnow")}
+          </span>
+        );
+      default:
+        return (
+          <span className="text-muted-foreground">{text(unanswered)}</span>
+        );
+    }
+  }
+  const dependentsText = dependents.text.trim();
+  const summary: SummaryRow[] = [
+    { label: text("labelRole"), value: choice(role, roleOptions) },
+    {
+      label: text("labelOccupation"),
+      value: choice(occupation, occupationOptions),
+    },
+    {
+      label: text("labelIncomePattern"),
+      value: choice(
+        incomePattern,
+        incomePatternOptions,
+        "statusUnanswered",
+        text("incomeNoneOwn"),
+      ),
+    },
+    {
+      label: text("labelDependents"),
+      value:
+        dependents.choice === "dont_know" ? (
+          <span className="text-muted-foreground">
+            {text("statusDontKnow")}
+          </span>
+        ) : dependentsText === "" ? (
+          <span className="text-muted-foreground">
+            {text("statusUnanswered")}
+          </span>
+        ) : (
+          <span className="tabular-nums">{dependentsText}</span>
+        ),
+    },
+    {
+      label: text("labelGoal"),
+      value: choice(goal, goalOptions, "goalNotChosen"),
+    },
+  ];
+
   return (
-    <form onSubmit={submit} className="space-y-6" noValidate>
+    <form onSubmit={submit} onFocus={onFocus} className="space-y-6" noValidate>
+      <SetupPanel why={why} summary={summary} />
       <div className="bg-card space-y-6 rounded-xl border p-4 sm:p-5">
         <ChoiceField
           name="member-role"
           legend={text("roleLegend")}
+          description={text("roleHint")}
+          why="whyRole"
           options={toChoiceOptions(roleOptions, text)}
           value={role}
           onChange={setRole}
@@ -95,6 +166,8 @@ function ContextForm() {
         <ChoiceField
           name="occupation"
           legend={text("occupationLegend")}
+          description={text("occupationHint")}
+          why="whyOccupation"
           options={toChoiceOptions(occupationOptions, text)}
           value={occupation}
           onChange={setOccupation}
@@ -102,6 +175,8 @@ function ContextForm() {
         <ChoiceField
           name="income-pattern"
           legend={text("incomePatternLegend")}
+          description={text("incomePatternHint")}
+          why="whyIncomePattern"
           options={toChoiceOptions(incomePatternOptions, text)}
           value={incomePattern}
           onChange={setIncomePattern}
@@ -111,7 +186,8 @@ function ContextForm() {
         <AnswerField
           id="dependents"
           label={text("dependentsLabel")}
-          hint={text("dependentsHint")}
+          description={text("dependentsHint")}
+          why="whyDependents"
           draft={dependents}
           onChange={(draft) => {
             setDependents(draft);
@@ -124,6 +200,8 @@ function ContextForm() {
         <ChoiceField
           name="goal-intent"
           legend={text("goalLegend")}
+          description={text("goalHint")}
+          why="whyGoal"
           options={toChoiceOptions(goalOptions, text)}
           value={goal}
           onChange={setGoal}

@@ -60,3 +60,55 @@ export function parseShortText(
     ? { ok: false, error: `Keep this to ${maxLength} characters or fewer.` }
     : { ok: true, value: text };
 }
+
+// Display formatting only: these never compute or change an amount. Intl
+// formats the digit string itself, so no value passes through a float.
+const groupFormatter = new Intl.NumberFormat("en-IN");
+const unitsFormatter = new Intl.NumberFormat("en-IN", {
+  notation: "compact",
+  compactDisplay: "long",
+  maximumFractionDigits: 2,
+});
+const exactUnitsFormatter = new Intl.NumberFormat("en-IN", {
+  notation: "compact",
+  compactDisplay: "long",
+  maximumFractionDigits: 20,
+});
+
+type IntlDecimal = Parameters<Intl.NumberFormat["format"]>[0];
+
+function rupeeDigits(
+  text: string,
+): { whole: string; fraction?: string } | null {
+  const match = RUPEES.exec(text.replace(/[₹,\s]/g, ""));
+  return match ? { whole: match[1], fraction: match[2] } : null;
+}
+
+/**
+ * "500000" → "5,00,000" (en-IN grouping) for showing in the input. Text that
+ * isn't a valid amount is returned unchanged so the error still shows.
+ */
+export function groupRupeeText(text: string): string {
+  const digits = rupeeDigits(text);
+  if (!digits) return text;
+  const whole = groupFormatter.format(digits.whole as IntlDecimal);
+  return digits.fraction === undefined ? whole : `${whole}.${digits.fraction}`;
+}
+
+/**
+ * "500000" → "5 lakh", "50000" → "50 thousand", "523456" → "about 5.23
+ * lakh". Null below one thousand or for invalid text.
+ */
+export function rupeeUnitsText(text: string): string | null {
+  const digits = rupeeDigits(text);
+  if (!digits || digits.whole.replace(/^0+/, "").length < 4) return null;
+  const decimal = (
+    digits.fraction === undefined
+      ? digits.whole
+      : `${digits.whole}.${digits.fraction}`
+  ) as IntlDecimal;
+  const rounded = unitsFormatter.format(decimal);
+  return rounded === exactUnitsFormatter.format(decimal)
+    ? rounded
+    : `about ${rounded}`;
+}

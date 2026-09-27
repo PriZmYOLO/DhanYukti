@@ -13,12 +13,14 @@
  *   provider secrets are created or stored.
  * - Approval is simulated (see `demoConsentControls`). Nothing is fetched:
  *   an approved link stays "processing" with no balance.
- * - Revoke only flips the status. There is no plan data to remove here.
+ * - Revoke only flips the status, and marks the h07 demo picture as
+ *   "recalculating". There is no plan data to remove or recompute here.
  * - Balances appear only in the labelled "every state" examples.
  */
 import type { IsoDate, IsoTimestamp } from "@/lib/contracts/common";
 import { onboardingPort } from "@/lib/provisional/h01";
 import type { ConsentPort } from "@/lib/provisional/h03/port";
+import { markDemoRecalculation } from "@/lib/provisional/h07/demo-adapter";
 import type {
   ConsentRequestTerms,
   FeedbackReceipt,
@@ -126,13 +128,11 @@ async function updateLink(
   return next;
 }
 
-async function saveReceipt(
-  kind: FeedbackReceipt["kind"],
-): Promise<FeedbackReceipt> {
+async function saveReceipt(): Promise<FeedbackReceipt> {
   const state = await read();
   const receipt: FeedbackReceipt = {
     receipt_id: demoId("demo-receipt"),
-    kind,
+    kind: "recommendation_report",
     status: "demo_not_sent",
     saved_at: now(),
   };
@@ -204,26 +204,26 @@ export const demoConsentAdapter: ConsentPort = {
   },
 
   async revoke(linkId) {
-    return updateLink(linkId, (link) =>
-      link.consent.status === "active"
-        ? {
-            ...link,
-            consent: {
-              ...link.consent,
-              status: "revoked",
-              status_changed_at: now(),
-            },
-          }
-        : link,
-    );
-  },
-
-  async proposeCorrection() {
-    return saveReceipt("fact_correction");
+    let revoked = false;
+    const link = await updateLink(linkId, (current) => {
+      if (current.consent.status !== "active") return current;
+      revoked = true;
+      return {
+        ...current,
+        consent: {
+          ...current.consent,
+          status: "revoked",
+          status_changed_at: now(),
+        },
+      };
+    });
+    // Stands in for the backend's recompute after a revoke.
+    if (revoked) await markDemoRecalculation("source_revoked");
+    return link;
   },
 
   async reportRecommendation() {
-    return saveReceipt("recommendation_report");
+    return saveReceipt();
   },
 };
 

@@ -4,6 +4,8 @@ import { CircleHelp } from "lucide-react";
 import Link from "next/link";
 import { useRef, type ReactNode } from "react";
 
+import { useCorrections } from "@/components/correction/use-corrections";
+import { WhyFactCorrection } from "@/components/correction/why-fact-correction";
 import { AvailabilityState } from "@/components/finance/availability-state";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
@@ -52,6 +54,7 @@ export function WhySheet({
   trigger?: "button" | "link";
 }) {
   const text = useHomeText();
+  const { corrections } = useCorrections();
   // Open at the top: focus the title rather than the first link, which
   // sits at the end of a long explanation.
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -154,6 +157,13 @@ export function WhySheet({
                           sourceLabel={fact.source_label}
                         />
                       </div>
+                      {fact.correctable_fact_id && (
+                        <WhyFactCorrection
+                          factId={fact.correctable_fact_id}
+                          label={fact.label}
+                          corrections={corrections}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -209,6 +219,12 @@ export function WhySheet({
             </p>
             <p>{text("whyWrongBody")}</p>
             <div className="flex flex-wrap gap-2 pt-1">
+              <Link
+                href="/privacy/correct"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                {text("whyCorrectFact")}
+              </Link>
               <Link
                 href="/privacy"
                 className={buttonVariants({ variant: "outline", size: "sm" })}

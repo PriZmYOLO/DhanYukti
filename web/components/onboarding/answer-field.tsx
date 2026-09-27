@@ -8,12 +8,17 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FieldDraft } from "@/lib/onboarding/answer";
+import type { CopyKey } from "@/lib/onboarding/copy";
+import { groupRupeeText, rupeeUnitsText } from "@/lib/onboarding/parse";
 import { cn } from "@/lib/utils";
 
 interface AnswerFieldProps {
   id: string;
   label: string;
-  hint?: string;
+  /** Muted text under the label, e.g. what to enter. */
+  description?: string;
+  /** Copy key for the side panel's "Why we ask this" while focused. */
+  why?: CopyKey;
   draft: FieldDraft;
   onChange: (draft: FieldDraft) => void;
   error?: string | null;
@@ -21,8 +26,11 @@ interface AnswerFieldProps {
   allowDontKnow?: boolean;
   /** Offer an explicit "none" answer with this label, e.g. "No regular income". */
   noneLabel?: string;
-  /** Shows a ₹ prefix for rupee amounts. */
-  rupee?: boolean;
+  /**
+   * A rupee amount: ₹ prefix, en-IN grouping on blur (5,00,000) and a helper
+   * in Indian units (5 lakh). Display only; the text is parsed exactly as typed.
+   */
+  money?: boolean;
   inputProps?: Omit<
     ComponentProps<"input">,
     "id" | "value" | "onChange" | "disabled"
@@ -36,19 +44,27 @@ interface AnswerFieldProps {
 export function AnswerField({
   id,
   label,
-  hint,
+  description,
+  why,
   draft,
   onChange,
   error,
   allowDontKnow = false,
   noneLabel,
-  rupee = false,
+  money = false,
   inputProps,
 }: AnswerFieldProps) {
   const text = useText();
+  const units =
+    money && draft.choice === "value" ? rupeeUnitsText(draft.text) : null;
   const describedBy =
-    [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") ||
-    undefined;
+    [
+      description && `${id}-description`,
+      units && `${id}-units`,
+      error && `${id}-error`,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   function toggle(choice: "dont_know" | "none") {
     onChange(
@@ -59,15 +75,17 @@ export function AnswerField({
   }
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {hint && (
-        <p id={`${id}-hint`} className="text-muted-foreground text-xs">
-          {hint}
-        </p>
-      )}
+    <div className="space-y-2" data-why={why}>
+      <div className="space-y-1">
+        <Label htmlFor={id}>{label}</Label>
+        {description && (
+          <p id={`${id}-description`} className="text-muted-foreground text-sm">
+            {description}
+          </p>
+        )}
+      </div>
       <div className="relative">
-        {rupee && (
+        {money && (
           <span
             aria-hidden
             className="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm"
@@ -84,10 +102,23 @@ export function AnswerField({
           onChange={(event) =>
             onChange({ choice: "value", text: event.target.value })
           }
-          className={cn("h-10", rupee && "pl-7")}
+          className={cn("h-10", money && "pl-7 tabular-nums")}
           {...inputProps}
+          onBlur={(event) => {
+            inputProps?.onBlur?.(event);
+            if (!money || draft.choice !== "value") return;
+            const grouped = groupRupeeText(draft.text.trim());
+            if (grouped !== draft.text) {
+              onChange({ choice: "value", text: grouped });
+            }
+          }}
         />
       </div>
+      {units && (
+        <p id={`${id}-units`} className="text-muted-foreground text-xs">
+          {units}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {allowDontKnow && (
           <button

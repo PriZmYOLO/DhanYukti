@@ -13,6 +13,7 @@ import {
 } from "@/components/onboarding/onboarding-provider";
 import { RequireSession } from "@/components/onboarding/require-session";
 import { SetupFrame } from "@/components/onboarding/setup-frame";
+import { SetupPanel, useFocusedWhy } from "@/components/onboarding/setup-panel";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,7 @@ function HouseholdChoices() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
+  const { why, onFocus } = useFocusedWhy("whyHousehold");
 
   if (snapshot.membership) {
     const name = snapshot.membership.household_name;
@@ -102,7 +104,8 @@ function HouseholdChoices() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onFocus={onFocus}>
+      <SetupPanel why={why} />
       <OptionCard
         icon={PlusCircle}
         title={text("createTitle")}
@@ -112,7 +115,8 @@ function HouseholdChoices() {
           <AnswerField
             id="household-name"
             label={text("householdNameLabel")}
-            hint={text("householdNameHint")}
+            description={text("householdNameHint")}
+            why="whyHouseholdName"
             draft={nameDraft}
             onChange={(draft) => {
               setNameDraft(draft);
@@ -133,8 +137,16 @@ function HouseholdChoices() {
         body={text("joinBody")}
       >
         <form onSubmit={join} className="space-y-3" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="invite-code">{text("inviteCodeLabel")}</Label>
+          <div className="space-y-2" data-why="whyInviteCode">
+            <div className="space-y-1">
+              <Label htmlFor="invite-code">{text("inviteCodeLabel")}</Label>
+              <p
+                id="invite-code-description"
+                className="text-muted-foreground text-sm"
+              >
+                {text("inviteCodeHint")}
+              </p>
+            </div>
             <Input
               id="invite-code"
               value={code}
@@ -142,9 +154,9 @@ function HouseholdChoices() {
               autoCapitalize="characters"
               maxLength={40}
               aria-invalid={codeError ? true : undefined}
-              aria-describedby={
+              aria-describedby={`invite-code-description ${
                 codeError ? "invite-code-error" : "invite-code-hint"
-              }
+              }`}
               onChange={(event) => {
                 setCode(event.target.value);
                 setCodeError(null);
@@ -190,7 +202,7 @@ export function HouseholdScreen() {
     >
       <RequireSession>
         <HouseholdChoices />
-        <MembershipNote />
+        <MembershipNote className="xl:hidden" />
       </RequireSession>
     </SetupFrame>
   );

@@ -60,6 +60,7 @@ test.describe("no demo session", () => {
     },
     { path: "/privacy/correct", title: "Correct a fact" },
     { path: "/privacy/report", title: "Report a recommendation" },
+    { path: "/privacy/private", title: "Only you can see this" },
   ];
 
   for (const { path, title } of routes) {
@@ -300,18 +301,13 @@ test("demo storage holds no secrets and no typed feedback", async ({
   await page.getByRole("button", { name: "Continue to approval" }).click();
   await page.getByRole("button", { name: "Simulate approval" }).click();
 
-  await page.goto("/privacy/correct");
-  await page.getByLabel("Which fact is wrong?").fill("Electricity bill date");
-  await page.getByLabel("What should it be?").fill("PRIVATE-NOTE-4821");
-  await page.getByRole("button", { name: "Save correction" }).click();
-  await expect(page.locator("main")).toContainText("Not sent and not accepted");
-
   await page.goto("/privacy/report");
   await page.getByRole("button", { name: "Save report" }).click();
   await expect(
     page.getByText("Please choose what the problem is."),
   ).toBeVisible();
   await page.getByLabel("It's hard to understand").check();
+  await page.getByLabel("Details (optional)").fill("PRIVATE-NOTE-4821");
   await page.getByRole("button", { name: "Save report" }).click();
   await expect(page.locator("main")).toContainText("Saved as a proposal");
 
@@ -407,7 +403,9 @@ for (const viewport of VIEWPORTS) {
       await check("handoff result");
 
       await page.goto("/privacy/correct");
-      await page.getByRole("button", { name: "Save correction" }).click();
+      await page
+        .getByRole("button", { name: "Preview what would change" })
+        .click();
       await check("correct with errors");
 
       await page.goto("/privacy/report");
