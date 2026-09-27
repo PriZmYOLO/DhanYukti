@@ -127,8 +127,8 @@ false: statement upload shows "Not available in this build".
 - L01: complete
 - L02: complete
 - L03: PASS
-- L04: complete against the demo adapter; live Anumati AA adapter built
-  and tested against a local mock (awaiting Anumati credentials)
+- L04: complete; live Anumati AA adapter verified end to end on the
+  Anumati UAT sandbox on 28 Sep (see docs/AA_INTEGRATION.md)
 - L05: complete against the demo adapters (awaiting real backend)
 - Job 2a (government insurance check, PMJJBY/PMSBY on AA data):
   complete on live links; consent-gated by "Alerts and suggested actions"
