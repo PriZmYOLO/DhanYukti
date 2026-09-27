@@ -5,6 +5,7 @@ import { Bi, ConfTag, SpeakBtn } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
 import { day, inrSigned } from "@/lib/format";
 import type { NBA } from "@/lib/types";
+import ReportForm from "@/components/gov/ReportForm";
 
 export default function KyonSheet({ nba, open, onClose }: { nba: NBA | null; open: boolean; onClose: () => void }) {
   const { t, lang } = useApp();
@@ -48,6 +49,7 @@ export default function KyonSheet({ nba, open, onClose }: { nba: NBA | null; ope
               : t({ hi: "Yeh salah nahi, jaankari hai", en: "This is guidance, not advice" })}</p>
           </div>
         </div>
+        <ReportForm key={nba.id} cardId={nba.id} engine={nba.engine} />
         <p className="text-[11px] text-muted text-center">{nba.engine} · {lang === "hi" ? "Niyam ginte hain, AI sirf samjhata hai" : "Rules calculate, AI only explains"}</p>
       </div>
     </Sheet>

@@ -12,6 +12,7 @@ import {
   deleteProfile,
 } from "@/lib/server/engines/cover/store";
 import { deleteAllTags } from "@/lib/server/insurance/tags";
+import { deleteMemberProfile } from "@/lib/server/onboarding/store";
 
 /**
  * Grant or withdraw one DPDP purpose. Both are one call, same effort
@@ -69,6 +70,7 @@ async function deleteDataFor(sid: string, purpose: PurposeId) {
     await deleteConditions(sid);
   }
   if (purpose === "health_conditions") await deleteConditions(sid);
-  // manual_entries / member_profile live in the browser-only demo adapters
-  // in this build (not enforced server-side yet; the notice says so).
+  if (purpose === "member_profile") await deleteMemberProfile(sid);
+  // manual_entries live only in the browser in this build (the notice says
+  // withdrawal isn't enforced server-side yet).
 }

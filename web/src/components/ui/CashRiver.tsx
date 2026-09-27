@@ -79,8 +79,8 @@ export default function CashRiver({ river, onMove, compact }: {
         <line x1="8" x2={W - 8} y1={zeroY} y2={zeroY} stroke="#17153b" strokeOpacity=".25" />
         <text x="10" y={zeroY + 12} fontSize="10" fill="#6B6887">₹0</text>
 
-        <motion.path d={area} fill={`url(#ar${uid})`} animate={{ d: area }} transition={{ duration: 0.6 }} />
-        <motion.path d={line} fill="none" stroke={`url(#ln${uid})`} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" animate={{ d: line }} transition={{ duration: 0.6 }} />
+        <motion.path d={area} fill={`url(#ar${uid})`} initial={{ d: area }} animate={{ d: area }} transition={{ duration: 0.6 }} />
+        <motion.path d={line} fill="none" stroke={`url(#ln${uid})`} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" initial={{ d: line }} animate={{ d: line }} transition={{ duration: 0.6 }} />
 
         {/* the dip */}
         {river.gap > 0 && (() => {
@@ -88,7 +88,7 @@ export default function CashRiver({ river, onMove, compact }: {
           if (i < 0) return null;
           return (<g>
             <circle cx={x(i)} cy={scale.y(river.min_balance)} r="6" fill="#E0473E" stroke="#fff" strokeWidth="2.5" />
-            <motion.circle cx={x(i)} cy={scale.y(river.min_balance)} r="6" fill="none" stroke="#E0473E" animate={{ r: [6, 16], opacity: [0.8, 0] }} transition={{ repeat: Infinity, duration: 1.6 }} />
+            <motion.circle cx={x(i)} cy={scale.y(river.min_balance)} r="6" fill="none" stroke="#E0473E" initial={{ r: 6 }} animate={{ r: [6, 16], opacity: [0.8, 0] }} transition={{ repeat: Infinity, duration: 1.6 }} />
           </g>);
         })()}
         {scale.clipped && (() => {
@@ -106,7 +106,7 @@ export default function CashRiver({ river, onMove, compact }: {
             <g key={ev.id} style={{ cursor: ev.movable && onMove ? "grab" : "default" }}
               onPointerDown={(e) => { if (ev.movable && onMove) { e.stopPropagation(); (e.target as Element).setPointerCapture?.(e.pointerId); setDrag({ ev, from: i, x: i }); setScrub(null); } }}>
               <line x1={cx} x2={cx} y1={cy + 10} y2={BOT} stroke={credit ? "#1F8A5B" : "#17153b"} strokeOpacity=".12" />
-              {ev.movable && onMove && <motion.circle cx={cx} cy={cy} r="15" fill="#F7C548" opacity=".45" animate={{ r: [13, 17, 13] }} transition={{ repeat: Infinity, duration: 1.8 }} />}
+              {ev.movable && onMove && <motion.circle cx={cx} cy={cy} r="15" fill="#F7C548" opacity=".45" initial={{ r: 13 }} animate={{ r: [13, 17, 13] }} transition={{ repeat: Infinity, duration: 1.8 }} />}
               <circle cx={cx} cy={cy} r={ev.movable ? 12 : 9.5} fill={credit ? "#1F8A5B" : ev.type === "fee" ? "#D96C3F" : ev.type === "emi" ? "#2E2A6B" : "#E0473E"} stroke="#fff" strokeWidth="2" />
               <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={ev.movable ? 11 : 9} fontWeight="800" fill="#fff">
                 {credit ? "₹" : ev.type === "fee" ? "✎" : ev.type === "emi" ? "E" : ev.type === "bill" ? "⚡" : "−"}

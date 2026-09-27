@@ -12,7 +12,7 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-28.1";
+export const NOTICE_VERSION = "2026-09-28.2";
 
 export type PurposeId =
   | "cover_profile"
@@ -147,21 +147,22 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
     },
     purpose: {
       standard:
-        "To show who is in the household and keep each member's data separate.",
-      simple: "To know who is in the family and keep your data yours.",
+        "To remember your onboarding answers (family size, dependents, work, loans, goal) and the members you invite, so you don't have to repeat them.",
+      simple: "To remember your family answers and who you invited.",
     },
     data: {
-      standard: "Display name, your role in the household, invites you accept.",
-      simple: "Your name and your place in the family.",
+      standard:
+        "Your onboarding answers, including which ones you skipped or didn't know, and invite codes you create. Never bank data.",
+      simple: "Your family answers and invites. Never bank data.",
     },
     retention: {
       standard:
-        "Kept while you're a member. Deleted within 30 days of leaving or withdrawing.",
-      simple: "Deleted within 30 days after you leave or say stop.",
+        "Kept while this consent is on, at most 90 days. Deleted immediately when you withdraw, with any open invites.",
+      simple: "Deleted as soon as you say stop.",
     },
     processor: null,
     in_build: true,
-    enforced: false,
+    enforced: true,
   },
   {
     id: "family_rules",
@@ -192,8 +193,8 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
     },
     data: {
       standard:
-        "Only the nudge text (for example “₹4,200 short on the 28th”). Never names, account numbers or balances history.",
-      simple: "Only the message text. Never your name or account number.",
+        "Only the text on the card you tap (for example “₹4,200 short on the 28th”), with family members' names removed before it leaves DhanYukti. Never account numbers or balance history.",
+      simple: "Only the message text, names removed. Never account numbers.",
     },
     retention: {
       standard:
@@ -282,8 +283,9 @@ export interface LedgerEntry {
     | "aa_approved"
     | "aa_revoked"
     | "aa_ended"
-    | "engine_run";
-  /** DPDP purpose id, "aa:<short link ref>" or "engine:cover:<input hash>". */
+    | "engine_run"
+    | "report_filed";
+  /** DPDP purpose id, "aa:<short link ref>", "engine:cover:<input hash>" or "report:<id>". */
   subject: string;
   receipt_id: string;
   notice_version: string | null;

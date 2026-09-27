@@ -10,6 +10,8 @@ import ProCharts from "@/components/extras/ProCharts";
 import Gullak from "@/components/art/Gullak";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
+import CoverCheck from "@/components/gov/CoverCheck";
+import SurakshaCheck from "@/components/gov/SurakshaCheck";
 import { inr } from "@/lib/format";
 
 export default function Goals() {
@@ -29,6 +31,11 @@ export default function Goals() {
     window.addEventListener("devicemotion", onMotion);
     return () => window.removeEventListener("devicemotion", onMotion);
   }, [speak, progress]);
+
+  // Deep link from the Home cover card: /app/goals#cover
+  useEffect(() => {
+    if (data && window.location.hash === "#cover") setTimeout(() => document.getElementById("cover")?.scrollIntoView({ behavior: "smooth" }), 150);
+  }, [data]);
 
   if (!data) return <div className="p-5 space-y-4"><Skeleton h={220} /><Skeleton h={300} /></div>;
   return (
@@ -54,6 +61,13 @@ export default function Goals() {
           <AffordCheck />
         </div>
       </div>
+      <section id="cover" className="scroll-mt-4">
+        <SectionTitle v={{ hi: "Parivaar ki suraksha", en: "Family protection" }} right={<span className="text-[11px] font-bold text-muted">{lang === "hi" ? "Engine, product nahi" : "Engine, not a product"}</span>} />
+        <div className="lg:grid lg:grid-cols-[1fr_1.2fr] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+          <SurakshaCheck />
+          <CoverCheck />
+        </div>
+      </section>
       <div className="lg:grid lg:grid-cols-2 lg:gap-6">
         <div>
           <SectionTitle v={{ hi: "Kahaan gaya paisa", en: "Where the money went" }} />

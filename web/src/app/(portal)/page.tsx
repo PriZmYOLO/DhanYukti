@@ -14,19 +14,21 @@ import { metricValue } from "@/components/home/HealthTiles";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { aaLive, liveStage, LIVE_CONSENT, LIVE_STEPS, type SourceLink } from "@/lib/aa-live";
-import { recordDpdp } from "@/lib/dpdp-ledger";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
+import { gov } from "@/lib/gov";
+import { DpdpPurposes, useDpdp } from "@/components/gov/Dpdp";
+import InviteBox from "@/components/gov/InviteBox";
+import VoiceLanguages from "@/components/gov/VoiceLanguages";
+import { EMPTY_ANSWERS, GOALS, answered, unansweredCount, type Answer, type GoalIntent, type OnboardingAnswers, type WorkKind } from "@/lib/onboarding/answers";
+import type { ConsentChoices } from "@/lib/provisional/h03/types";
 
-const STEPS = ["splash", "language", "login", "family", "passport", "connect", "reveal", "gullak"] as const;
+const STEPS = ["splash", "language", "login", "family", "passport", "connect", "reveal", "invite", "gullak"] as const;
 type Step = (typeof STEPS)[number];
 
 const LANGS = [
   { code: "hi", name: "हिंदी", en: "Hindi", sample: "Namaste! Main DhanYukti hoon, aapka paisa saathi.", ok: true },
   { code: "en", name: "English", en: "English", sample: "Hello! I am DhanYukti, your money companion.", ok: true },
-  { code: "ta", name: "தமிழ்", en: "Tamil", sample: "வணக்கம்! நான் தன்யுக்தி.", ok: false },
-  { code: "mr", name: "मराठी", en: "Marathi", sample: "नमस्कार! मी धनयुक्ती.", ok: false },
-  { code: "bn", name: "বাংলা", en: "Bengali", sample: "নমস্কার! আমি ধনযুক্তি।", ok: false },
 ];
 
 export default function Onboarding() {
@@ -36,10 +38,12 @@ export default function Onboarding() {
   const [step, setStep] = useState<Step>("splash");
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
-  const [fam, setFam] = useState({ members: 4, earners: 1, school: 2 });
-  const [work, setWork] = useState("naukri");
-  const [loans, setLoans] = useState<boolean | null>(null);
-  const [dpdp, setDpdp] = useState<boolean | null>(null);
+  const [ans, setAnsS] = useState<OnboardingAnswers>(() => readLocalAnswers());
+  const setAns = (a: OnboardingAnswers) => { setAnsS(a); try { localStorage.setItem("dy.onboarding", JSON.stringify(a)); } catch { /* private mode */ } };
+  const [saved, setSaved] = useState<"device" | "server" | "error">("device");
+  const dpdp = useDpdp();
+  // The three AA grants beside source access; every one starts off (default deny).
+  const [grants, setGrants] = useState<Omit<ConsentChoices, "source_access">>({ household_computation: false, viewer_scope: "only_me", alerts_and_actions: false });
   const [steps, setSteps] = useState<{ key: string; label: L; done: boolean }[]>([]);
   const [shown, setShown] = useState(0);
   const [mode, setMode] = useState<string>("");
@@ -52,6 +56,14 @@ export default function Onboarding() {
 
 
   const go = (s: Step) => setStep(s);
+  const profileOn = dpdp.status("member_profile") === "granted";
+
+  // Answers are saved on the server only under DPDP "member_profile";
+  // without it they stay on this phone. Skipped questions stay "unanswered".
+  useEffect(() => {
+    if (!profileOn) { setSaved("device"); return; }
+    gov.saveOnboarding(ans).then(() => setSaved("server")).catch(() => setSaved("error"));
+  }, [profileOn, ans]);
   const back = () => { const i = STEPS.indexOf(step); if (i > 0) setStep(STEPS[i - 1]); };
 
   async function runFetch(handle: string) {
@@ -127,6 +139,12 @@ export default function Onboarding() {
   async function startAA() {
     setErr(null);
     if (live) return startLive();
+    return startReplay();
+  }
+
+  /** Recorded sandbox (FastAPI replay): the fallback when live isn't set up or the network is bad. */
+  async function startReplay() {
+    setErr(null);
     try {
       const member = data?.household.members.find((m) => m.earner)?.id ?? "m1";
       const r = await api.aaStart(hid, member, mobile || "9999999999");
@@ -145,7 +163,7 @@ export default function Onboarding() {
     // Open the tab inside the tap, before any await, so it isn't blocked as a popup.
     const tab = window.open("about:blank", "_blank");
     try {
-      const link = await aaLive.create();
+      const link = await aaLive.create(grants);
       const h = await aaLive.approve(link.link_id, mobile);
       if (h.mode === "redirect") {
         aaLive.rememberPending(link.link_id);
@@ -205,6 +223,7 @@ export default function Onboarding() {
                 </div>
               ))}
             </div>
+            <div className="mt-5"><VoiceLanguages compact /></div>
             <div className="flex-1" />
             <Btn variant="ink" className="w-full mt-6" onClick={() => go("login")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
           </>)}
@@ -235,44 +254,77 @@ export default function Onboarding() {
           </>)}
 
           {step === "family" && (<>
-            <Title v={{ hi: "Aapka parivaar", en: "Your family" }} sub={{ hi: "Bas 5 tap", en: "Just 5 taps" }} />
-            <div className="mt-4 flex -space-x-3 justify-center">{(data?.household.members ?? []).map((m) => <Avatar key={m.id} kind={m.avatar} size={60} ring />)}</div>
-            <div className="mt-5 space-y-3">
-              {([["members", { hi: "Ghar mein kitne log?", en: "People at home" }, "👨‍👩‍👧‍👦"], ["earners", { hi: "Kitne kamaate hain?", en: "How many earn?" }, "💼"], ["school", { hi: "School jaane wale bachche", en: "Children in school" }, "🎒"]] as const).map(([k, l, e]) => (
-                <div key={k} className="flex items-center gap-3 rounded-[24px] bg-white p-3 shadow-soft">
-                  <span className="text-3xl">{e}</span><span className="flex-1 font-bold text-[15px]">{t(l)}</span>
-                  <button onClick={() => setFam({ ...fam, [k]: Math.max(0, fam[k] - 1) })} className="grid place-items-center h-11 w-11 rounded-full bg-lav"><Minus size={18} /></button>
-                  <span className="w-6 text-center text-2xl font-extrabold num">{fam[k]}</span>
-                  <button onClick={() => setFam({ ...fam, [k]: fam[k] + 1 })} className="grid place-items-center h-11 w-11 rounded-full bg-ink text-white"><Plus size={18} /></button>
-                </div>
-              ))}
+            <Title v={{ hi: "Aapka parivaar", en: "Your family" }} sub={{ hi: "Jo pata ho woh batayein — chhodna bhi theek hai", en: "Answer what you know — skipping is fine" }} />
+            <div className="mt-3 flex -space-x-3 justify-center">{(data?.household.members ?? []).map((m) => <Avatar key={m.id} kind={m.avatar} size={52} ring />)}</div>
+            <div className="mt-4 space-y-2">
+              <CountRow e="👨‍👩‍👧‍👦" l={{ hi: "Ghar mein kitne log?", en: "People at home" }} a={ans.members} set={(v) => setAns({ ...ans, members: v })} />
+              <CountRow e="💼" l={{ hi: "Kitne kamaate hain?", en: "How many earn?" }} a={ans.earners} set={(v) => setAns({ ...ans, earners: v })} />
             </div>
-            <p className="mt-5 font-bold text-sm">{t({ hi: "Kaam kya hai?", en: "Type of work" })}</p>
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Kaun kamaane walon par nirbhar hai?", en: "Who depends on the earners?" })}</p>
+            <div className="mt-2 space-y-2">
+              <CountRow e="🧒" l={{ hi: "Bachche", en: "Children" }} a={ans.dependents.children} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, children: v } })} />
+              <CountRow e="🎒" l={{ hi: "Unmein school jaane wale", en: "Of them, in school" }} a={ans.dependents.children_in_school} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, children_in_school: v } })} />
+              <CountRow e="👵" l={{ hi: "Buzurg (60+)", en: "Elders (60+)" }} a={ans.dependents.elders} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, elders: v } })} />
+              <CountRow e="🧑‍🦽" l={{ hi: "Aur koi nirbhar", en: "Other dependents" }} a={ans.dependents.other} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, other: v } })} />
+            </div>
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Kaam kya hai?", en: "Type of work" })}</p>
             <div className="mt-2 grid grid-cols-4 gap-2">
-              {[["naukri", "🏭", "Naukri", "Job"], ["dukaan", "🏪", "Dukaan", "Shop"], ["gig", "🛵", "Gig", "Gig"], ["mazdoori", "🧱", "Mazdoori", "Daily"]].map(([k, e, hi, en]) => (
-                <button key={k} onClick={() => setWork(k)} className={`rounded-[20px] py-3 ${work === k ? "bg-haldi" : "bg-white"}`}><p className="text-2xl">{e}</p><p className="text-xs font-bold">{lang === "hi" ? hi : en}</p></button>
-              ))}
+              {([["naukri", "🏭", "Naukri", "Job"], ["dukaan", "🏪", "Dukaan", "Shop"], ["gig", "🛵", "Gig", "Gig"], ["mazdoori", "🧱", "Mazdoori", "Daily"]] as const).map(([k, e, hi, en]) => {
+                const on = ans.work.state === "answered" && ans.work.value === k;
+                return <button key={k} onClick={() => setAns({ ...ans, work: on ? { state: "unanswered" } : answered<WorkKind>(k) })} className={`rounded-[20px] py-3 ${on ? "bg-haldi" : "bg-white"}`}><p className="text-2xl">{e}</p><p className="text-xs font-bold">{lang === "hi" ? hi : en}</p></button>;
+              })}
             </div>
-            <p className="mt-5 font-bold text-sm">{t({ hi: "Koi loan chal raha hai?", en: "Any running loans?" })}</p>
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Koi loan chal raha hai?", en: "Any running loans?" })}</p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {([[answered(true), "Haan", "Yes"], [answered(false), "Nahi", "No"], [{ state: "dont_know" } as Answer<boolean>, "Pata nahi", "Not sure"]] as const).map(([v, hi, en]) => {
+                const on = JSON.stringify(ans.loans) === JSON.stringify(v);
+                return <button key={hi} onClick={() => setAns({ ...ans, loans: on ? { state: "unanswered" } : v })} className={`min-h-13 rounded-[20px] font-bold ${on ? "bg-ink text-white" : "bg-white"}`}>{lang === "hi" ? hi : en}</button>;
+              })}
+            </div>
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Sabse bada lakshya?", en: "Your biggest goal?" })}</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {[true, false].map((v) => <button key={String(v)} onClick={() => setLoans(v)} className={`min-h-13 rounded-[20px] font-bold ${loans === v ? "bg-ink text-white" : "bg-white"}`}>{v ? (lang === "hi" ? "Haan" : "Yes") : (lang === "hi" ? "Nahi" : "No")}</button>)}
+              {GOALS.map((g) => {
+                const on = ans.goal.state === "answered" && ans.goal.value === g;
+                return <button key={g} onClick={() => setAns({ ...ans, goal: on ? { state: "unanswered" } : answered<GoalIntent>(g) })} className={`min-h-12 rounded-[18px] px-3 text-left text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-white"}`}>{GOAL_EMOJI[g]} {t(GOAL_LABEL[g])}</button>;
+              })}
             </div>
+            <p className="mt-4 rounded-[18px] bg-lav/70 p-3 text-[12px] leading-snug">
+              {unansweredCount(ans) > 0
+                ? t({ hi: `${unansweredCount(ans)} sawaal chhode — koi baat nahi. Unhe "jawaab nahi diya" maana jaayega, zero nahi.`, en: `${unansweredCount(ans)} left blank — that's fine. They're saved as "not answered", never as zero.` })
+                : t({ hi: "Sab jawaab mil gaye. Shukriya!", en: "All answered. Thank you!" })}
+            </p>
             <div className="flex-1" />
-            <Btn variant="ink" className="w-full mt-6" disabled={loans === null} onClick={() => go("passport")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
+            <Btn variant="ink" className="w-full mt-5" onClick={() => go("passport")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
           </>)}
 
           {step === "passport" && (<>
-            <Title v={{ hi: "Consent Passport", en: "Consent Passport" }} sub={{ hi: "Do alag permission — dono kabhi bhi band kar sakte hain", en: "Two separate permissions — stop either anytime" }} />
-            <ConsentCard tone="rose" tag="DPDP" title={{ hi: "1. Parivaar ki jaankari", en: "1. Family profile" }}
-              see={{ hi: "Parivaar, kaam, bhasha, phone ke signal", en: "Family, work, language, phone signals" }}
-              why={{ hi: "Sahi bhasha aur sahi salah ke liye", en: "To pick the right language and guidance" }}
-              until={{ hi: "Jab tak aap mita na dein", en: "Until you delete it" }}
-              value={dpdp} onChange={(v) => { setDpdp(v); api.dpdp(hid, { profile: true, device_signals: v }).catch(() => {}); recordDpdp("profile", true); recordDpdp("device_signals", v); }} />
+            <Title v={{ hi: "Consent Passport", en: "Consent Passport" }} sub={{ hi: "Alag alag permission — har ek kabhi bhi band kar sakte hain", en: "Separate permissions — stop any of them anytime" }} />
+            <div className="mt-4 rounded-[28px] bg-rose p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-extrabold text-[17px]">{t({ hi: "1. DhanYukti kya rakhe", en: "1. What DhanYukti keeps" })}</p>
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold bg-white text-rose-deep">DPDP</span>
+              </div>
+              <DpdpPurposes dpdp={dpdp} only={["member_profile", "voice", "cover_profile", "device_signals"]} compact tone="rose" />
+              <p className="mt-2 text-[12px] font-semibold">
+                {saved === "server" ? `✓ ${t({ hi: `Aapke jawaab save hue${unansweredCount(ans) ? ` (${unansweredCount(ans)} "jawaab nahi diya")` : ""}`, en: `Your answers are saved${unansweredCount(ans) ? ` (${unansweredCount(ans)} "not answered")` : ""}` })}`
+                  : saved === "error" ? t({ hi: "Jawaab save nahi hue — dobara koshish karein", en: "Couldn't save your answers — try again" })
+                  : t({ hi: "Profile consent ke bina jawaab sirf is phone par rahenge", en: "Without profile consent, answers stay only on this phone" })}
+              </p>
+            </div>
             <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
               see={LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
+            {live && (
+              <div className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
+                <p className="text-[12px] font-bold text-muted px-1">{t({ hi: "Bank data ka istemaal — teeno pehle se band", en: "How the bank data may be used — all start off" })}</p>
+                <GrantRow on={grants.household_computation} set={(v) => setGrants({ ...grants, household_computation: v })} l={{ hi: "Parivaar ke hisaab mein jodein", en: "Use in household calculations" }} />
+                <GrantRow on={grants.alerts_and_actions} set={(v) => setGrants({ ...grants, alerts_and_actions: v })} l={{ hi: "Alert aur salah (sarkari bima check bhi)", en: "Alerts & suggestions (incl. the government insurance check)" }} />
+                <GrantRow on={grants.viewer_scope === "household_adults"} set={(v) => setGrants({ ...grants, viewer_scope: v ? "household_adults" : "only_me" })} l={{ hi: "Ghar ke bade bhi nateeje dekh sakein", en: "Household adults may see the results" }} />
+              </div>
+            )}
             {err && <p className="mt-3 text-sm text-danger font-semibold">{err}{live ? "" : ` — ${t({ hi: "API chal raha hai?", en: "Is the API running?" })}`}</p>}
             <div className="flex-1" />
-            <Btn variant="haldi" className="w-full mt-5" disabled={dpdp === null} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
+            <Btn variant="haldi" className="w-full mt-5" onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
+            {live && <button onClick={startReplay} className="mt-2 w-full min-h-11 text-[13px] font-bold text-muted underline">{t({ hi: "Net kharab? Recorded sandbox (replay) chalayein", en: "Bad network? Use the recorded sandbox (replay)" })}</button>}
             <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}{live ? " · live sandbox" : ""}</p>
           </>)}
 
@@ -327,8 +379,16 @@ export default function Onboarding() {
               const b = data.game.badges.find((x) => x.id === "pehla_kadam") ?? data.game.badges[0];
               api.gameEvent(hid, "setup").then(() => refresh()).catch(() => {});
               celebrate({ points: 100, title: { hi: "Pehla Kadam!", en: "First Step!" }, badge: b ? { ...b, earned: true } : undefined });
-              go("gullak");
+              go("invite");
             }}>{lang === "hi" ? "Badhiya! Aage" : "Great! Next"}</Btn>
+          </>)}
+
+          {step === "invite" && (<>
+            <Title v={{ hi: "Ghar ke aur logon ko bulaayein", en: "Invite others at home" }} sub={{ hi: "Har koi apna consent khud deta hai — kuch bhi apne aap share nahi hota", en: "Everyone gives their own consent — nothing is shared automatically" }} />
+            <InviteBox enabled={profileOn} onEnable={() => void dpdp.set("member_profile", "grant")} />
+            <div className="flex-1" />
+            <Btn variant="ink" className="w-full mt-6" onClick={() => go("gullak")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
+            <button onClick={() => go("gullak")} className="mt-2 w-full min-h-11 text-sm font-bold text-muted">{lang === "hi" ? "Baad mein" : "Later"}</button>
           </>)}
 
           {step === "gullak" && data && (<>
@@ -448,3 +508,51 @@ function LiveConnect({ link, url, err, onRetry, onNext }: {
     </div>
   );
 }
+
+function readLocalAnswers(): OnboardingAnswers {
+  try {
+    const raw = localStorage.getItem("dy.onboarding");
+    if (raw) return { ...EMPTY_ANSWERS, ...(JSON.parse(raw) as OnboardingAnswers) };
+  } catch { /* first run or private mode */ }
+  return EMPTY_ANSWERS;
+}
+
+const GOAL_LABEL: Record<GoalIntent, L> = {
+  education: { hi: "Bachchon ki padhai", en: "Children's education" },
+  emergency_cushion: { hi: "Mushkil waqt ke liye bachat", en: "Emergency cushion" },
+  repay_debt: { hi: "Karz utaarna", en: "Pay off loans" },
+  big_purchase: { hi: "Badi kharidari", en: "A big purchase" },
+  festival_wedding: { hi: "Tyohaar / shaadi", en: "Festival / wedding" },
+  other: { hi: "Kuch aur", en: "Something else" },
+};
+const GOAL_EMOJI: Record<GoalIntent, string> = { education: "🎓", emergency_cushion: "🛟", repay_debt: "🧾", big_purchase: "🏍️", festival_wedding: "🪔", other: "✨" };
+
+/** A count that can be skipped or "don't know" — never silently zero. */
+function CountRow({ e, l, a, set }: { e: string; l: L; a: Answer<number>; set: (v: Answer<number>) => void }) {
+  const { t, lang } = useApp();
+  const n = a.state === "answered" ? a.value : null;
+  const dk = a.state === "dont_know";
+  return (
+    <div className="flex items-center gap-2 rounded-[22px] bg-white p-2.5 pl-3 shadow-soft">
+      <span className="text-2xl">{e}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-bold text-[14px] leading-tight">{t(l)}</span>
+        <button onClick={() => set(dk ? { state: "unanswered" } : { state: "dont_know" })} className={`mt-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${dk ? "bg-ink text-white" : "bg-lav text-muted"}`}>{dk ? "✓ " : ""}{lang === "hi" ? "Pata nahi" : "Not sure"}</button>
+      </span>
+      <button aria-label="−" onClick={() => set(n === null ? answered(0) : n === 0 ? { state: "unanswered" } : answered(n - 1))} className="grid place-items-center h-10 w-10 rounded-full bg-lav shrink-0"><Minus size={16} /></button>
+      <span className={`w-6 text-center font-extrabold num ${n === null ? "text-muted text-lg" : "text-2xl"}`}>{n ?? (dk ? "?" : "–")}</span>
+      <button aria-label="+" onClick={() => set(answered((n ?? 0) + 1))} className="grid place-items-center h-10 w-10 rounded-full bg-ink text-white shrink-0"><Plus size={16} /></button>
+    </div>
+  );
+}
+
+function GrantRow({ on, set, l }: { on: boolean; set: (v: boolean) => void; l: L }) {
+  const { t } = useApp();
+  return (
+    <button onClick={() => set(!on)} role="switch" aria-checked={on} className="w-full flex items-center gap-3 rounded-[16px] px-1 min-h-11 text-left">
+      <span className="flex-1 text-[13px] font-semibold leading-snug">{t(l)}</span>
+      <span className={`h-6 w-6 rounded-md grid place-items-center shrink-0 ${on ? "bg-ink text-white" : "border-2 border-ink/20"}`}>{on && <Check size={14} />}</span>
+    </button>
+  );
+}
+

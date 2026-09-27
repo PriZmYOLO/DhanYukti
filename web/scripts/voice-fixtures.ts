@@ -41,6 +41,18 @@ check(
     assert.equal(numbersKept(en, "सितंबर को 4,200 रुपये"), false);
   },
 );
+check("number guard: digits in every Indian script (Tamil, Bengali, Urdu, Ol Chiki, Meetei)", () => {
+  const en = "On 28 September, your cash may fall short by 4,200 rupees.";
+  for (const t of [
+    "௨௮ செப்டம்பர் ௪,௨௦௦ ரூபாய்",
+    "২৮ সেপ্টেম্বর ৪,২০০ টাকা",
+    "۲۸ ستمبر ۴,۲۰۰ روپے",
+    "᱒᱘ ᱥᱮᱯᱴᱮᱢᱵᱚᱨ ᱔,᱒᱐᱐",
+    "꯲꯸ ꯁꯦꯞꯇꯦꯝꯕꯔ ꯴,꯲꯰꯰",
+  ]) assert.ok(numbersKept(en, t), t);
+  assert.equal(numbersKept(en, "௨௮ செப்டம்பர் ௪,௩௦௦ ரூபாய்"), false);
+});
+
 check(
   "only typed values are accepted (no free text can reach Bhashini)",
   () => {

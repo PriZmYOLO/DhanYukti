@@ -16,10 +16,16 @@ import Sheet from "@/components/ui/Sheet";
 import { Btn, HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp, type Mode } from "@/lib/store";
 import { api } from "@/lib/api";
-import { aaLive, liveArtefact } from "@/lib/aa-live";
-import { recordDpdp } from "@/lib/dpdp-ledger";
 import { day, inr } from "@/lib/format";
-import type { Capability, ConsentArtefact, DpdpGrant, HouseholdSummary, Member } from "@/lib/types";
+import type { Capability, ConsentArtefact, HouseholdSummary, Member } from "@/lib/types";
+import { DpdpPurposes, ValueLedger, useDpdp } from "@/components/gov/Dpdp";
+import LiveLinkCard from "@/components/gov/LiveLink";
+import InviteBox from "@/components/gov/InviteBox";
+import VoiceLanguages from "@/components/gov/VoiceLanguages";
+import MyAnswers from "@/components/gov/MyAnswers";
+import MyReports from "@/components/gov/MyReports";
+import { gov } from "@/lib/gov";
+import type { SourceLink } from "@/lib/provisional/h03/types";
 
 const TABS = [
   { k: "family", hi: "Parivaar", en: "Family" }, { k: "consent", hi: "Consent", en: "Consent" },
@@ -33,30 +39,29 @@ const SHARE: { k: Member["sharing"]; hi: string; en: string }[] = [
 export default function Family() {
   const { data, hid, setHid, t, lang, mode, setMode, setOnboarded, consentHandle, setConsentHandle, refresh } = useApp();
   const router = useRouter();
+  const [tab, setTab] = useState<(typeof TABS)[number]["k"]>("family");
   const [homes, setHomes] = useState<HouseholdSummary[]>([]);
-  const [pass, setPass] = useState<{ aa: ConsentArtefact[]; dpdp: DpdpGrant[] } | null>(null);
+  const [pass, setPass] = useState<{ aa: ConsentArtefact[] } | null>(null);
+  const [liveLinks, setLiveLinks] = useState<SourceLink[]>([]);
+  const dpdp = useDpdp();
   const [caps, setCaps] = useState<Capability[]>([]);
   const [sharing, setSharing] = useState<Record<string, Member["sharing"]>>({});
   const [revoke, setRevoke] = useState<ConsentArtefact | null>(null);
   const [revoked, setRevoked] = useState<string[] | null>(null);
   const [receipt, setReceipt] = useState<ConsentArtefact | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number]["k"]>("family");
 
   useEffect(() => { api.households().then(setHomes).catch(() => {}); api.capabilities().then(setCaps).catch(() => {}); }, []);
-  // Live Anumati links (this browser's session) sit at the top of the passport.
-  const [liveAa, setLiveAa] = useState<ConsentArtefact[]>([]);
-  const earner = data?.household.members.find((m) => m.earner);
-  const loadLive = () => aaLive.available().then((on) => on ? aaLive.list() : []).then((links) =>
-    setLiveAa(links.map((l) => liveArtefact(l, earner ? { id: earner.id, name: earner.name } : undefined)))).catch(() => {});
-  useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); loadLive(); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hid, consentHandle]);
-  const passAa = [...liveAa, ...(pass?.aa ?? [])];
+  useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); }, [hid, consentHandle]);
+  useEffect(() => { if (tab === "consent") gov.links().then(setLiveLinks).catch(() => {}); }, [tab]);
+  const reloadDpdp = dpdp.reload;
+  useEffect(() => { if (tab === "consent") reloadDpdp(); }, [tab, reloadDpdp]);
 
   if (!data) return <div className="p-5 space-y-4"><Skeleton h={200} /><Skeleton h={300} /></div>;
 
   // Household Consent Bundle: each earning adult consents for their own accounts.
   const askConsent = async (memberId: string) => {
-    if (await aaLive.available()) { router.push("/?step=consent"); return; }
+    // Live Anumati: each adult links from their own phone through onboarding.
+    if ((await gov.aaStatus().catch(() => null))?.live_ui_enabled) { router.push("/?step=consent"); return; }
     const r = await api.aaStart(hid, memberId, "9999999999");
     if (r.mode === "live" && r.redirect_url.startsWith("http")) window.open(r.redirect_url, "_blank");
     else router.push(`/anumati?handle=${encodeURIComponent(r.consent_handle)}&mobile=9999999999&return=/app/family`);
@@ -64,14 +69,6 @@ export default function Family() {
 
   const doRevoke = async () => {
     if (!revoke) return;
-    if (revoke.handle.startsWith("aa-")) {
-      // Live link: revoked at Anumati; its fetched data is deleted on the server.
-      await aaLive.revoke(revoke.handle).catch(() => {});
-      setRevoked(["bank_data", "derived_profile"]);
-      if (revoke.handle === consentHandle) setConsentHandle(null);
-      loadLive(); refresh();
-      return;
-    }
     const r = await api.aaRevoke(revoke.handle);
     setRevoked(r.deleted);
     if (revoke.handle === consentHandle) setConsentHandle(null);
@@ -123,17 +120,23 @@ export default function Family() {
         })}
       </div>
 
+      <SectionTitle v={{ hi: "Aapke jawaab", en: "Your answers" }} />
+      <div className="mx-5 lg:mx-0"><MyAnswers onEdit={() => { setOnboarded(false); router.push("/"); }} /></div>
+      <SectionTitle v={{ hi: "Parivaar ko bulaayein", en: "Invite family" }} />
+      <div className="mx-5 lg:mx-0 -mt-5"><InviteBox enabled={dpdp.status("member_profile") === "granted"} onEnable={() => void dpdp.set("member_profile", "grant")} /></div>
       </>)}
       {tab === "consent" && (<>
       <SectionTitle v={{ hi: "Consent Passport", en: "Consent Passport" }} right={<span className="text-[11px] font-bold text-muted">AA + DPDP</span>} />
       <div className="mx-5 lg:mx-0 space-y-3">
+        {liveLinks.map((l) => <LiveLinkCard key={l.link_id} link={l} onChange={(n) => { setLiveLinks((all) => all.map((x) => (x.link_id === n.link_id ? n : x))); reloadDpdp(); }} />)}
         {!pass && <Skeleton h={180} />}
-        {pass && passAa.map((c) => (
+        {pass?.aa.map((c) => (
           <div key={c.handle} className="rounded-[28px] bg-ink text-white p-4 relative overflow-hidden">
             <div className="absolute right-0 top-0 h-full w-2 bg-[repeating-linear-gradient(0deg,#F7C548_0_8px,transparent_8px_14px)] opacity-60" />
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-haldi text-ink text-[11px] font-extrabold px-2.5 py-1">AA · {c.aa}</span>
               <span className={`rounded-full text-[11px] font-extrabold px-2.5 py-1 ${c.status === "ACTIVE" ? "bg-mint text-leaf" : c.status === "REVOKED" ? "bg-danger-soft text-danger" : "bg-white/15"}`}>{c.status}</span>
+              <span className="rounded-full bg-white/10 text-[10px] font-extrabold px-2 py-1 text-white/70" title="Recorded sandbox data for this demo household">REPLAY</span>
               <span className="ml-auto text-xs text-white/60">{c.member_name}</span>
             </div>
             <div className="mt-3 space-y-2 text-[13px]">
@@ -150,18 +153,18 @@ export default function Family() {
             )}
           </div>
         ))}
-        {pass && passAa.length === 0 && (
+        {pass && pass.aa.length === 0 && (
           <button onClick={() => router.push("/?step=consent")} className="w-full rounded-[28px] border-2 border-dashed border-ink/20 p-5 text-center font-bold">
             + {lang === "hi" ? "Bank jodein (Anumati AA)" : "Link bank (Anumati AA)"}
           </button>
         )}
-        {pass && (
-          <div className="rounded-[28px] bg-white p-4 shadow-soft">
-            <div className="flex items-center gap-2 mb-2"><span className="rounded-full bg-rose text-rose-deep text-[11px] font-extrabold px-2.5 py-1">DPDP</span><span className="text-xs text-muted">{lang === "hi" ? "DhanYukti data fiduciary" : "DhanYukti as data fiduciary"}</span></div>
-            {pass.dpdp.map((g) => <DpdpRow key={g.key} g={g} />)}
-          </div>
-        )}
-        {pass && data.household.members.filter((m) => m.earner && !passAa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
+        <div className="rounded-[28px] bg-rose/60 p-4">
+          <div className="flex items-center gap-2 mb-3"><span className="rounded-full bg-white text-rose-deep text-[11px] font-extrabold px-2.5 py-1">DPDP</span><span className="text-xs font-semibold">{lang === "hi" ? "DhanYukti khud kya rakhta hai — har maksad alag" : "What DhanYukti itself keeps — one purpose at a time"}</span></div>
+          <DpdpPurposes dpdp={dpdp} tone="rose" />
+        </div>
+        <ValueLedger dpdp={dpdp} />
+        <MyReports />
+        {pass && data.household.members.filter((m) => m.earner && !pass.aa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
           <div key={m.id} className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
             <Avatar kind={m.avatar} size={40} />
             <div className="flex-1"><p className="font-bold">{m.name}</p><p className="text-xs text-muted">{t({ hi: "Inke khaate abhi jude nahi", en: "Accounts not linked yet" })}</p></div>
@@ -201,6 +204,8 @@ export default function Family() {
       </div>
       <p className="mx-5 lg:mx-0 mt-2 text-[11px] text-muted">{t({ hi: "Mode badalne se paison ka hisaab nahi badalta", en: "Switching mode never changes a financial result" })}</p>
 
+      <SectionTitle v={{ hi: "Sunne ki bhasha", en: "Read-out language" }} />
+      <div className="mx-5 lg:mx-0"><VoiceLanguages /></div>
       <SectionTitle v={{ hi: "Mera data", en: "My data" }} />
       <div className="mx-5 lg:mx-0"><PrivacyControls /></div>
       <div className="mx-5 lg:mx-0 mt-6">
@@ -230,24 +235,6 @@ export default function Family() {
           </div>
         )}
       </Sheet>
-    </div>
-  );
-}
-
-function DpdpRow({ g }: { g: DpdpGrant }) {
-  const { t, hid } = useApp();
-  const [on, setOn] = useState(g.granted);
-  const toggle = () => {
-    const v = !on; setOn(v);
-    recordDpdp(g.key, v);
-    if (g.key === "profile" || g.key === "device_signals") api.dpdp(hid, { profile: g.key === "profile" ? v : true, device_signals: g.key === "device_signals" ? v : true }).catch(() => {});
-  };
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-t border-lav first:border-0">
-      <div className="flex-1"><p className="font-bold text-sm">{t(g.label)}</p><p className="text-[11px] text-muted leading-snug">{t(g.why)} · {t(g.until)}</p></div>
-      <button onClick={toggle} role="switch" aria-checked={on} className={`relative h-8 w-14 rounded-full transition shrink-0 ${on ? "bg-leaf" : "bg-muted/30"}`}>
-        <motion.span className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" animate={{ left: on ? 28 : 4 }} />
-      </button>
     </div>
   );
 }

@@ -12,7 +12,12 @@
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.MOCK_PORT ?? 4020);
-const DEV = "०१२३४५६७८९";
+// Zero digit per language script, so the number guard is exercised for each.
+const ZERO = { hi: 0x966, mr: 0x966, ne: 0x966, mai: 0x966, gom: 0x966, doi: 0x966, brx: 0x966, sa: 0x966,
+  bn: 0x9e6, as: 0x9e6, pa: 0xa66, gu: 0xae6, or: 0xb66, ta: 0xbe6, te: 0xc66, kn: 0xce6, ml: 0xd66,
+  ur: 0x6f0, sd: 0x660, ks: 0x6f0, sat: 0x1c50, mni: 0xabf0 };
+// Languages the mock pretends have no voice, to rehearse "language_unavailable".
+const NO_TTS = new Set((process.env.MOCK_NO_TTS ?? "ks").split(",").filter(Boolean));
 
 function wavTone(seconds = 0.8, rate = 22050) {
   const n = Math.floor(seconds * rate);
@@ -55,26 +60,19 @@ createServer(async (req, res) => {
       req.headers.ulcaapikey !== "mock-key"
     )
       return json(res, 401, { message: "bad key" });
+    const cfg = await body(req);
+    const tasks = cfg.pipelineTasks ?? [];
+    const target = tasks.find((t) => t.taskType === "translation")?.config?.language?.targetLanguage ?? "hi";
+    const ttsLang = tasks.find((t) => t.taskType === "tts")?.config?.language?.sourceLanguage ?? target;
     return json(res, 200, {
       pipelineResponseConfig: [
         {
           taskType: "translation",
-          config: [
-            {
-              serviceId: "mock/indictrans-en-hi",
-              language: { sourceLanguage: "en", targetLanguage: "hi" },
-            },
-          ],
+          config: [{ serviceId: `mock/indictrans-en-${target}`, language: { sourceLanguage: "en", targetLanguage: target } }],
         },
         {
           taskType: "tts",
-          config: [
-            {
-              serviceId: "mock/indic-tts-hi",
-              language: { sourceLanguage: "hi" },
-              supportedVoices: ["male", "female"],
-            },
-          ],
+          config: NO_TTS.has(ttsLang) ? [] : [{ serviceId: `mock/indic-tts-${ttsLang}`, language: { sourceLanguage: ttsLang }, supportedVoices: ["male", "female"] }],
         },
       ],
       pipelineInferenceAPIEndPoint: {
@@ -92,10 +90,12 @@ createServer(async (req, res) => {
     let text = source;
     for (const task of b.pipelineTasks ?? []) {
       if (task.taskType === "translation") {
-        // Digits come back in Devanagari, like some real models do.
-        let target = `[मॉक अनुवाद] ${source.replace(/\d/g, (d) => DEV[Number(d)])}`;
+        // Digits come back in the target script, like some real models do.
+        const lang = task.config?.language?.targetLanguage ?? "hi";
+        const zero = ZERO[lang] ?? 0x966;
+        let target = `[mock ${lang}] ${source.replace(/\d/g, (d) => String.fromCodePoint(zero + Number(d)))}`;
         if (process.env.MOCK_DROP_NUMBERS)
-          target = target.replace(/[०-९,]+/, "");
+          target = target.replace(/[^\s\]]*\p{Nd}[\p{Nd},]*/u, "");
         out.push({
           taskType: "translation",
           config: null,

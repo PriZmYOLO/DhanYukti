@@ -33,7 +33,8 @@ interface Pipeline {
   fetchedAt: number;
 }
 
-let cached: Pipeline | null = null;
+/** One pipeline config per target language (service ids differ by language). */
+const cached = new Map<string, Pipeline>();
 const CACHE_MS = 30 * 60 * 1000;
 
 function safeUrl(url: string): boolean {
@@ -61,8 +62,9 @@ async function post(
   return (await response.json()) as Record<string, unknown>;
 }
 
-async function pipeline(): Promise<Pipeline> {
-  if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return cached;
+async function pipeline(lang = "hi"): Promise<Pipeline> {
+  const hit = cached.get(lang);
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit;
   const body = await post(
     CONFIG_URL,
     {
@@ -71,11 +73,15 @@ async function pipeline(): Promise<Pipeline> {
     },
     {
       pipelineTasks: [
-        {
-          taskType: "translation",
-          config: { language: { sourceLanguage: "en", targetLanguage: "hi" } },
-        },
-        { taskType: "tts", config: { language: { sourceLanguage: "hi" } } },
+        ...(lang === "en"
+          ? []
+          : [
+              {
+                taskType: "translation",
+                config: { language: { sourceLanguage: "en", targetLanguage: lang } },
+              },
+            ]),
+        { taskType: "tts", config: { language: { sourceLanguage: lang } } },
       ],
       pipelineRequestConfig: { pipelineId: PIPELINE_ID },
     },
@@ -106,18 +112,19 @@ async function pipeline(): Promise<Pipeline> {
   const authValue =
     process.env.BHASHINI_INFERENCE_KEY ?? endpoint.inferenceApiKey?.value ?? "";
   if (!authValue) throw new Error("No Bhashini inference key");
-  cached = {
+  const fresh: Pipeline = {
     callbackUrl,
     authName: endpoint.inferenceApiKey?.name ?? "Authorization",
     authValue,
     nmtServiceId: pick(
       "translation",
-      (l) => l.sourceLanguage === "en" && l.targetLanguage === "hi",
+      (l) => l.sourceLanguage === "en" && l.targetLanguage === lang,
     ),
-    ttsServiceId: pick("tts", (l) => l.sourceLanguage === "hi"),
+    ttsServiceId: pick("tts", (l) => l.sourceLanguage === lang),
     fetchedAt: Date.now(),
   };
-  return cached;
+  cached.set(lang, fresh);
+  return fresh;
 }
 
 interface TaskOutput {
@@ -127,8 +134,8 @@ interface TaskOutput {
   config?: { audioFormat?: string; samplingRate?: number } | null;
 }
 
-async function compute(tasks: unknown[], source: string) {
-  const p = await pipeline();
+async function compute(tasks: unknown[], source: string, lang = "hi") {
+  const p = await pipeline(lang);
   const body = await post(
     p.callbackUrl,
     { [p.authName]: p.authValue },
@@ -151,11 +158,11 @@ function audioOf(outputs: TaskOutput[]) {
   };
 }
 
-function ttsTask(p: Pipeline) {
+function ttsTask(p: Pipeline, lang = "hi") {
   return {
     taskType: "tts",
     config: {
-      language: { sourceLanguage: "hi" },
+      language: { sourceLanguage: lang },
       ...(p.ttsServiceId ? { serviceId: p.ttsServiceId } : {}),
       gender: "female",
     },
@@ -188,4 +195,37 @@ export async function translateAndSpeak(english: string) {
 export async function speakHindi(hindi: string) {
   const p = await pipeline();
   return audioOf(await compute([ttsTask(p)], hindi));
+}
+
+/**
+ * Any Bhashini language: English → target translation, then speech in that
+ * language, in one chained call. English is spoken without translation.
+ * Throws "language_unavailable" when Bhashini's pipeline has no speech (or
+ * translation) service for the language, so the caller can say so.
+ */
+export async function translateAndSpeakTo(english: string, lang: string) {
+  const p = await pipeline(lang);
+  if (!p.ttsServiceId || (lang !== "en" && !p.nmtServiceId)) {
+    throw new Error("language_unavailable");
+  }
+  const tasks =
+    lang === "en"
+      ? [ttsTask(p, lang)]
+      : [
+          {
+            taskType: "translation",
+            config: {
+              language: { sourceLanguage: "en", targetLanguage: lang },
+              serviceId: p.nmtServiceId,
+            },
+          },
+          ttsTask(p, lang),
+        ];
+  const outputs = await compute(tasks, english, lang);
+  const text =
+    lang === "en"
+      ? english
+      : (outputs.find((o) => o.taskType === "translation")?.output?.[0]
+          ?.target ?? null);
+  return { text, audio: audioOf(outputs) };
 }

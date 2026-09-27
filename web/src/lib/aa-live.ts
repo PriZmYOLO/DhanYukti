@@ -9,7 +9,7 @@
  * src/lib/server/aa/fiu-client.ts): savings account (DEPOSIT) transactions,
  * 12 months of history, fetched once on approval, consent valid 12 months.
  */
-import type { SourceLink } from "@/lib/provisional/h03/types";
+import type { ConsentChoices, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 import { ensureSession } from "@/lib/session";
 
@@ -72,16 +72,15 @@ export const aaLive = {
     return r.links;
   },
 
-  /** Records the member's choices. Fetches nothing until they approve at Anumati. */
-  async create(): Promise<SourceLink> {
+  /**
+   * Records the member's choices. Fetches nothing until they approve at
+   * Anumati. The three grants beside source access are the member's own
+   * decisions and start off (default deny); the caller passes what they chose.
+   */
+  async create(grants: Omit<ConsentChoices, "source_access">): Promise<SourceLink> {
     await ensureSession();
     const r = await json<{ ok: boolean; link?: SourceLink; reason?: string }>(
-      await fetch("/api/aa/links", opts("POST", {
-        source_access: true,
-        household_computation: true,
-        viewer_scope: "only_me",
-        alerts_and_actions: true,
-      })),
+      await fetch("/api/aa/links", opts("POST", { source_access: true, ...grants })),
     );
     if (!r.ok || !r.link) throw new Error(r.reason ?? "could_not_create");
     return r.link;
