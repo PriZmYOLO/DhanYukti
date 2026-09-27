@@ -856,6 +856,11 @@ export const consentCopy = {
     simple: "Bank link ended",
   },
   ledgerBankLink: { standard: "Bank link", simple: "Bank link" },
+  ledger_engine_run: {
+    standard: "Family cover check run",
+    simple: "Family check done",
+  },
+  ledgerEngineInputs: { standard: "inputs", simple: "inputs" },
   privacyPassportTitle: {
     standard: "Consent Passport",
     simple: "Consent Passport",

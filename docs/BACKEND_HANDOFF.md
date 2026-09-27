@@ -212,6 +212,22 @@ ahead of any private product.
 Any new processing purpose must be added to the notice and checked with
 `hasConsent` before use. AA link events are written to the same ledger.
 
+## 3c. Family cover engine (insurance decisions)
+
+Built by the delivery side because the financial engines hadn't started it.
+Full description: `docs/COVER_ENGINE.md`.
+
+|          |                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| Engine   | `lib/server/engines/cover/engine.ts` → `planCover(profile, conditions, meta)` (pure)               |
+| Contract | `lib/contracts/cover-engine.ts` (`CoverProfile` in, `CoverPlan` out)                               |
+| Routes   | `GET/PUT /api/engine/cover/profile`, `POST /api/engine/cover/run`, `GET /api/engine/cover/prefill` |
+| Consent  | DPDP `cover_profile` (profile) and `health_conditions` (flags); run receipted as `engine_run`      |
+
+**Never:** add an insurer, product, price or commission input to the engine;
+rank named products (IRDAI web-aggregator territory); treat an unknown input
+as zero. The Home decision engine can consume `CoverPlan` as one input.
+
 ## 4. Capability flags (`lib/capabilities.ts`)
 
 | Flag                         | Today                                                                                       | Flip to `true` only when                                                                          |

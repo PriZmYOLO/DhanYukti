@@ -771,3 +771,47 @@ export async function tagPolicy(
   await saveTags(sid, policyKey, tags);
   return { ok: true };
 }
+
+/**
+ * Hints for the family cover profile from this session's own active bank
+ * links: private policies detected (with the member's tags) and whether
+ * PMJJBY/PMSBY premiums were seen. Insurer names are for the member to
+ * recognise their policy; the engine itself never receives them.
+ */
+export async function coverHints(sid: string) {
+  const policies: (ReturnType<typeof detectPolicies>[number] & {
+    link_id: string;
+  })[] = [];
+  let pmjjby: "seen" | "not_seen" | "unknown" = "unknown";
+  let pmsby: "seen" | "not_seen" | "unknown" = "unknown";
+  const tags = (await hasConsent(sid, "insurance_tags"))
+    ? await readTags(sid)
+    : {};
+  for (const id of await sessionLinkIds(sid)) {
+    const record = await loadLink(id);
+    if (
+      !record ||
+      record.session_id !== sid ||
+      record.consent_status !== "active"
+    ) {
+      continue;
+    }
+    const data = await kvGet<StoredAccountData>(keys.data(id));
+    if (!data) continue;
+    for (const p of detectPolicies(data.accounts, tags)) {
+      policies.push({ ...p, link_id: id });
+    }
+    const check = checkJanSuraksha(data.accounts);
+    for (const f of check.findings) {
+      const status =
+        f.status === "premium_seen"
+          ? "seen"
+          : f.status === "not_seen"
+            ? "not_seen"
+            : "unknown";
+      if (f.scheme === "pmjjby" && pmjjby !== "seen") pmjjby = status;
+      if (f.scheme === "pmsby" && pmsby !== "seen") pmsby = status;
+    }
+  }
+  return { policies, pmjjby, pmsby };
+}

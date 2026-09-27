@@ -186,7 +186,9 @@ function LedgerList({
                 {text(`ledger_${entry.kind}`)} ·{" "}
                 {purpose
                   ? t(purpose.title)
-                  : `${text("ledgerBankLink")} …${entry.subject.replace(/^aa:/, "")}`}
+                  : entry.kind === "engine_run"
+                    ? `${text("ledgerEngineInputs")} #${entry.subject.replace(/^engine:cover:/, "")}`
+                    : `${text("ledgerBankLink")} …${entry.subject.replace(/^aa:/, "")}`}
               </p>
               <p className="text-muted-foreground text-xs">
                 <DateDisplay value={entry.at} /> · {text("receiptId")}{" "}

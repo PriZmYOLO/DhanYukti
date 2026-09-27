@@ -12,9 +12,11 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-27.1";
+export const NOTICE_VERSION = "2026-09-27.2";
 
 export type PurposeId =
+  | "cover_profile"
+  | "health_conditions"
   | "member_profile"
   | "manual_entries"
   | "insurance_tags"
@@ -55,6 +57,56 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
       standard:
         "Kept while this consent is on, at most 90 days. Deleted immediately when you withdraw.",
       simple: "Kept up to 90 days. Deleted as soon as you say stop.",
+    },
+    processor: null,
+    in_build: true,
+    enforced: true,
+  },
+  {
+    id: "cover_profile",
+    title: {
+      standard: "Family cover check",
+      simple: "Family insurance check",
+    },
+    purpose: {
+      standard:
+        "To work out how much health, life and accident cover each part of your family needs, and the gaps.",
+      simple: "To work out what insurance your family needs.",
+    },
+    data: {
+      standard:
+        "Each member's relation and age, earners' incomes, city type, household spending, loans, savings, cover you already have (sum insured only, no insurer names) and your filters.",
+      simple: "Ages, incomes, city, spending, loans and the cover you have.",
+    },
+    retention: {
+      standard:
+        "Kept while this consent is on, at most 90 days. Deleted immediately when you withdraw, with any health conditions.",
+      simple: "Kept up to 90 days. Deleted as soon as you say stop.",
+    },
+    processor: null,
+    in_build: true,
+    enforced: true,
+  },
+  {
+    id: "health_conditions",
+    title: {
+      standard: "Health conditions for the cover check",
+      simple: "Health problems for the check",
+    },
+    purpose: {
+      standard:
+        "So the cover check can flag waiting periods and remind you to declare conditions to the insurer.",
+      simple: "To warn about waiting periods for health problems.",
+    },
+    data: {
+      standard:
+        "Yes/no flags per member (diabetes, blood pressure, heart, thyroid, asthma, other). No reports, medicines or dates.",
+      simple: "Only yes or no for a few health problems. Nothing else.",
+    },
+    retention: {
+      standard:
+        "Kept while this consent is on, at most 90 days. Deleted immediately when you withdraw.",
+      simple: "Deleted as soon as you say stop.",
     },
     processor: null,
     in_build: true,
@@ -173,8 +225,9 @@ export interface LedgerEntry {
     | "aa_requested"
     | "aa_approved"
     | "aa_revoked"
-    | "aa_ended";
-  /** DPDP purpose id, or "aa:<short link ref>". */
+    | "aa_ended"
+    | "engine_run";
+  /** DPDP purpose id, "aa:<short link ref>" or "engine:cover:<input hash>". */
   subject: string;
   receipt_id: string;
   notice_version: string | null;

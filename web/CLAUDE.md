@@ -118,6 +118,9 @@ false: statement upload shows "Not available in this build".
   member tags who each policy covers under DPDP consent
 - Job 2b: DPDP notice (`/privacy/notice`), hash-chained Value Ledger,
   Consent Passport (`/privacy/passport`) with one-tap revoke/withdraw
+- Family cover engine (`/plan/insurance`, `docs/COVER_ENGINE.md`): needs,
+  gaps and a cover specification (no named products: IRDAI web-aggregator
+  rules); firewall, versioned rules, `npm run test:engine`
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -177,7 +180,9 @@ After editing, run the relevant checks (from `web/`):
 - TypeScript/build: `npx next build`
 - Browser tests: `npm run test:e2e` (Playwright on the installed Chrome,
   against a production build; screenshot baselines are Windows-specific —
-  regenerate with `--update-snapshots` only for intended visual changes)
+  regenerate with `--update-snapshots` only for intended visual changes;
+  on other platforms visual comparison is skipped, other checks still run)
+- Engine fixtures: `npm run test:engine`
 - Locally Playwright uses 2 workers; stop any servers you start when a task
   ends.
 

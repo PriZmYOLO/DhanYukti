@@ -7,6 +7,10 @@ import {
   purposeStates,
   readLedger,
 } from "@/lib/server/dpdp/ledger";
+import {
+  deleteConditions,
+  deleteProfile,
+} from "@/lib/server/engines/cover/store";
 import { deleteAllTags } from "@/lib/server/insurance/tags";
 
 /**
@@ -45,11 +49,26 @@ export async function setConsent(
     action === "grant" ? "dpdp_granted" : "dpdp_withdrawn",
     purpose.id,
   );
+  // Health conditions only exist alongside the family profile: withdrawing
+  // the profile withdraws them too, with their own receipt.
+  if (action === "withdraw" && purpose.id === "cover_profile") {
+    const conditions = purposeStates(await readLedger(sid)).find(
+      (p) => p.id === "health_conditions",
+    );
+    if (conditions?.status === "granted") {
+      await appendLedger(sid, "dpdp_withdrawn", "health_conditions");
+    }
+  }
   return { ok: true, receipt, changed: true };
 }
 
 async function deleteDataFor(sid: string, purpose: PurposeId) {
   if (purpose === "insurance_tags") await deleteAllTags(sid);
+  if (purpose === "cover_profile") {
+    await deleteProfile(sid);
+    await deleteConditions(sid);
+  }
+  if (purpose === "health_conditions") await deleteConditions(sid);
   // manual_entries / member_profile live in the browser-only demo adapters
   // in this build (not enforced server-side yet; the notice says so).
 }
