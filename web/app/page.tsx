@@ -1,3 +1,6 @@
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+
 import { PicturePrepaint } from "@/components/correction/picture-prepaint";
 import {
   PictureGate,
@@ -107,6 +110,13 @@ export default async function Home(props: PageProps<"/">) {
                           cashFlow={need.cash_flow}
                           facts={projection.facts}
                         />
+                        <Link
+                          href="/plan/what-if"
+                          className="focus-ring text-primary inline-flex min-h-11 items-center gap-1.5 rounded text-sm font-medium underline-offset-4 hover:underline"
+                        >
+                          <HomeText k="whatIfLink" />
+                          <ArrowRight aria-hidden className="size-4" />
+                        </Link>
                       </>
                     )
                   }

@@ -279,6 +279,10 @@ export const homeCopy = {
     simple: "No dates in this window.",
   },
   comingUpHeading: { standard: "Coming up", simple: "Coming soon" },
+  whatIfLink: {
+    standard: "What if something changes? Preview it",
+    simple: "What if something changes? Try it",
+  },
   comingUpEmpty: {
     standard: "No upcoming dates have been recorded.",
     simple: "No dates yet.",

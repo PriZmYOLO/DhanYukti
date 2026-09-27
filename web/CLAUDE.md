@@ -109,6 +109,14 @@ accepted correction, `PictureGate` (`components/correction/picture-status.tsx`)
 replaces every Home/Why figure with "Your household picture will be
 recalculated" until session end or the labelled demo Reset.
 
+What-if (L06/L07, `/plan/what-if`) goes through the provisional
+`ScenarioPort` in `lib/provisional/h08/`. Its demo adapter returns
+written-out releases (`demo-releases.ts`) that mirror the Guide §30 golden
+fixtures; it is stateless, so a preview never touches Home or the plan. The
+screen computes nothing: it draws released daily closing cash and shows
+released findings side by side, and shows the L05 recalculation notice
+instead of any figure while the picture is recalculating.
+
 Keep adapters replaceable so real backend responses can be connected without
 rewriting the UI. Never describe a fixture as a live API integration. The
 seams, interfaces and never-do rules for the backend are in
@@ -134,6 +142,8 @@ false: statement upload shows "Not available in this build".
   member tags who each policy covers under DPDP consent
 - Job 2b: DPDP notice (`/privacy/notice`), hash-chained Value Ledger,
   Consent Passport (`/privacy/passport`) with one-tap revoke/withdraw
+- L06 (light) + L07: complete against the h08 demo adapter (awaiting the
+  scenario service)
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03
@@ -154,6 +164,18 @@ Revoke or acceptance hides stale Home/Why figures. `/privacy/private` ("Only
 you can see this") shows the member's own private holdings and nudges.
 `tests/e2e/correction.spec.ts` and `tests/e2e/private-view.spec.ts` cover
 these, including a two-member DOM and network-payload leak check.
+
+L06/L07 (`/plan/what-if`, entry on `/plan`, link under Home's cash strip):
+bounded preset chips (emergency, conditional school-fee move, purchase by
+cash or loan, locked/private asset, provider timeout); a "Preview, your plan
+is unchanged" banner; a before/after step chart of daily closing cash with
+the floor, plus key figures side by side; a no-feasible-option state; a
+loan case that says "Total cost needs full loan terms" and never shows a
+total; a dates list with confirmed/inferred badges and the fee extension as
+"Conditional, not accepted"; the goal gap before/after with an "Approve"
+that opens a draft only (L08 owns confirmation). `tests/e2e/what-if.spec.ts`
+asserts every §30 value, Home unchanged after previewing, the recalculation
+gate, Simple words and axe at 375 and 1280.
 
 Known follow-ups:
 
@@ -182,6 +204,11 @@ Known follow-ups:
   release; delete the pre-paint script and its CSS rule then.
 - Pending corrections are shown in the Why sheet and on `/privacy/correct`,
   not yet on Home's own Money now / Coming up rows.
+- What-if: the step chart has no hover tooltip yet (the day-by-day table
+  gives the values). Only the §30 presets can be previewed; free amounts
+  need the scenario service. Figures not printed in §30 (each day's closing,
+  the purchase's first deficit, shock-case floor gaps) were worked out by
+  hand from the §30 inputs; replace them with engine output.
 
 Backend & integrations (Anish, provisional):
 
@@ -194,6 +221,8 @@ Backend & integrations (Anish, provisional):
   revoke/acceptance, and owner-only release of private items
   (`docs/BACKEND_HANDOFF.md` §4–5). Until then a revoke (demo or live)
   flips the h07 demo picture status in the browser.
+- L06/L07 need the scenario service (H06 routes, H08 policy, E03/E08/E09/
+  E10 from Amma) behind `ScenarioPort` (`docs/BACKEND_HANDOFF.md` §5a).
 - The Home projection's `ConnectionStatus` lacks `awaiting_approval` and
   `expired`; agree how they map.
 - Real AA access: the Anumati FIU module (not the Perfios Hub, which has

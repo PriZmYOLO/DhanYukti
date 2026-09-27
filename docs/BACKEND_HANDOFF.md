@@ -338,6 +338,100 @@ type OwnPrivateView =
 `tests/e2e/private-view.spec.ts` checks this with two members: each one's
 DOM and every network response their browser received.
 
+## 5a. What-if scenarios (H08)
+
+|           |                                                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| Seam      | `lib/provisional/h08/index.ts` exports `scenarioPort`                                                            |
+| Interface | `ScenarioPort` in `lib/provisional/h08/port.ts`; shapes in `types.ts`                                            |
+| Screen    | `/plan/what-if` (L06 dates and goal, L07 shock and affordability); entry on `/plan`, link from Home              |
+| Today     | `demoScenarioAdapter`: stateless, returns written-out releases (`demo-releases.ts`) mirroring Guide §30 fixtures |
+| Owners    | H06 routes and H08 policy (Harshal); E03/E08/E09/E10 (Amma); N06 calendar (Anish)                                |
+
+**To swap:** implement `ScenarioPort` against the scenario routes and export
+it from `index.ts` with `implementation: "h08"`. Map each preset onto your
+change set inside the adapter; the screen only knows the preset ids.
+
+```ts
+interface ScenarioPort {
+  readonly implementation: "demo" | "h08";
+  listPresets(): Promise<ScenarioPreset[]>; // the bounded inputs offered
+  getBaseline(): Promise<ScenarioRelease>; // the live plan's own run
+  preview(presetId: ScenarioPresetId): Promise<ScenarioRelease>; // read-only
+  getPlanDates(): Promise<PlanDatesRelease>; // confirmed / inferred dates
+}
+
+type ScenarioPresetId =
+  | "emergency" // +₹4,000 on 26 Sep
+  | "emergency_fee_delay" // emergency + fee moved to 30 Sep (conditional)
+  | "cash_purchase" // ₹2,000 on 24 Sep from cash
+  | "loan_purchase" // ₹2,000 on 24 Sep on a loan with incomplete terms
+  | "goal_funding" // 15,000 target, 5,000 earmark, 2 × 3,000
+  | "hidden_asset" // a locked or private asset
+  | "no_provider"; // a source timeout
+
+type ScenarioRelease =
+  | {
+      status: "feasible" | "no_feasible_option";
+      baseline_snapshot_id: string; // same for every compared release
+      horizon: Horizon; // same for every compared release
+      changes: ScenarioChange[]; // applied | conditional
+      cash_flow: {
+        horizon: Horizon;
+        daily: { date: IsoDate; closing_cash: MoneyPaise }[]; // every day
+        first_deficit: DatedAmount | null;
+        minimum_cash: DatedAmount;
+        floor: MoneyPaise;
+        gap_to_floor: MoneyPaise;
+      };
+      residual_shortfall: { amount: MoneyPaise; before: IsoDate } | null;
+      finding: string; // plain words, no amounts
+      assumptions: string[];
+      goal: GoalFunding | null; // target, earmarked, gap_before,
+      // contribution { each, count, total, timing }, gap_after
+      is_demo: boolean;
+    }
+  | {
+      status: "pending";
+      cash_flow: null;
+      reason: string;
+      error: ErrorEnvelope | null;
+      loan: { borrowed; total_cost: MoneyPaise | null; missing_terms } | null;
+      // …plus the same baseline_snapshot_id, horizon, changes, is_demo
+    };
+```
+
+`feasible` means at least one permitted, reversible response (or none) keeps
+closing cash at or above zero until payday; `no_feasible_option` means none
+does (E08). `PlanDate` carries `certainty: "confirmed" | "inferred"`, a
+plain-words `basis`, and an optional `suggestion` with
+`status: "conditional"` (the school fee extension).
+
+**Expected values** (Guide §30; `tests/e2e/what-if.spec.ts` asserts each):
+baseline first deficit ₹3,000 on 28, minimum −₹3,500 on 29, gap ₹5,500;
+emergency first deficit ₹1,500 on 27, minimum −₹7,500 on 29; fee delay
+residual ₹2,500 before 30; purchase minimum −₹5,500; goal gap ₹4,000;
+hidden asset leaves shared cash unchanged; no provider is `pending`.
+
+**The screen checks** that every release shares the baseline's snapshot and
+horizon and that `daily` has one valid amount per horizon date; otherwise it
+shows "can't be compared" instead of figures. While the H07 picture status
+is `recalculating` it loads and shows no scenario figure.
+
+**Never:**
+
+- Let `preview` change accepted state, Home's snapshot or a due date.
+  Scenarios are copy-on-write branches of one snapshot.
+- Return a scenario from a different snapshot or horizon than the baseline.
+- Put `0` or `[]` where a result is pending or a timeout happened.
+- Release a loan `total_cost` while any term is missing, or fill a
+  shortfall with borrowing.
+- Release a conditional date (the school extension) as an accepted due date.
+- Count a hidden, locked or another member's private asset in shared cash,
+  or reveal it through a changed figure.
+- Treat "Approve" as done. The screen only opens a draft; confirmation is
+  the action service's (§7.3).
+
 ## 6. Capability flags (`lib/capabilities.ts`)
 
 | Flag                         | Today                                                                                       | Flip to `true` only when                                                                          |
@@ -351,6 +445,8 @@ DOM and every network response their browser received.
 1. **E03 daily closing cash.** The Home cash strip needs
    `daily: { date: IsoDate; closing_cash: MoneyPaise }[]` in `CashFlowFindings`
    before it can draw a balance line. Owned by the financial engines (Amma).
+   The What-if screen (§5a) already consumes this shape in scenario
+   releases.
 2. **Simple-language variants of released text.** Need titles, summaries and
    reasons are released in one wording. The UI's "Simple words" mode can only
    reword its own labels. Either release `{ standard, simple }` variants or
