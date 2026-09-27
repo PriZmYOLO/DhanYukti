@@ -16,3 +16,10 @@ Server code lives in `src/lib/server/`. Live consent terms: `src/lib/aa/live-ter
 (keep in step with `ONBOARDING_CONSENT` in `src/lib/server/aa/fiu-client.ts`).
 Everything else under `/api` goes to FastAPI at `API_ORIGIN`; when that is
 unreachable the screens fall back to demo data.
+
+Onboarding's "connect bank" step uses the live flow when `/api/aa/status`
+reports credentials, storage and `NEXT_PUBLIC_AA_LIVE=true`
+(client: `src/lib/aa-live.ts`); otherwise it keeps the FastAPI replay
+simulation (`/anumati`). DPDP toggles also write to the Value Ledger via
+`src/lib/dpdp-ledger.ts`. Call `ensureSession()` (`src/lib/session.ts`)
+before any new stateful `/api/aa` or `/api/dpdp` call.

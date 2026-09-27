@@ -33,7 +33,7 @@ function buildScript(d: Dashboard): Record<string, Node> {
     done: { bot: [{ hi: "✅ UPI AutoPay set. +50 Paisa Points 🎉", en: "✅ UPI AutoPay set. +50 Paisa Points 🎉" }], replies: [{ label: { hi: "Aage", en: "Next" }, to: lender ? "lender" : "receipt" }] },
     lender: { bot: lender ? [{ hi: `⚠️ ${lender.app} RBI ki list mein nahi hai. ${lender.days} din mein ${inr(lender.charges)} byaaj laga.`, en: `⚠️ ${lender.app} is not on RBI's list. ${inr(lender.charges)} interest in ${lender.days} days.` }] : [],
       replies: [{ label: { hi: "Aage", en: "Next" }, to: "receipt" }] },
-    receipt: { bot: [{ hi: `🧾 Consent raseed\nKya: bank ka 6 mahine ka len-den\nKyon: mahine ke aakhir ki warning\nKab tak: 90 din\nKaun: ${aa.hi} (Account Aggregator)\nBand karne ke liye STOP likhein`, en: `🧾 Consent receipt\nWhat: 6 months of bank transactions\nWhy: month-end warnings\nUntil: 90 days\nHandled by: ${aa.en} (Account Aggregator)\nReply STOP to revoke` }], replies: [] },
+    receipt: { bot: [{ hi: `🧾 Consent raseed\nKya: savings khaate ka 12 mahine ka len-den (ek baar)\nKyon: mahine ke aakhir ki warning\nKab tak: 12 mahine\nKaun: ${aa.hi} (Account Aggregator)\nBand karne ke liye STOP likhein`, en: `🧾 Consent receipt\nWhat: 12 months of savings account transactions (fetched once)\nWhy: month-end warnings\nUntil: 12 months\nHandled by: ${aa.en} (Account Aggregator)\nReply STOP to revoke` }], replies: [] },
   };
 }
 const DEMO_PATH = ["kyon", "karo", "salary", "confirm", "done", "lender", "receipt"];

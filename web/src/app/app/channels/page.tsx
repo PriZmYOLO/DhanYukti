@@ -11,7 +11,7 @@ const ONBOARDING = [
   { hi: "Namaste! Apni bhasha chuniye — Hindi ke liye yahan dabaiye.", en: "Hello! Choose your language — tap here for English." },
   { hi: "Sirf mobile number chahiye. Aadhaar ya PAN nahi.", en: "Only your mobile number. No Aadhaar or PAN." },
   { hi: "Ghar mein kitne log hain? Kitne kamaate hain? Bas tap kijiye.", en: "How many people at home? How many earn? Just tap." },
-  { hi: "Hum dekhenge: bank ka 6 mahine ka len-den. Kyon: taaki mahine ke aakhir mein paise kam na padein. Kab tak: 3 mahine.", en: "We'll see 6 months of bank transactions, so you don't run short at month-end, for 3 months." },
+  { hi: "Hum dekhenge: savings khaate ka 12 mahine ka len-den, ek baar. Kyon: taaki mahine ke aakhir mein paise kam na padein. Kab tak: 12 mahine.", en: "We'll see 12 months of savings account transactions, fetched once, so you don't run short at month-end. Valid 12 months." },
   { hi: "Yeh consent Anumati sambhaalta hai. Kabhi bhi band kar sakte hain.", en: "Anumati handles this consent. You can stop it anytime." },
   { hi: "Aapka hisaab taiyaar hai. Bina aamdani ke aap 12 din chal sakte hain.", en: "Your picture is ready. Without income you'd last 12 days." },
 ];

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, Eye, Target, Hourglass, Volume2, Minus, Plus, ShieldCheck, Lock } from "lucide-react";
+import { ArrowLeft, Check, Eye, Target, Hourglass, Volume2, Minus, Plus, ShieldCheck, Lock, ExternalLink, Landmark } from "lucide-react";
 import HomeScene from "@/components/art/HomeScene";
 import DemoHouseholds from "@/components/DemoHouseholds";
 import Avatar from "@/components/art/Avatar";
@@ -13,6 +13,8 @@ import { Btn, HelpLink, SpeakBtn } from "@/components/ui/bits";
 import { metricValue } from "@/components/home/HealthTiles";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
+import { aaLive, liveStage, LIVE_CONSENT, LIVE_STEPS, type SourceLink } from "@/lib/aa-live";
+import { recordDpdp } from "@/lib/dpdp-ledger";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
 
@@ -42,6 +44,11 @@ export default function Onboarding() {
   const [shown, setShown] = useState(0);
   const [mode, setMode] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
+  // Live Anumati flow (Next.js /api/aa/*). null = still checking this deployment.
+  const [live, setLive] = useState<boolean | null>(null);
+  const [liveLink, setLiveLink] = useState<SourceLink | null>(null);
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
+  const [polling, setPolling] = useState<string | null>(null);
 
 
   const go = (s: Step) => setStep(s);
@@ -67,18 +74,98 @@ export default function Onboarding() {
     const s = p.get("step"); const h = p.get("handle");
     if (s === "consent") setStep("passport");
     if (s === "connect" && h) { setConsentHandle(h); setStep("connect"); runFetch(h); }
+    // Is the live Anumati flow switched on for this deployment?
+    aaLive.available().then(async (on) => {
+      setLive(on);
+      if (!on) return;
+      // Came back (or reloaded) mid-approval: pick the live link up again.
+      const pending = aaLive.pending();
+      if (!pending || (s === "consent")) return;
+      try {
+        const link = await aaLive.get(pending);
+        const stage = liveStage(link);
+        if (stage === "ended" || stage === "done") { aaLive.rememberPending(null); return; }
+        setLiveLink(link); setStep("connect"); setPolling(link.link_id);
+      } catch { aaLive.rememberPending(null); }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Follow the live link while the member approves at Anumati and the bank sends data.
+  useEffect(() => {
+    if (!polling) return;
+    const started = Date.now();
+    let stop = false;
+    const tick = async () => {
+      if (stop) return;
+      try {
+        const link = await aaLive.get(polling);
+        setLiveLink(link);
+        const stage = liveStage(link);
+        if (stage === "done") {
+          aaLive.rememberPending(null); setPolling(null);
+          setConsentHandle(link.link_id);
+          await refresh();
+          return;
+        }
+        if (stage === "ended") {
+          aaLive.rememberPending(null); setPolling(null);
+          setErr(link.consent.status === "denied"
+            ? t({ hi: "Aapne Anumati par mana kiya. Koi data nahi aaya.", en: "You declined at Anumati. No data was fetched." })
+            : t({ hi: "Consent chalu nahi hua. Dobara koshish karein.", en: "The consent didn't go through. Please try again." }));
+          return;
+        }
+      } catch { /* keep trying */ }
+      if (Date.now() - started > 10 * 60_000) { setPolling(null); return; }
+      window.setTimeout(tick, 3000);
+    };
+    tick();
+    return () => { stop = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polling]);
+
   async function startAA() {
     setErr(null);
+    if (live) return startLive();
     try {
       const member = data?.household.members.find((m) => m.earner)?.id ?? "m1";
       const r = await api.aaStart(hid, member, mobile || "9999999999");
       setConsentHandle(r.consent_handle);
-      if (r.mode === "live" && r.redirect_url.startsWith("http")) window.location.href = r.redirect_url;
+      if (r.mode === "live" && r.redirect_url.startsWith("http")) window.location.assign(r.redirect_url);
       else router.push(`/anumati?handle=${encodeURIComponent(r.consent_handle)}&mobile=${encodeURIComponent(mobile || "9999999999")}`);
     } catch (e) { setErr(e instanceof Error ? e.message : "error"); }
+  }
+
+  /**
+   * Live: create the request, start it at Anumati with the member's mobile,
+   * and open Anumati's hosted approval page. The UAT module has no return
+   * URL, so Anumati opens in a new tab and this tab follows the link.
+   */
+  async function startLive() {
+    // Open the tab inside the tap, before any await, so it isn't blocked as a popup.
+    const tab = window.open("about:blank", "_blank");
+    try {
+      const link = await aaLive.create();
+      const h = await aaLive.approve(link.link_id, mobile);
+      if (h.mode === "redirect") {
+        aaLive.rememberPending(link.link_id);
+        setLiveLink(h.link); setLiveUrl(h.redirect_url);
+        if (tab) tab.location.href = h.redirect_url;
+        else { window.location.assign(h.redirect_url); return; }
+        setStep("connect"); setPolling(link.link_id);
+        return;
+      }
+      tab?.close();
+      if (h.mode === "needs_details") {
+        setErr(t({ hi: "Bank mein registered 10 ank ka mobile number daalein", en: "Enter the 10-digit mobile number registered with your bank" }));
+        setStep("login");
+        return;
+      }
+      setErr(h.mode === "unavailable" ? h.reason : t({ hi: "Abhi jud nahi paaye", en: "Couldn't connect right now" }));
+    } catch (e) {
+      tab?.close();
+      setErr(e instanceof Error ? e.message : "error");
+    }
   }
 
   const finish = () => { setOnboarded(true); router.push("/app"); };
@@ -141,6 +228,7 @@ export default function Onboarding() {
               <span className={`h-6 w-6 rounded-md grid place-items-center ${assisted ? "bg-ink text-white" : "border-2 border-ink/20"}`}>{assisted && <Check size={14} />}</span>
             </button>
             {assisted && mobile.length === 10 && <p className="mt-3 rounded-[20px] bg-ink text-white p-3 text-sm font-semibold">✋ {t({ hi: "OTP daalne se pehle phone khud le lijiye. Helper OTP na dekhein.", en: "Take the phone back before entering the OTP. The helper must not see it." })}</p>}
+            {err && step === "login" && <p className="mt-3 text-sm text-danger font-semibold">{err}</p>}
             <div className="mt-3 flex items-center gap-3 rounded-[20px] bg-mint/70 p-3 text-[13px]"><Lock size={18} className="text-leaf shrink-0" />{t({ hi: "Helper (bank mitra) kabhi aapka OTP ya balance nahi dekhte", en: "A helper never sees your OTP or balance" })}</div>
             <div className="flex-1" />
             <Btn variant="ink" className="w-full mt-6" disabled={mobile.length !== 10 || otp.length !== 6} onClick={() => go("family")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
@@ -179,18 +267,20 @@ export default function Onboarding() {
               see={{ hi: "Parivaar, kaam, bhasha, phone ke signal", en: "Family, work, language, phone signals" }}
               why={{ hi: "Sahi bhasha aur sahi salah ke liye", en: "To pick the right language and guidance" }}
               until={{ hi: "Jab tak aap mita na dein", en: "Until you delete it" }}
-              value={dpdp} onChange={(v) => { setDpdp(v); api.dpdp(hid, { profile: true, device_signals: v }).catch(() => {}); }} />
+              value={dpdp} onChange={(v) => { setDpdp(v); api.dpdp(hid, { profile: true, device_signals: v }).catch(() => {}); recordDpdp("profile", true); recordDpdp("device_signals", v); }} />
             <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
-              see={{ hi: "Aapke bank ka 6 mahine ka len-den, RD, bima", en: "6 months of bank transactions, RD, insurance" }}
-              why={{ hi: "Taaki mahine ke aakhir mein paise kam na padein", en: "So you don't run short at month-end" }}
-              until={{ hi: "3 mahine. Kabhi bhi band kar sakte hain", en: "3 months. Stop anytime" }} />
-            {err && <p className="mt-3 text-sm text-danger font-semibold">{err} — {t({ hi: "API chal raha hai?", en: "Is the API running?" })}</p>}
+              see={LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
+            {err && <p className="mt-3 text-sm text-danger font-semibold">{err}{live ? "" : ` — ${t({ hi: "API chal raha hai?", en: "Is the API running?" })}`}</p>}
             <div className="flex-1" />
             <Btn variant="haldi" className="w-full mt-5" disabled={dpdp === null} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
-            <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}</p>
+            <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}{live ? " · live sandbox" : ""}</p>
           </>)}
 
-          {step === "connect" && (<>
+          {step === "connect" && liveLink && (<LiveConnect link={liveLink} url={liveUrl} err={err}
+            onRetry={() => { setErr(null); setLiveLink(null); setStep("passport"); }}
+            onNext={() => setStep("reveal")} />)}
+
+          {step === "connect" && !liveLink && (<>
             <div className="flex-1 flex flex-col items-center pt-6">
               <div className="relative">
                 <motion.div className="absolute inset-0 rounded-full border-4 border-haldi" animate={{ scale: [1, 1.35], opacity: [0.8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} />
@@ -297,6 +387,64 @@ function ConsentCard({ tone, tag, title, see, why, until, value, onChange }: {
           <button onClick={() => onChange(false)} className={`min-h-12 rounded-[16px] font-bold ${value === false ? "bg-ink text-white" : "bg-white/70"}`}>{lang === "hi" ? "Phone signal nahi" : "No phone signals"}</button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Live Anumati progress: real consent state and the accounts the bank sent. */
+function LiveConnect({ link, url, err, onRetry, onNext }: {
+  link: SourceLink; url: string | null; err: string | null; onRetry: () => void; onNext: () => void;
+}) {
+  const { t, lang } = useApp();
+  const stage = liveStage(link);
+  const reached = stage === "ended" ? 0 : LIVE_STEPS.findIndex((s) => s.key === stage) + 1;
+  const done = stage === "done";
+  const accounts = link.import.accounts;
+  return (
+    <div className="flex-1 flex flex-col items-center pt-6">
+      <div className="relative">
+        {!done && <motion.div className="absolute inset-0 rounded-full border-4 border-haldi" animate={{ scale: [1, 1.35], opacity: [0.8, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} />}
+        <div className="grid place-items-center h-32 w-32 rounded-full bg-ink"><Scene kind="bank" size={96} /></div>
+      </div>
+      <h2 className="mt-6 text-2xl font-extrabold text-center">
+        {stage === "sent" ? t({ hi: "Anumati par manzoor karein", en: "Approve at Anumati" })
+          : done ? t({ hi: "Aapke khaate jud gaye", en: "Your accounts are linked" })
+          : t({ hi: "Aapka hisaab ban raha hai…", en: "Preparing your account…" })}
+      </h2>
+      <p className="mt-1 text-xs font-bold text-muted">Anumati AA · {link.is_sandbox ? "live sandbox" : "live"}</p>
+      {stage === "sent" && (
+        <p className="mt-3 text-center text-sm text-muted">{t({ hi: "Anumati naye tab mein khula hai. Wahan OTP daal kar manzoor karein, phir yahan laut aayein.", en: "Anumati opened in a new tab. Enter the OTP there and approve, then come back here." })}</p>
+      )}
+      <div className="mt-6 w-full space-y-2">
+        {LIVE_STEPS.map((s, i) => (
+          <motion.div key={s.key} initial={{ opacity: 0.3 }} animate={{ opacity: i < reached ? 1 : 0.35 }} className="flex items-center gap-3 rounded-[20px] bg-white p-3">
+            <span className={`grid place-items-center h-8 w-8 rounded-full ${i < reached ? "bg-leaf text-white" : "bg-lav"}`}>{i < reached ? <Check size={16} /> : <span className="h-2 w-2 rounded-full bg-muted" />}</span>
+            <span className="text-sm font-semibold">{t(s.label)}</span>
+          </motion.div>
+        ))}
+      </div>
+      {accounts.length > 0 && (
+        <div className="mt-4 w-full space-y-2">
+          {accounts.map((a) => (
+            <div key={a.account_id} className="flex items-center gap-3 rounded-[20px] bg-mint/70 p-3">
+              <span className="grid place-items-center h-10 w-10 rounded-xl bg-white"><Landmark size={18} /></span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold truncate">{a.account_label}</span>
+                <span className="block text-xs text-muted">{a.data_from && a.data_to ? `${a.data_from} → ${a.data_to}` : a.status}</span>
+              </span>
+              {a.balance && <span className="font-extrabold num">{inr(Math.round(a.balance.amount_paise / 100))}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {stage === "sent" && url && (
+        <a href={url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 min-h-11 text-sm font-bold shadow-soft">
+          <ExternalLink size={16} />{lang === "hi" ? "Anumati dobara kholein" : "Open Anumati again"}
+        </a>
+      )}
+      {err && <div className="mt-4 text-center"><p className="text-danger font-semibold text-sm">{err}</p><Btn variant="ink" className="mt-3" onClick={onRetry}>{lang === "hi" ? "Dobara" : "Retry"}</Btn></div>}
+      <div className="flex-1" />
+      {done && <Btn variant="ink" className="w-full mt-6" onClick={onNext}>{lang === "hi" ? "Hisaab dekhein →" : "See my picture →"}</Btn>}
     </div>
   );
 }

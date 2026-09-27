@@ -37,12 +37,12 @@ export default function AnumatiSim() {
         <div className="rounded-2xl bg-white p-4">
           <p className="text-sm"><b>DhanYukti</b> {t({ hi: "aapke data ke liye consent maang raha hai", en: "is requesting consent for your data" })}</p>
           <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[13px]">
-            <dt className="text-muted">Purpose</dt><dd className="font-semibold">Personal finance management</dd>
-            <dt className="text-muted">FI types</dt><dd className="font-semibold">DEPOSIT, RECURRING_DEPOSIT, INSURANCE_POLICIES</dd>
-            <dt className="text-muted">Range</dt><dd className="font-semibold">Last 6 months</dd>
-            <dt className="text-muted">Frequency</dt><dd className="font-semibold">Monthly (periodic)</dd>
-            <dt className="text-muted">Valid till</dt><dd className="font-semibold">90 days</dd>
-            <dt className="text-muted">Data life</dt><dd className="font-semibold">1 day</dd>
+            <dt className="text-muted">Purpose</dt><dd className="font-semibold">Aggregated statement (103)</dd>
+            <dt className="text-muted">FI types</dt><dd className="font-semibold">DEPOSIT (savings account)</dd>
+            <dt className="text-muted">Range</dt><dd className="font-semibold">Last 12 months</dd>
+            <dt className="text-muted">Frequency</dt><dd className="font-semibold">Once, on approval</dd>
+            <dt className="text-muted">Valid till</dt><dd className="font-semibold">12 months</dd>
+            <dt className="text-muted">Data life</dt><dd className="font-semibold">12 months (DhanYukti deletes raw data within 1 day)</dd>
           </dl>
           <p className="mt-2 text-[11px] font-mono text-muted truncate">{handle}</p>
         </div>

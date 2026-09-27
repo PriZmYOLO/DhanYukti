@@ -8,7 +8,6 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app import connectors, store
-from app.connectors.anumati.client import FI_TYPES
 from app.engines.common import L
 from app.fixtures.households import HOUSEHOLDS
 
@@ -63,9 +62,11 @@ def _artefact(c: dict) -> dict:
     created = datetime.fromisoformat(c["created_at"])
     return {"handle": c["handle"], "member_id": c["member_id"], "member_name": c["member_name"], "aa": "Anumati",
             "status": c["status"],
-            "purpose": L("Ghar ke paise ka hisaab (Personal finance management)", "Personal finance management"),
-            "fi_types": FI_TYPES, "range_months": 6, "fetch": "PERIODIC_MONTHLY",
-            "expiry": (created + timedelta(days=90)).date().isoformat(),
+            # Same terms as the live Anumati request (web/src/lib/aa/live-terms.ts):
+            # purpose 103, savings (DEPOSIT), 12 months of history, fetched once, valid 12 months.
+            "purpose": L("Khaate ka saar (Aggregated statement)", "Aggregated statement"),
+            "fi_types": ["DEPOSIT"], "range_months": 12, "fetch": "ONETIME",
+            "expiry": (created + timedelta(days=365)).date().isoformat(),
             "data_life": L("1 din — hisaab ke baad kachcha data delete", "1 day — raw data deleted after compute"),
             "created_at": c["created_at"]}
 

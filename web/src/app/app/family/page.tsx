@@ -16,6 +16,8 @@ import Sheet from "@/components/ui/Sheet";
 import { Btn, HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp, type Mode } from "@/lib/store";
 import { api } from "@/lib/api";
+import { aaLive, liveArtefact } from "@/lib/aa-live";
+import { recordDpdp } from "@/lib/dpdp-ledger";
 import { day, inr } from "@/lib/format";
 import type { Capability, ConsentArtefact, DpdpGrant, HouseholdSummary, Member } from "@/lib/types";
 
@@ -41,12 +43,20 @@ export default function Family() {
   const [tab, setTab] = useState<(typeof TABS)[number]["k"]>("family");
 
   useEffect(() => { api.households().then(setHomes).catch(() => {}); api.capabilities().then(setCaps).catch(() => {}); }, []);
-  useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); }, [hid, consentHandle]);
+  // Live Anumati links (this browser's session) sit at the top of the passport.
+  const [liveAa, setLiveAa] = useState<ConsentArtefact[]>([]);
+  const earner = data?.household.members.find((m) => m.earner);
+  const loadLive = () => aaLive.available().then((on) => on ? aaLive.list() : []).then((links) =>
+    setLiveAa(links.map((l) => liveArtefact(l, earner ? { id: earner.id, name: earner.name } : undefined)))).catch(() => {});
+  useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); loadLive(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hid, consentHandle]);
+  const passAa = [...liveAa, ...(pass?.aa ?? [])];
 
   if (!data) return <div className="p-5 space-y-4"><Skeleton h={200} /><Skeleton h={300} /></div>;
 
   // Household Consent Bundle: each earning adult consents for their own accounts.
   const askConsent = async (memberId: string) => {
+    if (await aaLive.available()) { router.push("/?step=consent"); return; }
     const r = await api.aaStart(hid, memberId, "9999999999");
     if (r.mode === "live" && r.redirect_url.startsWith("http")) window.open(r.redirect_url, "_blank");
     else router.push(`/anumati?handle=${encodeURIComponent(r.consent_handle)}&mobile=9999999999&return=/app/family`);
@@ -54,6 +64,14 @@ export default function Family() {
 
   const doRevoke = async () => {
     if (!revoke) return;
+    if (revoke.handle.startsWith("aa-")) {
+      // Live link: revoked at Anumati; its fetched data is deleted on the server.
+      await aaLive.revoke(revoke.handle).catch(() => {});
+      setRevoked(["bank_data", "derived_profile"]);
+      if (revoke.handle === consentHandle) setConsentHandle(null);
+      loadLive(); refresh();
+      return;
+    }
     const r = await api.aaRevoke(revoke.handle);
     setRevoked(r.deleted);
     if (revoke.handle === consentHandle) setConsentHandle(null);
@@ -110,7 +128,7 @@ export default function Family() {
       <SectionTitle v={{ hi: "Consent Passport", en: "Consent Passport" }} right={<span className="text-[11px] font-bold text-muted">AA + DPDP</span>} />
       <div className="mx-5 lg:mx-0 space-y-3">
         {!pass && <Skeleton h={180} />}
-        {pass?.aa.map((c) => (
+        {pass && passAa.map((c) => (
           <div key={c.handle} className="rounded-[28px] bg-ink text-white p-4 relative overflow-hidden">
             <div className="absolute right-0 top-0 h-full w-2 bg-[repeating-linear-gradient(0deg,#F7C548_0_8px,transparent_8px_14px)] opacity-60" />
             <div className="flex items-center gap-2">
@@ -132,7 +150,7 @@ export default function Family() {
             )}
           </div>
         ))}
-        {pass && pass.aa.length === 0 && (
+        {pass && passAa.length === 0 && (
           <button onClick={() => router.push("/?step=consent")} className="w-full rounded-[28px] border-2 border-dashed border-ink/20 p-5 text-center font-bold">
             + {lang === "hi" ? "Bank jodein (Anumati AA)" : "Link bank (Anumati AA)"}
           </button>
@@ -143,7 +161,7 @@ export default function Family() {
             {pass.dpdp.map((g) => <DpdpRow key={g.key} g={g} />)}
           </div>
         )}
-        {pass && data.household.members.filter((m) => m.earner && !pass.aa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
+        {pass && data.household.members.filter((m) => m.earner && !passAa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
           <div key={m.id} className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
             <Avatar kind={m.avatar} size={40} />
             <div className="flex-1"><p className="font-bold">{m.name}</p><p className="text-xs text-muted">{t({ hi: "Inke khaate abhi jude nahi", en: "Accounts not linked yet" })}</p></div>
@@ -221,6 +239,7 @@ function DpdpRow({ g }: { g: DpdpGrant }) {
   const [on, setOn] = useState(g.granted);
   const toggle = () => {
     const v = !on; setOn(v);
+    recordDpdp(g.key, v);
     if (g.key === "profile" || g.key === "device_signals") api.dpdp(hid, { profile: g.key === "profile" ? v : true, device_signals: g.key === "device_signals" ? v : true }).catch(() => {});
   };
   return (

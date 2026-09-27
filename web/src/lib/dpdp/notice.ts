@@ -12,7 +12,7 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-27.3";
+export const NOTICE_VERSION = "2026-09-28.1";
 
 export type PurposeId =
   | "cover_profile"
@@ -21,7 +21,12 @@ export type PurposeId =
   | "manual_entries"
   | "insurance_tags"
   | "family_rules"
-  | "voice";
+  | "voice"
+  | "device_signals"
+  | "ration"
+  | "electricity"
+  | "rc"
+  | "epf";
 
 export interface NoticePurpose {
   id: PurposeId;
@@ -201,6 +206,56 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
     },
     in_build: true,
     enforced: true,
+  },
+  {
+    id: "device_signals",
+    title: { standard: "Phone signals (SMS)", simple: "Phone SMS" },
+    purpose: { standard: "To catch bill and EMI due dates from bank and biller SMS on your phone.", simple: "To catch bill and EMI dates from SMS." },
+    data: { standard: "Only transaction and due-date SMS from banks and billers. Never personal messages.", simple: "Only bank and bill SMS, never personal ones." },
+    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
+    processor: null,
+    in_build: true,
+    enforced: false,
+  },
+  {
+    id: "ration",
+    title: { standard: "Ration card", simple: "Ration card" },
+    purpose: { standard: "To check which government schemes your family may qualify for.", simple: "To check government schemes for you." },
+    data: { standard: "Ration card category and family size, looked up with your permission.", simple: "Ration card type and family size." },
+    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
+    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    in_build: true,
+    enforced: false,
+  },
+  {
+    id: "electricity",
+    title: { standard: "Electricity bill", simple: "Electricity bill" },
+    purpose: { standard: "To know your bill dates and amounts so month-end plans include them.", simple: "To know when the bill comes and how much." },
+    data: { standard: "Bill amount, due date and payment history for your connection.", simple: "Bill amount and due date." },
+    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
+    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    in_build: true,
+    enforced: false,
+  },
+  {
+    id: "rc",
+    title: { standard: "Vehicle RC", simple: "Vehicle RC" },
+    purpose: { standard: "To check a vehicle loan or insurance that may be due.", simple: "To check vehicle loan and insurance." },
+    data: { standard: "Vehicle registration details: owner match, financier, insurance validity.", simple: "Vehicle loan and insurance details." },
+    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
+    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    in_build: true,
+    enforced: false,
+  },
+  {
+    id: "epf",
+    title: { standard: "EPF passbook", simple: "EPF passbook" },
+    purpose: { standard: "To count your PF savings in your family's safety net.", simple: "To count your PF savings." },
+    data: { standard: "EPF balance and last contribution month.", simple: "PF balance." },
+    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
+    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    in_build: true,
+    enforced: false,
   },
 ];
 
