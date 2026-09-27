@@ -1,0 +1,1333 @@
+{
+ "_note": "Redacted, ReBIT-shaped FI data sample for household A (replay fallback). Synthetic: no real person's data.",
+ "ver": "2.0.0",
+ "timestamp": "2026-09-23T09:00:00.000Z",
+ "txnid": "replay-0000-0000-A",
+ "FI": [
+  {
+   "fipID": "SBI-FIP",
+   "data": [
+    {
+     "linkRefNumber": "LINK-SB-4521",
+     "maskedAccNumber": "XXXXXX4521",
+     "decryptedFI": {
+      "account": {
+       "type": "deposit",
+       "maskedAccNumber": "XXXXXX4521",
+       "version": "2.0.0",
+       "linkedAccRef": "LINK-SB-4521",
+       "profile": {
+        "holders": {
+         "type": "SINGLE",
+         "holder": [
+          {
+           "name": "RAMESH YADAV",
+           "mobile": "XXXXXX4410",
+           "dob": "REDACTED",
+           "email": "REDACTED",
+           "pan": "REDACTED",
+           "ckycCompliance": "true",
+           "nominee": "REGISTERED"
+          }
+         ]
+        }
+       },
+       "summary": {
+        "currentBalance": "6000.00",
+        "currency": "INR",
+        "balanceDateTime": "2026-09-23T23:59:59+05:30",
+        "type": "SAVINGS",
+        "branch": "PANIPAT",
+        "ifscCode": "REDACTED",
+        "status": "ACTIVE",
+        "facility": "NONE",
+        "openingDate": "2014-06-11",
+        "currentODLimit": "0",
+        "drawingLimit": "0"
+       },
+       "transactions": {
+        "startDate": "2026-04-01",
+        "endDate": "2026-09-23",
+        "transaction": [
+         {
+          "txnId": "452100000",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "12444.00",
+          "transactionTimestamp": "2026-04-01T10:00:00+05:30",
+          "valueDate": "2026-04-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100000"
+         },
+         {
+          "txnId": "452100001",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "10844.00",
+          "transactionTimestamp": "2026-04-02T10:00:00+05:30",
+          "valueDate": "2026-04-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100001"
+         },
+         {
+          "txnId": "452100002",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "8644.00",
+          "transactionTimestamp": "2026-04-03T10:00:00+05:30",
+          "valueDate": "2026-04-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100002"
+         },
+         {
+          "txnId": "452100003",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "6544.00",
+          "transactionTimestamp": "2026-04-05T10:00:00+05:30",
+          "valueDate": "2026-04-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100003"
+         },
+         {
+          "txnId": "452100004",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "4444.00",
+          "transactionTimestamp": "2026-04-05T10:00:00+05:30",
+          "valueDate": "2026-04-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100004"
+         },
+         {
+          "txnId": "452100005",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "3444.00",
+          "transactionTimestamp": "2026-04-07T10:00:00+05:30",
+          "valueDate": "2026-04-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100005"
+         },
+         {
+          "txnId": "452100006",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "1844.00",
+          "transactionTimestamp": "2026-04-09T10:00:00+05:30",
+          "valueDate": "2026-04-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100006"
+         },
+         {
+          "txnId": "452100007",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "944.00",
+          "transactionTimestamp": "2026-04-10T10:00:00+05:30",
+          "valueDate": "2026-04-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100007"
+         },
+         {
+          "txnId": "452100008",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "645.00",
+          "transactionTimestamp": "2026-04-12T10:00:00+05:30",
+          "valueDate": "2026-04-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100008"
+         },
+         {
+          "txnId": "452100009",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "-355.00",
+          "transactionTimestamp": "2026-04-14T10:00:00+05:30",
+          "valueDate": "2026-04-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100009"
+         },
+         {
+          "txnId": "452100010",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "-1955.00",
+          "transactionTimestamp": "2026-04-16T10:00:00+05:30",
+          "valueDate": "2026-04-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100010"
+         },
+         {
+          "txnId": "452100011",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "-4155.00",
+          "transactionTimestamp": "2026-04-18T10:00:00+05:30",
+          "valueDate": "2026-04-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100011"
+         },
+         {
+          "txnId": "452100012",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "-4605.00",
+          "transactionTimestamp": "2026-04-20T10:00:00+05:30",
+          "valueDate": "2026-04-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100012"
+         },
+         {
+          "txnId": "452100013",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "-6205.00",
+          "transactionTimestamp": "2026-04-23T10:00:00+05:30",
+          "valueDate": "2026-04-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100013"
+         },
+         {
+          "txnId": "452100014",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1500.00",
+          "currentBalance": "-7705.00",
+          "transactionTimestamp": "2026-04-27T10:00:00+05:30",
+          "valueDate": "2026-04-27",
+          "narration": "BBPS/UHBVN ELECTRICITY BILL",
+          "reference": "REF452100014"
+         },
+         {
+          "txnId": "452100015",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "-12705.00",
+          "transactionTimestamp": "2026-04-28T10:00:00+05:30",
+          "valueDate": "2026-04-28",
+          "narration": "UPI/ST MARYS SCHOOL PANIPAT/FEE",
+          "reference": "REF452100015"
+         },
+         {
+          "txnId": "452100016",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "30000.00",
+          "currentBalance": "17295.00",
+          "transactionTimestamp": "2026-04-30T10:00:00+05:30",
+          "valueDate": "2026-04-30",
+          "narration": "NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY",
+          "reference": "REF452100016"
+         },
+         {
+          "txnId": "452100017",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "118.00",
+          "currentBalance": "17177.00",
+          "transactionTimestamp": "2026-04-30T10:00:00+05:30",
+          "valueDate": "2026-04-30",
+          "narration": "CHRG MIN BAL NON MAINT INCL GST",
+          "reference": "REF452100017"
+         },
+         {
+          "txnId": "452100018",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "15377.00",
+          "transactionTimestamp": "2026-05-01T10:00:00+05:30",
+          "valueDate": "2026-05-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100018"
+         },
+         {
+          "txnId": "452100019",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "13777.00",
+          "transactionTimestamp": "2026-05-02T10:00:00+05:30",
+          "valueDate": "2026-05-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100019"
+         },
+         {
+          "txnId": "452100020",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "11577.00",
+          "transactionTimestamp": "2026-05-03T10:00:00+05:30",
+          "valueDate": "2026-05-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100020"
+         },
+         {
+          "txnId": "452100021",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "9477.00",
+          "transactionTimestamp": "2026-05-05T10:00:00+05:30",
+          "valueDate": "2026-05-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100021"
+         },
+         {
+          "txnId": "452100022",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "7377.00",
+          "transactionTimestamp": "2026-05-05T10:00:00+05:30",
+          "valueDate": "2026-05-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100022"
+         },
+         {
+          "txnId": "452100023",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "6377.00",
+          "transactionTimestamp": "2026-05-07T10:00:00+05:30",
+          "valueDate": "2026-05-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100023"
+         },
+         {
+          "txnId": "452100024",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "4777.00",
+          "transactionTimestamp": "2026-05-09T10:00:00+05:30",
+          "valueDate": "2026-05-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100024"
+         },
+         {
+          "txnId": "452100025",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "3877.00",
+          "transactionTimestamp": "2026-05-10T10:00:00+05:30",
+          "valueDate": "2026-05-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100025"
+         },
+         {
+          "txnId": "452100026",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "3578.00",
+          "transactionTimestamp": "2026-05-12T10:00:00+05:30",
+          "valueDate": "2026-05-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100026"
+         },
+         {
+          "txnId": "452100027",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "2578.00",
+          "transactionTimestamp": "2026-05-14T10:00:00+05:30",
+          "valueDate": "2026-05-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100027"
+         },
+         {
+          "txnId": "452100028",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "978.00",
+          "transactionTimestamp": "2026-05-16T10:00:00+05:30",
+          "valueDate": "2026-05-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100028"
+         },
+         {
+          "txnId": "452100029",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "-1222.00",
+          "transactionTimestamp": "2026-05-18T10:00:00+05:30",
+          "valueDate": "2026-05-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100029"
+         },
+         {
+          "txnId": "452100030",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "-1672.00",
+          "transactionTimestamp": "2026-05-20T10:00:00+05:30",
+          "valueDate": "2026-05-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100030"
+         },
+         {
+          "txnId": "452100031",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "-3272.00",
+          "transactionTimestamp": "2026-05-23T10:00:00+05:30",
+          "valueDate": "2026-05-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100031"
+         },
+         {
+          "txnId": "452100032",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1500.00",
+          "currentBalance": "-4772.00",
+          "transactionTimestamp": "2026-05-27T10:00:00+05:30",
+          "valueDate": "2026-05-27",
+          "narration": "BBPS/UHBVN ELECTRICITY BILL",
+          "reference": "REF452100032"
+         },
+         {
+          "txnId": "452100033",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "-9772.00",
+          "transactionTimestamp": "2026-05-28T10:00:00+05:30",
+          "valueDate": "2026-05-28",
+          "narration": "UPI/ST MARYS SCHOOL PANIPAT/FEE",
+          "reference": "REF452100033"
+         },
+         {
+          "txnId": "452100034",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "30000.00",
+          "currentBalance": "20228.00",
+          "transactionTimestamp": "2026-05-30T10:00:00+05:30",
+          "valueDate": "2026-05-30",
+          "narration": "NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY",
+          "reference": "REF452100034"
+         },
+         {
+          "txnId": "452100035",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "18428.00",
+          "transactionTimestamp": "2026-06-01T10:00:00+05:30",
+          "valueDate": "2026-06-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100035"
+         },
+         {
+          "txnId": "452100036",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "16828.00",
+          "transactionTimestamp": "2026-06-02T10:00:00+05:30",
+          "valueDate": "2026-06-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100036"
+         },
+         {
+          "txnId": "452100037",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "14628.00",
+          "transactionTimestamp": "2026-06-03T10:00:00+05:30",
+          "valueDate": "2026-06-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100037"
+         },
+         {
+          "txnId": "452100038",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "12528.00",
+          "transactionTimestamp": "2026-06-05T10:00:00+05:30",
+          "valueDate": "2026-06-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100038"
+         },
+         {
+          "txnId": "452100039",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "10428.00",
+          "transactionTimestamp": "2026-06-05T10:00:00+05:30",
+          "valueDate": "2026-06-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100039"
+         },
+         {
+          "txnId": "452100040",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "9428.00",
+          "transactionTimestamp": "2026-06-07T10:00:00+05:30",
+          "valueDate": "2026-06-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100040"
+         },
+         {
+          "txnId": "452100041",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "7828.00",
+          "transactionTimestamp": "2026-06-09T10:00:00+05:30",
+          "valueDate": "2026-06-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100041"
+         },
+         {
+          "txnId": "452100042",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "6928.00",
+          "transactionTimestamp": "2026-06-10T10:00:00+05:30",
+          "valueDate": "2026-06-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100042"
+         },
+         {
+          "txnId": "452100043",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "6629.00",
+          "transactionTimestamp": "2026-06-12T10:00:00+05:30",
+          "valueDate": "2026-06-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100043"
+         },
+         {
+          "txnId": "452100044",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "5629.00",
+          "transactionTimestamp": "2026-06-14T10:00:00+05:30",
+          "valueDate": "2026-06-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100044"
+         },
+         {
+          "txnId": "452100045",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "4029.00",
+          "transactionTimestamp": "2026-06-16T10:00:00+05:30",
+          "valueDate": "2026-06-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100045"
+         },
+         {
+          "txnId": "452100046",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "1829.00",
+          "transactionTimestamp": "2026-06-18T10:00:00+05:30",
+          "valueDate": "2026-06-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100046"
+         },
+         {
+          "txnId": "452100047",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "1379.00",
+          "transactionTimestamp": "2026-06-20T10:00:00+05:30",
+          "valueDate": "2026-06-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100047"
+         },
+         {
+          "txnId": "452100048",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "-221.00",
+          "transactionTimestamp": "2026-06-23T10:00:00+05:30",
+          "valueDate": "2026-06-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100048"
+         },
+         {
+          "txnId": "452100049",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1500.00",
+          "currentBalance": "-1721.00",
+          "transactionTimestamp": "2026-06-27T10:00:00+05:30",
+          "valueDate": "2026-06-27",
+          "narration": "BBPS/UHBVN ELECTRICITY BILL",
+          "reference": "REF452100049"
+         },
+         {
+          "txnId": "452100050",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "-6721.00",
+          "transactionTimestamp": "2026-06-28T10:00:00+05:30",
+          "valueDate": "2026-06-28",
+          "narration": "UPI/ST MARYS SCHOOL PANIPAT/FEE",
+          "reference": "REF452100050"
+         },
+         {
+          "txnId": "452100051",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "30000.00",
+          "currentBalance": "23279.00",
+          "transactionTimestamp": "2026-06-30T10:00:00+05:30",
+          "valueDate": "2026-06-30",
+          "narration": "NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY",
+          "reference": "REF452100051"
+         },
+         {
+          "txnId": "452100052",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "118.00",
+          "currentBalance": "23161.00",
+          "transactionTimestamp": "2026-06-30T10:00:00+05:30",
+          "valueDate": "2026-06-30",
+          "narration": "CHRG MIN BAL NON MAINT INCL GST",
+          "reference": "REF452100052"
+         },
+         {
+          "txnId": "452100053",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "21361.00",
+          "transactionTimestamp": "2026-07-01T10:00:00+05:30",
+          "valueDate": "2026-07-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100053"
+         },
+         {
+          "txnId": "452100054",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "19761.00",
+          "transactionTimestamp": "2026-07-02T10:00:00+05:30",
+          "valueDate": "2026-07-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100054"
+         },
+         {
+          "txnId": "452100055",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "17561.00",
+          "transactionTimestamp": "2026-07-03T10:00:00+05:30",
+          "valueDate": "2026-07-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100055"
+         },
+         {
+          "txnId": "452100056",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "15461.00",
+          "transactionTimestamp": "2026-07-05T10:00:00+05:30",
+          "valueDate": "2026-07-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100056"
+         },
+         {
+          "txnId": "452100057",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "13361.00",
+          "transactionTimestamp": "2026-07-05T10:00:00+05:30",
+          "valueDate": "2026-07-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100057"
+         },
+         {
+          "txnId": "452100058",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "12361.00",
+          "transactionTimestamp": "2026-07-07T10:00:00+05:30",
+          "valueDate": "2026-07-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100058"
+         },
+         {
+          "txnId": "452100059",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "10761.00",
+          "transactionTimestamp": "2026-07-09T10:00:00+05:30",
+          "valueDate": "2026-07-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100059"
+         },
+         {
+          "txnId": "452100060",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "3000.00",
+          "currentBalance": "13761.00",
+          "transactionTimestamp": "2026-07-10T10:00:00+05:30",
+          "valueDate": "2026-07-10",
+          "narration": "UPI/QUICKRUPEE/LOAN DISBURSAL",
+          "reference": "REF452100060"
+         },
+         {
+          "txnId": "452100061",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "12861.00",
+          "transactionTimestamp": "2026-07-10T10:00:00+05:30",
+          "valueDate": "2026-07-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100061"
+         },
+         {
+          "txnId": "452100062",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "12562.00",
+          "transactionTimestamp": "2026-07-12T10:00:00+05:30",
+          "valueDate": "2026-07-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100062"
+         },
+         {
+          "txnId": "452100063",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "11562.00",
+          "transactionTimestamp": "2026-07-14T10:00:00+05:30",
+          "valueDate": "2026-07-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100063"
+         },
+         {
+          "txnId": "452100064",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "9962.00",
+          "transactionTimestamp": "2026-07-16T10:00:00+05:30",
+          "valueDate": "2026-07-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100064"
+         },
+         {
+          "txnId": "452100065",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "7762.00",
+          "transactionTimestamp": "2026-07-18T10:00:00+05:30",
+          "valueDate": "2026-07-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100065"
+         },
+         {
+          "txnId": "452100066",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "7312.00",
+          "transactionTimestamp": "2026-07-20T10:00:00+05:30",
+          "valueDate": "2026-07-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100066"
+         },
+         {
+          "txnId": "452100067",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "5712.00",
+          "transactionTimestamp": "2026-07-23T10:00:00+05:30",
+          "valueDate": "2026-07-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100067"
+         },
+         {
+          "txnId": "452100068",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "3340.00",
+          "currentBalance": "2372.00",
+          "transactionTimestamp": "2026-07-25T10:00:00+05:30",
+          "valueDate": "2026-07-25",
+          "narration": "UPI/QUICKRUPEE/LOAN REPAY",
+          "reference": "REF452100068"
+         },
+         {
+          "txnId": "452100069",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1500.00",
+          "currentBalance": "872.00",
+          "transactionTimestamp": "2026-07-27T10:00:00+05:30",
+          "valueDate": "2026-07-27",
+          "narration": "BBPS/UHBVN ELECTRICITY BILL",
+          "reference": "REF452100069"
+         },
+         {
+          "txnId": "452100070",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "-4128.00",
+          "transactionTimestamp": "2026-07-28T10:00:00+05:30",
+          "valueDate": "2026-07-28",
+          "narration": "UPI/ST MARYS SCHOOL PANIPAT/FEE",
+          "reference": "REF452100070"
+         },
+         {
+          "txnId": "452100071",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "30000.00",
+          "currentBalance": "25872.00",
+          "transactionTimestamp": "2026-07-30T10:00:00+05:30",
+          "valueDate": "2026-07-30",
+          "narration": "NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY",
+          "reference": "REF452100071"
+         },
+         {
+          "txnId": "452100072",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "24072.00",
+          "transactionTimestamp": "2026-08-01T10:00:00+05:30",
+          "valueDate": "2026-08-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100072"
+         },
+         {
+          "txnId": "452100073",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "22472.00",
+          "transactionTimestamp": "2026-08-02T10:00:00+05:30",
+          "valueDate": "2026-08-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100073"
+         },
+         {
+          "txnId": "452100074",
+          "type": "DEBIT",
+          "mode": "IMPS",
+          "amount": "2000.00",
+          "currentBalance": "20472.00",
+          "transactionTimestamp": "2026-08-02T10:00:00+05:30",
+          "valueDate": "2026-08-02",
+          "narration": "IMPS/SELF/TRF TO SUNITA YADAV XX7788",
+          "reference": "REF452100074"
+         },
+         {
+          "txnId": "452100075",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "18272.00",
+          "transactionTimestamp": "2026-08-03T10:00:00+05:30",
+          "valueDate": "2026-08-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100075"
+         },
+         {
+          "txnId": "452100076",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "16172.00",
+          "transactionTimestamp": "2026-08-05T10:00:00+05:30",
+          "valueDate": "2026-08-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100076"
+         },
+         {
+          "txnId": "452100077",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "14072.00",
+          "transactionTimestamp": "2026-08-05T10:00:00+05:30",
+          "valueDate": "2026-08-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100077"
+         },
+         {
+          "txnId": "452100078",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "236.00",
+          "currentBalance": "13836.00",
+          "transactionTimestamp": "2026-08-06T10:00:00+05:30",
+          "valueDate": "2026-08-06",
+          "narration": "ACH RTN CHRG BAJAJ FINANCE INCL GST",
+          "reference": "REF452100078"
+         },
+         {
+          "txnId": "452100079",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "12836.00",
+          "transactionTimestamp": "2026-08-07T10:00:00+05:30",
+          "valueDate": "2026-08-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100079"
+         },
+         {
+          "txnId": "452100080",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "11236.00",
+          "transactionTimestamp": "2026-08-09T10:00:00+05:30",
+          "valueDate": "2026-08-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100080"
+         },
+         {
+          "txnId": "452100081",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "10336.00",
+          "transactionTimestamp": "2026-08-10T10:00:00+05:30",
+          "valueDate": "2026-08-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100081"
+         },
+         {
+          "txnId": "452100082",
+          "type": "CREDIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "15336.00",
+          "transactionTimestamp": "2026-08-12T10:00:00+05:30",
+          "valueDate": "2026-08-12",
+          "narration": "UPI/KREDITBEE/LOAN DISBURSAL",
+          "reference": "REF452100082"
+         },
+         {
+          "txnId": "452100083",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "15037.00",
+          "transactionTimestamp": "2026-08-12T10:00:00+05:30",
+          "valueDate": "2026-08-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100083"
+         },
+         {
+          "txnId": "452100084",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "14037.00",
+          "transactionTimestamp": "2026-08-14T10:00:00+05:30",
+          "valueDate": "2026-08-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100084"
+         },
+         {
+          "txnId": "452100085",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "12437.00",
+          "transactionTimestamp": "2026-08-16T10:00:00+05:30",
+          "valueDate": "2026-08-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100085"
+         },
+         {
+          "txnId": "452100086",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "10237.00",
+          "transactionTimestamp": "2026-08-18T10:00:00+05:30",
+          "valueDate": "2026-08-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100086"
+         },
+         {
+          "txnId": "452100087",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "9787.00",
+          "transactionTimestamp": "2026-08-20T10:00:00+05:30",
+          "valueDate": "2026-08-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100087"
+         },
+         {
+          "txnId": "452100088",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "8187.00",
+          "transactionTimestamp": "2026-08-23T10:00:00+05:30",
+          "valueDate": "2026-08-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100088"
+         },
+         {
+          "txnId": "452100089",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1500.00",
+          "currentBalance": "6687.00",
+          "transactionTimestamp": "2026-08-27T10:00:00+05:30",
+          "valueDate": "2026-08-27",
+          "narration": "BBPS/UHBVN ELECTRICITY BILL",
+          "reference": "REF452100089"
+         },
+         {
+          "txnId": "452100090",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5000.00",
+          "currentBalance": "1687.00",
+          "transactionTimestamp": "2026-08-28T10:00:00+05:30",
+          "valueDate": "2026-08-28",
+          "narration": "UPI/ST MARYS SCHOOL PANIPAT/FEE",
+          "reference": "REF452100090"
+         },
+         {
+          "txnId": "452100091",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "30000.00",
+          "currentBalance": "31687.00",
+          "transactionTimestamp": "2026-08-30T10:00:00+05:30",
+          "valueDate": "2026-08-30",
+          "narration": "NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY",
+          "reference": "REF452100091"
+         },
+         {
+          "txnId": "452100092",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1800.00",
+          "currentBalance": "29887.00",
+          "transactionTimestamp": "2026-09-01T10:00:00+05:30",
+          "valueDate": "2026-09-01",
+          "narration": "UPI/VERMA DAIRY MILK/PANIPAT",
+          "reference": "REF452100092"
+         },
+         {
+          "txnId": "452100093",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "118.00",
+          "currentBalance": "29769.00",
+          "transactionTimestamp": "2026-09-01T10:00:00+05:30",
+          "valueDate": "2026-09-01",
+          "narration": "CHRG MIN BAL NON MAINT INCL GST",
+          "reference": "REF452100093"
+         },
+         {
+          "txnId": "452100094",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "28169.00",
+          "transactionTimestamp": "2026-09-02T10:00:00+05:30",
+          "valueDate": "2026-09-02",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100094"
+         },
+         {
+          "txnId": "452100095",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "25969.00",
+          "transactionTimestamp": "2026-09-03T10:00:00+05:30",
+          "valueDate": "2026-09-03",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100095"
+         },
+         {
+          "txnId": "452100096",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "23869.00",
+          "transactionTimestamp": "2026-09-05T10:00:00+05:30",
+          "valueDate": "2026-09-05",
+          "narration": "ACH DR BAJAJ FINANCE LTD EMI 4401",
+          "reference": "REF452100096"
+         },
+         {
+          "txnId": "452100097",
+          "type": "DEBIT",
+          "mode": "ACH",
+          "amount": "2100.00",
+          "currentBalance": "21769.00",
+          "transactionTimestamp": "2026-09-05T10:00:00+05:30",
+          "valueDate": "2026-09-05",
+          "narration": "ACH DR HDFC BANK TWO WHEELER LOAN EMI",
+          "reference": "REF452100097"
+         },
+         {
+          "txnId": "452100098",
+          "type": "DEBIT",
+          "mode": "OTHERS",
+          "amount": "1000.00",
+          "currentBalance": "20769.00",
+          "transactionTimestamp": "2026-09-07T10:00:00+05:30",
+          "valueDate": "2026-09-07",
+          "narration": "RD INSTALMENT A/C XX9012",
+          "reference": "REF452100098"
+         },
+         {
+          "txnId": "452100099",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "19169.00",
+          "transactionTimestamp": "2026-09-09T10:00:00+05:30",
+          "valueDate": "2026-09-09",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100099"
+         },
+         {
+          "txnId": "452100100",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "900.00",
+          "currentBalance": "18269.00",
+          "transactionTimestamp": "2026-09-10T10:00:00+05:30",
+          "valueDate": "2026-09-10",
+          "narration": "UPI/INDANE GAS PANIPAT/LPG REFILL",
+          "reference": "REF452100100"
+         },
+         {
+          "txnId": "452100101",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "5120.00",
+          "currentBalance": "13149.00",
+          "transactionTimestamp": "2026-09-11T10:00:00+05:30",
+          "valueDate": "2026-09-11",
+          "narration": "UPI/KREDITBEE/LOAN REPAYMENT",
+          "reference": "REF452100101"
+         },
+         {
+          "txnId": "452100102",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "299.00",
+          "currentBalance": "12850.00",
+          "transactionTimestamp": "2026-09-12T10:00:00+05:30",
+          "valueDate": "2026-09-12",
+          "narration": "UPI/JIO PREPAID RECHARGE",
+          "reference": "REF452100102"
+         },
+         {
+          "txnId": "452100103",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1000.00",
+          "currentBalance": "11850.00",
+          "transactionTimestamp": "2026-09-14T10:00:00+05:30",
+          "valueDate": "2026-09-14",
+          "narration": "UPI/HP PETROL PUMP GT ROAD",
+          "reference": "REF452100103"
+         },
+         {
+          "txnId": "452100104",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "10250.00",
+          "transactionTimestamp": "2026-09-16T10:00:00+05:30",
+          "valueDate": "2026-09-16",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100104"
+         },
+         {
+          "txnId": "452100105",
+          "type": "DEBIT",
+          "mode": "ATM",
+          "amount": "2200.00",
+          "currentBalance": "8050.00",
+          "transactionTimestamp": "2026-09-18T10:00:00+05:30",
+          "valueDate": "2026-09-18",
+          "narration": "ATM WDL SBI PANIPAT MODEL TOWN",
+          "reference": "REF452100105"
+         },
+         {
+          "txnId": "452100106",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "450.00",
+          "currentBalance": "7600.00",
+          "transactionTimestamp": "2026-09-20T10:00:00+05:30",
+          "valueDate": "2026-09-20",
+          "narration": "UPI/SHARMA MEDICOS/PANIPAT",
+          "reference": "REF452100106"
+         },
+         {
+          "txnId": "452100107",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1600.00",
+          "currentBalance": "6000.00",
+          "transactionTimestamp": "2026-09-23T10:00:00+05:30",
+          "valueDate": "2026-09-23",
+          "narration": "UPI/GUPTA KIRANA STORE/MODEL TOWN",
+          "reference": "REF452100107"
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "fipID": "PNB-FIP",
+   "data": [
+    {
+     "linkRefNumber": "LINK-SB-7788",
+     "maskedAccNumber": "XXXXXX7788",
+     "decryptedFI": {
+      "account": {
+       "type": "deposit",
+       "maskedAccNumber": "XXXXXX7788",
+       "version": "2.0.0",
+       "linkedAccRef": "LINK-SB-7788",
+       "profile": {
+        "holders": {
+         "type": "SINGLE",
+         "holder": [
+          {
+           "name": "SUNITA YADAV",
+           "mobile": "XXXXXX7231",
+           "dob": "REDACTED",
+           "email": "REDACTED",
+           "pan": "REDACTED",
+           "ckycCompliance": "true",
+           "nominee": "REGISTERED"
+          }
+         ]
+        }
+       },
+       "summary": {
+        "currentBalance": "0.00",
+        "currency": "INR",
+        "balanceDateTime": "2026-09-23T23:59:59+05:30",
+        "type": "SAVINGS",
+        "branch": "PANIPAT",
+        "ifscCode": "REDACTED",
+        "status": "ACTIVE",
+        "facility": "NONE",
+        "openingDate": "2014-06-11",
+        "currentODLimit": "0",
+        "drawingLimit": "0"
+       },
+       "transactions": {
+        "startDate": "2026-04-01",
+        "endDate": "2026-09-23",
+        "transaction": [
+         {
+          "txnId": "778800000",
+          "type": "CREDIT",
+          "mode": "IMPS",
+          "amount": "2000.00",
+          "currentBalance": "2000.00",
+          "transactionTimestamp": "2026-08-02T10:00:00+05:30",
+          "valueDate": "2026-08-02",
+          "narration": "IMPS/SELF/TRF FROM RAMESH YADAV XX4521",
+          "reference": "REF778800000"
+         },
+         {
+          "txnId": "778800001",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "1200.00",
+          "currentBalance": "800.00",
+          "transactionTimestamp": "2026-08-04T10:00:00+05:30",
+          "valueDate": "2026-08-04",
+          "narration": "UPI/SABZI MANDI PANIPAT",
+          "reference": "REF778800001"
+         },
+         {
+          "txnId": "778800002",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "800.00",
+          "currentBalance": "0.00",
+          "transactionTimestamp": "2026-08-19T10:00:00+05:30",
+          "valueDate": "2026-08-19",
+          "narration": "UPI/SABZI MANDI PANIPAT",
+          "reference": "REF778800002"
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

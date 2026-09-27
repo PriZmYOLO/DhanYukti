@@ -9,9 +9,9 @@ import type {
   CoverProfile,
   DeclaredCover,
   ProfileMember,
-} from "../lib/contracts/cover-engine";
-import { DEFAULT_FILTERS } from "../lib/contracts/cover-engine";
-import { planCover } from "../lib/server/engines/cover/engine";
+} from "../src/lib/contracts/cover-engine";
+import { DEFAULT_FILTERS } from "../src/lib/contracts/cover-engine";
+import { planCover } from "../src/lib/server/engines/cover/engine";
 
 const L = 100_000 * 100;
 const inr = (lakh: number) => ({

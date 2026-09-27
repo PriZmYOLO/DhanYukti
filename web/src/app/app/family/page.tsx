@@ -1,0 +1,234 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { Eye, Target, Hourglass, ShieldOff, Check, RefreshCcw, Plug } from "lucide-react";
+import TopBar from "@/components/TopBar";
+import Enrich from "@/components/Enrich";
+import ConsentReceipt from "@/components/ConsentReceipt";
+import DeclaredEntry from "@/components/extras/DeclaredEntry";
+import BsaUpload from "@/components/extras/BsaUpload";
+import PrivacyControls from "@/components/extras/PrivacyControls";
+import DataSource from "@/components/home/DataSource";
+import InstallButton from "@/components/InstallButton";
+import Avatar from "@/components/art/Avatar";
+import Sheet from "@/components/ui/Sheet";
+import { Btn, HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
+import { useApp, type Mode } from "@/lib/store";
+import { api } from "@/lib/api";
+import { day, inr } from "@/lib/format";
+import type { Capability, ConsentArtefact, DpdpGrant, HouseholdSummary, Member } from "@/lib/types";
+
+const TABS = [
+  { k: "family", hi: "Parivaar", en: "Family" }, { k: "consent", hi: "Consent", en: "Consent" },
+  { k: "data", hi: "Data", en: "Data" }, { k: "settings", hi: "Settings", en: "Settings" },
+] as const;
+
+const SHARE: { k: Member["sharing"]; hi: string; en: string }[] = [
+  { k: "poora", hi: "Poora", en: "Full" }, { k: "sirf_total", hi: "Sirf total", en: "Totals" }, { k: "private", hi: "Sirf mere liye", en: "Private" },
+];
+
+export default function Family() {
+  const { data, hid, setHid, t, lang, mode, setMode, setOnboarded, consentHandle, setConsentHandle, refresh } = useApp();
+  const router = useRouter();
+  const [homes, setHomes] = useState<HouseholdSummary[]>([]);
+  const [pass, setPass] = useState<{ aa: ConsentArtefact[]; dpdp: DpdpGrant[] } | null>(null);
+  const [caps, setCaps] = useState<Capability[]>([]);
+  const [sharing, setSharing] = useState<Record<string, Member["sharing"]>>({});
+  const [revoke, setRevoke] = useState<ConsentArtefact | null>(null);
+  const [revoked, setRevoked] = useState<string[] | null>(null);
+  const [receipt, setReceipt] = useState<ConsentArtefact | null>(null);
+  const [tab, setTab] = useState<(typeof TABS)[number]["k"]>("family");
+
+  useEffect(() => { api.households().then(setHomes).catch(() => {}); api.capabilities().then(setCaps).catch(() => {}); }, []);
+  useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); }, [hid, consentHandle]);
+
+  if (!data) return <div className="p-5 space-y-4"><Skeleton h={200} /><Skeleton h={300} /></div>;
+
+  // Household Consent Bundle: each earning adult consents for their own accounts.
+  const askConsent = async (memberId: string) => {
+    const r = await api.aaStart(hid, memberId, "9999999999");
+    if (r.mode === "live" && r.redirect_url.startsWith("http")) window.open(r.redirect_url, "_blank");
+    else router.push(`/anumati?handle=${encodeURIComponent(r.consent_handle)}&mobile=9999999999&return=/app/family`);
+  };
+
+  const doRevoke = async () => {
+    if (!revoke) return;
+    const r = await api.aaRevoke(revoke.handle);
+    setRevoked(r.deleted);
+    if (revoke.handle === consentHandle) setConsentHandle(null);
+    api.passport(hid).then(setPass); refresh();
+  };
+
+  return (
+    <div>
+      <TopBar title={lang === "hi" ? "Parivaar" : "Family"} speakText={{ hi: "Yahan parivaar ke sadasya, consent aur privacy hai. Consent kabhi bhi band kar sakte hain.", en: "Family members, consents and privacy. You can revoke consent anytime." }} />
+
+      <div className="mx-5 lg:mx-0 mt-3 grid grid-cols-4 rounded-full bg-white p-1 shadow-soft">
+        {TABS.map((x) => (
+          <button key={x.k} onClick={() => setTab(x.k)} className={`min-h-11 rounded-full text-[13px] font-bold ${tab === x.k ? "bg-ink text-white" : "text-muted"}`}>{lang === "hi" ? x.hi : x.en}</button>
+        ))}
+      </div>
+      {tab === "family" && (<>
+      <SectionTitle v={{ hi: "Demo parivaar badlein", en: "Switch demo household" }} />
+      <div className="flex gap-3 overflow-x-auto no-scrollbar px-5">
+        {homes.map((h) => (
+          <button key={h.id} onClick={() => setHid(h.id)} className={`shrink-0 w-56 rounded-[28px] p-4 text-left transition ${hid === h.id ? "bg-ink text-white shadow-lift" : "bg-white"}`}>
+            <p className="text-[11px] font-bold opacity-60">{t(h.city)} · {inr(h.income)}/{lang === "hi" ? "mahina" : "mo"}</p>
+            <p className="font-extrabold text-[17px] mt-0.5">{t(h.family_name)}</p>
+            <p className="text-xs mt-2 opacity-80 line-clamp-2">{t(h.problem)}</p>
+            <p className={`text-[11px] font-bold mt-2 ${hid === h.id ? "text-haldi" : "text-clay"}`}>→ {t(h.hero)}</p>
+          </button>
+        ))}
+      </div>
+
+      <SectionTitle v={{ hi: "Sadasya aur sharing", en: "Members & sharing" }} />
+      <div className="mx-5 lg:mx-0 space-y-2">
+        {data.household.members.map((m) => {
+          const s = sharing[m.id] ?? m.sharing;
+          return (
+            <div key={m.id} className="rounded-[24px] bg-white p-3 shadow-soft">
+              <div className="flex items-center gap-3">
+                <Avatar kind={m.avatar} size={46} />
+                <div className="flex-1"><p className="font-extrabold">{m.name}{m.age ? <span className="text-muted font-semibold text-sm"> · {m.age}</span> : null}</p><p className="text-xs text-muted">{t(m.role)}</p></div>
+                {m.earner && <span className="rounded-full bg-mint text-leaf text-[11px] font-extrabold px-2 py-1">{lang === "hi" ? "KAMAANE WALE" : "EARNER"}</span>}
+              </div>
+              {m.earner && (
+                <div className="mt-3 grid grid-cols-3 gap-1 rounded-full bg-lav p-1">
+                  {SHARE.map((o) => (
+                    <button key={o.k} onClick={() => setSharing({ ...sharing, [m.id]: o.k })} className={`min-h-11 rounded-full text-[12px] font-bold ${s === o.k ? "bg-ink text-white" : "text-muted"}`}>{lang === "hi" ? o.hi : o.en}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      </>)}
+      {tab === "consent" && (<>
+      <SectionTitle v={{ hi: "Consent Passport", en: "Consent Passport" }} right={<span className="text-[11px] font-bold text-muted">AA + DPDP</span>} />
+      <div className="mx-5 lg:mx-0 space-y-3">
+        {!pass && <Skeleton h={180} />}
+        {pass?.aa.map((c) => (
+          <div key={c.handle} className="rounded-[28px] bg-ink text-white p-4 relative overflow-hidden">
+            <div className="absolute right-0 top-0 h-full w-2 bg-[repeating-linear-gradient(0deg,#F7C548_0_8px,transparent_8px_14px)] opacity-60" />
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-haldi text-ink text-[11px] font-extrabold px-2.5 py-1">AA · {c.aa}</span>
+              <span className={`rounded-full text-[11px] font-extrabold px-2.5 py-1 ${c.status === "ACTIVE" ? "bg-mint text-leaf" : c.status === "REVOKED" ? "bg-danger-soft text-danger" : "bg-white/15"}`}>{c.status}</span>
+              <span className="ml-auto text-xs text-white/60">{c.member_name}</span>
+            </div>
+            <div className="mt-3 space-y-2 text-[13px]">
+              <p className="flex gap-2"><Eye size={16} className="text-haldi shrink-0" /><span>{c.fi_types.join(" · ")} · {c.range_months} {lang === "hi" ? "mahine" : "months"}</span></p>
+              <p className="flex gap-2"><Target size={16} className="text-haldi shrink-0" /><span>{t(c.purpose)}</span></p>
+              <p className="flex gap-2"><Hourglass size={16} className="text-haldi shrink-0" /><span>{lang === "hi" ? "Tak" : "Until"} {day(c.expiry)} · {t(c.data_life)}</span></p>
+            </div>
+            <p className="mt-2 text-[11px] text-white/40 font-mono truncate">{c.handle}</p>
+            <button onClick={() => setReceipt(c)} className="mt-3 w-full min-h-11 rounded-[18px] bg-haldi text-ink font-bold text-sm">🧾 {lang === "hi" ? "Raseed dekho / bhejo" : "View / share receipt"}</button>
+            {c.status === "ACTIVE" && (
+              <button onClick={() => { setRevoked(null); setRevoke(c); }} className="mt-2 w-full min-h-12 rounded-[18px] bg-white/10 border border-white/20 font-bold flex items-center justify-center gap-2">
+                <ShieldOff size={18} />{lang === "hi" ? "Consent band karein" : "Revoke consent"}
+              </button>
+            )}
+          </div>
+        ))}
+        {pass && pass.aa.length === 0 && (
+          <button onClick={() => router.push("/?step=consent")} className="w-full rounded-[28px] border-2 border-dashed border-ink/20 p-5 text-center font-bold">
+            + {lang === "hi" ? "Bank jodein (Anumati AA)" : "Link bank (Anumati AA)"}
+          </button>
+        )}
+        {pass && (
+          <div className="rounded-[28px] bg-white p-4 shadow-soft">
+            <div className="flex items-center gap-2 mb-2"><span className="rounded-full bg-rose text-rose-deep text-[11px] font-extrabold px-2.5 py-1">DPDP</span><span className="text-xs text-muted">{lang === "hi" ? "DhanYukti data fiduciary" : "DhanYukti as data fiduciary"}</span></div>
+            {pass.dpdp.map((g) => <DpdpRow key={g.key} g={g} />)}
+          </div>
+        )}
+        {pass && data.household.members.filter((m) => m.earner && !pass.aa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
+          <div key={m.id} className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
+            <Avatar kind={m.avatar} size={40} />
+            <div className="flex-1"><p className="font-bold">{m.name}</p><p className="text-xs text-muted">{t({ hi: "Inke khaate abhi jude nahi", en: "Accounts not linked yet" })}</p></div>
+            <button onClick={() => askConsent(m.id)} className="rounded-full bg-ink text-white px-4 min-h-11 text-sm font-bold">{lang === "hi" ? "Consent maangein" : "Ask consent"}</button>
+          </div>
+        ))}
+      </div>
+
+      </>)}
+      {tab === "data" && (<>
+      <SectionTitle v={{ hi: "Aur jaankari jodein", en: "Add more context" }} right={<span className="text-[11px] font-bold text-muted">Perfios Hub</span>} />
+      <Enrich />
+
+      <SectionTitle v={{ hi: "Cash aur udhaar", en: "Cash & informal loans" }} />
+      <div className="mx-5 lg:mx-0 lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0"><DeclaredEntry /><BsaUpload /></div>
+      <div className="mt-6"><DataSource /></div>
+      <SectionTitle v={{ hi: "Sponsor integration", en: "Sponsor integration" }} right={<Plug size={16} className="text-muted" />} />
+      <div className="mx-5 lg:mx-0 rounded-[28px] bg-white p-2 shadow-soft">
+        {caps.map((c, i) => (
+          <div key={i} className="flex items-center gap-3 p-2.5 text-sm">
+            <span className={`h-2.5 w-2.5 rounded-full ${c.status === "live" ? "bg-leaf" : c.status === "replay" ? "bg-amber" : c.status === "blocked" ? "bg-danger" : "bg-muted"}`} />
+            <span className="font-bold w-20 shrink-0">{c.sponsor}</span><span className="flex-1 truncate">{c.api}</span>
+            <span className="text-[11px] font-bold uppercase text-muted">{c.status}</span>
+          </div>
+        ))}
+      </div>
+
+      </>)}
+      {tab === "settings" && (<>
+      <SectionTitle v={{ hi: "Aasaan / Saathi / Pro", en: "Literacy mode" }} />
+      <div className="mx-5 lg:mx-0 grid grid-cols-3 gap-2">
+        {([["aasaan", "🎧", "Aasaan", "Voice + pictures"], ["saathi", "🤝", "Saathi", "Short text + cards"], ["pro", "📊", "Pro", "Full dashboard"]] as const).map(([k, e, n, d]) => (
+          <button key={k} onClick={() => setMode(k as Mode)} className={`rounded-[24px] p-3 text-center ${mode === k ? "bg-haldi" : "bg-white"}`}>
+            <p className="text-2xl">{e}</p><p className="font-extrabold text-sm">{n}</p><p className="text-[11px] text-muted leading-tight">{d}</p>
+          </button>
+        ))}
+      </div>
+      <p className="mx-5 lg:mx-0 mt-2 text-[11px] text-muted">{t({ hi: "Mode badalne se paison ka hisaab nahi badalta", en: "Switching mode never changes a financial result" })}</p>
+
+      <SectionTitle v={{ hi: "Mera data", en: "My data" }} />
+      <div className="mx-5 lg:mx-0"><PrivacyControls /></div>
+      <div className="mx-5 lg:mx-0 mt-6">
+        <button onClick={() => { setOnboarded(false); router.push("/"); }} className="w-full min-h-12 rounded-[20px] bg-white/60 font-semibold text-sm flex items-center justify-center gap-2"><RefreshCcw size={16} />{lang === "hi" ? "Demo: onboarding dobara" : "Demo: restart onboarding"}</button>
+      </div>
+      <InstallButton />
+      </>)}
+      <HelpLink />
+      <ConsentReceipt c={receipt} onClose={() => setReceipt(null)} />
+
+      <Sheet open={!!revoke} onClose={() => setRevoke(null)} title={<p className="text-xl font-extrabold">{lang === "hi" ? "Consent band karein?" : "Revoke consent?"}</p>}>
+        {!revoked ? (
+          <div className="space-y-3">
+            <p className="text-[15px]">{t({ hi: "Anumati par consent turant band hoga. Aage koi data nahi aayega, aur humari banayi profile mita di jayegi.", en: "Consent is revoked at Anumati right away. No future fetches, and your derived profile is deleted." })}</p>
+            <p className="text-xs text-muted">{t({ hi: "Parivaar ki permission ki zaroorat nahi — yeh aapka haq hai.", en: "No household vote needed — this is your right." })}</p>
+            <Btn variant="danger" className="w-full" onClick={doRevoke}>{lang === "hi" ? "Haan, band karo" : "Yes, revoke"}</Btn>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {[{ hi: "Anumati par consent REVOKED", en: "Consent REVOKED at Anumati" }, { hi: "Aage ki fetch radd", en: "Future fetches cancelled" },
+              ...revoked.map((d) => ({ hi: `Mita diya: ${d}`, en: `Deleted: ${d}` }))].map((s, i) => (
+              <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.35 }} className="flex items-center gap-3 rounded-2xl bg-white p-3">
+                <span className="grid place-items-center h-7 w-7 rounded-full bg-leaf text-white"><Check size={16} /></span><span className="font-semibold text-sm">{t(s)}</span>
+              </motion.div>
+            ))}
+            <Btn variant="ink" className="w-full mt-2" onClick={() => setRevoke(null)}>{lang === "hi" ? "Theek hai" : "Done"}</Btn>
+          </div>
+        )}
+      </Sheet>
+    </div>
+  );
+}
+
+function DpdpRow({ g }: { g: DpdpGrant }) {
+  const { t, hid } = useApp();
+  const [on, setOn] = useState(g.granted);
+  const toggle = () => {
+    const v = !on; setOn(v);
+    if (g.key === "profile" || g.key === "device_signals") api.dpdp(hid, { profile: g.key === "profile" ? v : true, device_signals: g.key === "device_signals" ? v : true }).catch(() => {});
+  };
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-t border-lav first:border-0">
+      <div className="flex-1"><p className="font-bold text-sm">{t(g.label)}</p><p className="text-[11px] text-muted leading-snug">{t(g.why)} · {t(g.until)}</p></div>
+      <button onClick={toggle} role="switch" aria-checked={on} className={`relative h-8 w-14 rounded-full transition shrink-0 ${on ? "bg-leaf" : "bg-muted/30"}`}>
+        <motion.span className="absolute top-1 h-6 w-6 rounded-full bg-white shadow" animate={{ left: on ? 28 : 4 }} />
+      </button>
+    </div>
+  );
+}

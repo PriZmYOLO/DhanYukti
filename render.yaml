@@ -1,0 +1,29 @@
+# Render Blueprint — deploys the FastAPI backend (api/).
+# Render dashboard → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: dhanyukti-api
+    runtime: python
+    region: singapore
+    plan: free            # use "starter" on demo day to avoid cold starts
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Sponsor credentials — leave empty for replay mode; fill in the Render dashboard, never in git.
+      - { key: ANUMATI_BASE_URL, sync: false }
+      - { key: ANUMATI_CLIENT_ID, sync: false }
+      - { key: ANUMATI_CLIENT_SECRET, sync: false }
+      - { key: ANUMATI_FIU_ID, sync: false }
+      - { key: ANUMATI_CALLBACK_URL, sync: false }
+      - { key: ANUMATI_REDIRECT_URL, sync: false }
+      - { key: ANUMATI_SPEC_VERSION, value: "2.0.0" }
+      - { key: PERFIOS_BASE_URL, sync: false }
+      - { key: PERFIOS_SECURE_ID, sync: false }
+      - { key: PERFIOS_SECURE_CREDENTIAL, sync: false }
+      - { key: PERFIOS_ORG_ID, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }

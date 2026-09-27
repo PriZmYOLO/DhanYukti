@@ -6,7 +6,7 @@ import {
   indianGrouping,
   numbersKept,
   validCashShort,
-} from "../lib/voice/nudges";
+} from "../src/lib/voice/nudges";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
