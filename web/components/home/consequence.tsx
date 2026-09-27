@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { DateDisplay } from "@/components/finance/date-display";
 import { Money } from "@/components/finance/money";
 import { HomeText } from "@/components/home/home-text";
+import { ListenInHindi } from "@/components/voice/listen-hindi";
+import { VOICE_ENABLED } from "@/lib/capabilities";
 import type { Consequence } from "@/lib/contracts/decision-packet";
 
 /**
@@ -108,6 +110,9 @@ export function ConsequenceOfDelay({
             </p>
           )}
         </div>
+      )}
+      {VOICE_ENABLED && kind === "cash_gap" && knownAmount && on && (
+        <ListenInHindi amountPaise={knownAmount.amount_paise} date={on} />
       )}
     </div>
   );

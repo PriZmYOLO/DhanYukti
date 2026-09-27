@@ -234,6 +234,14 @@ Full description: `docs/COVER_ENGINE.md`.
 rank named products (IRDAI web-aggregator territory); treat an unknown input
 as zero. The Home decision engine can consume `CoverPlan` as one input.
 
+## 3d. Hindi voice read-out (Job 2c)
+
+`POST /api/voice/nudge` `{ nudge: "cash_short", params: { amount_paise, date } }`
+→ Bhashini translation + TTS. Template-built text only (`lib/voice/nudges.ts`);
+DPDP consent "voice"; a changed number falls back to the reviewed Hindi.
+Runbook: `docs/VOICE.md`. **Never** add a free-text or name field to a
+voice nudge; add a new template with typed params instead.
+
 ## 4. Corrections and recalculation (H07)
 
 |           |                                                                                                |

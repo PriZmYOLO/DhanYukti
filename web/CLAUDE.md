@@ -119,6 +119,8 @@ is false until the action service (Y08/H09/L08) exists: the next step stays
 "Preview only" and its confirm button stays disabled. `AA_CONNECTED` follows
 `NEXT_PUBLIC_AA_LIVE` (off by default). `STATEMENT_UPLOAD_CONNECTED` is
 false: statement upload shows "Not available in this build".
+`VOICE_ENABLED` follows `NEXT_PUBLIC_VOICE` (off by default): the Home
+"Listen in Hindi" read-out.
 
 ## Current implementation status
 
@@ -137,6 +139,9 @@ false: statement upload shows "Not available in this build".
 - Family cover engine (`/plan/insurance`, `docs/COVER_ENGINE.md`): needs,
   gaps and a cover specification (no named products: IRDAI web-aggregator
   rules); firewall, versioned rules, `npm run test:engine`
+- Job 2c Hindi voice read-out (Bhashini, `docs/VOICE.md`): template-only
+  text, DPDP "voice" consent, number guard, recorded fallback; shown only
+  with `NEXT_PUBLIC_VOICE=true` (`VOICE_ENABLED`)
 
 L03 covers the Home priority, the Why view, consequence of waiting, next
 step, confidence, missing-information states, and demo scenarios. L03

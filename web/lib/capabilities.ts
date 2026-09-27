@@ -37,3 +37,13 @@ export const AA_CONNECTED = process.env.NEXT_PUBLIC_AA_LIVE === "true";
  * files private and reports processing/failed states.
  */
 export const STATEMENT_UPLOAD_CONNECTED = false;
+
+/**
+ * Whether the "Listen in Hindi" read-out (Bhashini, Job 2c) is shown.
+ *
+ * Off by default so layouts and screenshot baselines stay as they are. Set
+ * NEXT_PUBLIC_VOICE=true on a deployment that has BHASHINI_USER_ID and
+ * BHASHINI_ULCA_API_KEY, or a recorded clip in lib/voice/recorded.json
+ * (redeploy after changing it; the value is fixed at build time).
+ */
+export const VOICE_ENABLED = process.env.NEXT_PUBLIC_VOICE === "true";

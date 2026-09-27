@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
-    "test:engine": "tsx scripts/cover-engine-fixtures.ts"
+    "test:engine": "tsx scripts/cover-engine-fixtures.ts && tsx scripts/voice-fixtures.ts",
+    "voice:record": "tsx --conditions=react-server scripts/bhashini-record.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -32,6 +33,7 @@
     "eslint-config-next": "16.3.6",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

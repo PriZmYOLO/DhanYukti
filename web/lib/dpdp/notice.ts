@@ -12,7 +12,7 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-27.2";
+export const NOTICE_VERSION = "2026-09-27.3";
 
 export type PurposeId =
   | "cover_profile"
@@ -191,15 +191,16 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
       simple: "Only the message text. Never your name or account number.",
     },
     retention: {
-      standard: "Not stored by DhanYukti after the audio is made.",
+      standard:
+        "Nothing is stored: not the text, not the audio. Each read-out is made when you tap and discarded after playing.",
       simple: "Not kept after the audio is made.",
     },
     processor: {
       standard: "Bhashini (Government of India) for translation and speech",
       simple: "Bhashini (Government of India)",
     },
-    in_build: false,
-    enforced: false,
+    in_build: true,
+    enforced: true,
   },
 ];
 
