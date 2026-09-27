@@ -12,13 +12,6 @@
 
 # testing
 /coverage
-# review screenshots (not baselines)
-/tests/e2e/__review__/
-# playwright output (baselines in tests/e2e/*-snapshots/ are committed)
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
 
 # next.js
 /.next/
@@ -46,7 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Anumati crypto jar (provided to participants; not ours to commit)
-*.jar
-fiu-crypto-lib.txt

@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #17153b;
+  --color-ink-2: #2e2a6b;
+  --color-haldi: #f7c548;
+  --color-haldi-soft: #fff1c2;
+  --color-clay: #d96c3f;
+  --color-clay-soft: #f9d9c7;
+  --color-rose: #f7c6d6;
+  --color-rose-deep: #d6457a;
+  --color-mint: #bfe8d2;
+  --color-leaf: #1f8a5b;
+  --color-amber: #e89b1c;
+  --color-amber-soft: #fdebc8;
+  --color-danger: #e0473e;
+  --color-danger-soft: #fde0dc;
+  --color-lav: #ece7fb;
+  --color-cream: #fbf7f0;
+  --color-muted: #6b6887;
+  --font-sans: var(--font-jakarta), var(--font-mukta), system-ui, sans-serif;
+  --font-deva: var(--font-mukta), var(--font-jakarta), sans-serif;
+  --shadow-soft: 0 10px 30px -12px rgb(23 21 59 / 0.18);
+  --shadow-lift: 0 18px 40px -16px rgb(23 21 59 / 0.35);
+}
+
+html, body { height: 100%; }
+body {
+  background: #e9e5f5;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-bg { background: linear-gradient(180deg, #ece7fb 0%, #f6f1fb 22%, #fbf7f0 55%); }
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.hatch { background-image: repeating-linear-gradient(135deg, rgb(23 21 59 / .12) 0 2px, transparent 2px 7px); }
+
+input[type="range"].slider { -webkit-appearance: none; appearance: none; height: 10px; border-radius: 999px; background: rgb(255 255 255 / .18); outline: none; }
+input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: var(--color-haldi); border: 4px solid #fff; box-shadow: 0 4px 12px rgb(0 0 0 / .3); cursor: pointer; }
+input[type="range"].slider::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--color-haldi); border: 4px solid #fff; }
+
+@keyframes shimmer { 0% { background-position: -300px 0 } 100% { background-position: 300px 0 } }
+.skeleton { background: linear-gradient(90deg, #eeeaf6 0px, #f8f6fc 120px, #eeeaf6 240px); background-size: 600px; animation: shimmer 1.3s infinite linear; }

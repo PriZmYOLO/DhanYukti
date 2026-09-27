@@ -22,7 +22,7 @@ import {
   decryptFI,
   encryptFI,
   generateKeyMaterial,
-} from "../lib/server/aa/crypto.ts";
+} from "../src/lib/server/aa/crypto.ts";
 
 const [jar, saved] = process.argv.slice(2);
 if (!jar) {

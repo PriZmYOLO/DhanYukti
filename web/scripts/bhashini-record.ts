@@ -12,13 +12,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { speakHindi, translateAndSpeak } from "../lib/server/voice/bhashini";
+import { speakHindi, translateAndSpeak } from "../src/lib/server/voice/bhashini";
 import {
   cashShortKey,
   cashShortText,
   numbersKept,
   validCashShort,
-} from "../lib/voice/nudges";
+} from "../src/lib/voice/nudges";
 
 const args = process.argv.slice(2);
 const arg = (name: string) => args[args.indexOf(`--${name}`) + 1];

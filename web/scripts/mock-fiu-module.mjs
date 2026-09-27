@@ -30,7 +30,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
-import { encryptFI, generateKeyMaterial } from "../lib/server/aa/crypto.ts";
+import { encryptFI, generateKeyMaterial } from "../src/lib/server/aa/crypto.ts";
 
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
 const APP = (process.env.MOCK_APP_URL ?? "http://localhost:3000").replace(
