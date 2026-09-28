@@ -7,7 +7,7 @@ import Responses from "@/components/whatif/Responses";
 import { Btn } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
 import { api, type SimInput } from "@/lib/api";
-import { inr } from "@/lib/format";
+import { figure, inr } from "@/lib/format";
 import type { SimResult } from "@/lib/types";
 
 const PRESETS = [{ e: "📱", hi: "Phone", en: "Phone", v: 8000 }, { e: "🛵", hi: "Scooty", en: "Scooter", v: 30000 }, { e: "🧊", hi: "Fridge", en: "Fridge", v: 18000 }, { e: "🪔", hi: "Tyohaar", en: "Festival", v: 5000 }];
@@ -107,7 +107,7 @@ export default function AffordCheck() {
                 <div className="rounded-2xl bg-white/70 p-2"><p className="text-muted">{hi ? "EMI har mahine" : "EMI a month"}</p><p className="font-extrabold num">{inr(loan.emi)} × {loan.months}</p></div>
                 <div className="rounded-2xl bg-white/70 p-2"><p className="text-muted">{hi ? "Kul denge" : "You pay in all"}</p><p className="font-extrabold num">{inr(loan.total_cost)}</p></div>
                 <div className="rounded-2xl bg-white/70 p-2"><p className="text-muted">{hi ? "Daam se zyada" : "More than the price"}</p><p className="font-extrabold num">{inr(loan.extra_over_price)} <span className="text-muted font-semibold">(₹{loan.extra_per_100}/₹100)</span></p></div>
-                <div className="rounded-2xl bg-white/70 p-2"><p className="text-muted">{hi ? "Har ₹100 kamai mein EMI" : "EMIs per ₹100 earned"}</p><p className="font-extrabold num">₹{loan.debt_per100_before ?? "—"} → ₹{loan.debt_per100_after ?? "—"}</p></div>
+                <div className="rounded-2xl bg-white/70 p-2"><p className="text-muted">{hi ? "Har ₹100 kamai mein EMI" : "EMIs per ₹100 earned"}</p><p className="font-extrabold num">₹{figure(loan.debt_per100_before)} → ₹{figure(loan.debt_per100_after)}</p></div>
                 <p className="col-span-2 text-[11px] text-muted">{hi ? `Pehli EMI ${loan.first_emi} — neeche ka chart sirf agle 30 din dikhata hai.` : `First EMI on ${loan.first_emi} — the chart below covers the next 30 days only.`}</p>
               </div>
             )}

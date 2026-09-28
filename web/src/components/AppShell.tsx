@@ -21,7 +21,7 @@ export const NAV = [
 /** The web app: bottom tabs on a phone, sidebar + wide layout on a laptop. */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { online, lang, assisted, data, t, meIssue } = useApp();
+  const { online, lang, assisted, data, t, meIssue, showAmounts, setShowAmounts } = useApp();
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-dvh app-bg">
@@ -49,7 +49,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="lg:pl-64">
           {!online && <div className="sticky top-0 z-20 flex items-center gap-2 bg-ink text-white px-5 py-2 text-xs font-semibold"><WifiOff size={14} />{data?.household.id === "me" ? (lang === "hi" ? "Internet nahi hai — pichhla hisaab dikh raha hai" : "Offline — showing your last picture") : lang === "hi" ? "Internet nahi hai — demo data dikh raha hai" : "Offline — showing demo data"}</div>}
-          {assisted && <div className="bg-haldi-soft px-5 py-1.5 text-[12px] font-semibold text-center">🤝 {lang === "hi" ? "Sahayak mode: helper sirf steps dekhte hain" : "Assisted mode: helper sees steps only"}</div>}
+          {assisted && (
+            <div role="status" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-haldi-soft px-5 py-1.5 text-[12px] font-semibold text-center">
+              <span>🤝 {showAmounts
+                ? (lang === "hi" ? "Sahayak mode: rakam dikh rahi hai" : "Assisted mode: amounts are showing")
+                : (lang === "hi" ? "Sahayak mode: rakam chhupi hai (₹•••)" : "Assisted mode: amounts hidden (₹•••)")}</span>
+              <button onClick={() => setShowAmounts(!showAmounts)} className="rounded-full bg-ink text-white px-3 min-h-8 text-[11px] font-bold">
+                {showAmounts ? (lang === "hi" ? "Phir chhupayein" : "Hide again") : (lang === "hi" ? "Dikhayein (akele mein)" : "Show (when you're alone)")}
+              </button>
+            </div>
+          )}
           <main className="mx-auto max-w-6xl pb-32 lg:pb-12 lg:px-6">{meIssue && !data ? <MyHouseholdIssue /> : children}</main>
         </div>
         <TabBar />

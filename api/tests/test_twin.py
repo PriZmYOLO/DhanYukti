@@ -310,3 +310,14 @@ def test_declared_income_fills_after_member_ignores_a_bank_income():
     db = client.post("/api/twin/dashboard", json={"twin": twin, "state": c["state"], "declared": decl}).json()
     ids = {e["id"] for d in db["river"]["days"] for e in d["events"]}
     assert "declared_income_2026-10-04" in ids
+
+
+def test_twin_keeps_no_bank_narration_text():
+    """Compute-then-delete: after the build, only derived payee labels remain (no refs, no raw text)."""
+    import json
+    p = _statement(schemes=True)
+    raw = {t["narration"] for a in p["accounts"] for t in a["transactions"]}
+    twin, _ = _built(schemes=True)
+    blob = json.dumps(twin)
+    assert not any(n in blob for n in raw if "/" in n or "PVT LTD" in n)
+    assert "Rent Anil Kumar" in blob

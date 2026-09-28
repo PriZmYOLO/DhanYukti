@@ -81,7 +81,7 @@ export default function Family() {
 
   return (
     <div>
-      <TopBar title={lang === "hi" ? "Parivaar" : "Family"} speakText={{ hi: "Yahan parivaar ke sadasya, consent aur privacy hai. Consent kabhi bhi band kar sakte hain.", en: "Family members, consents and privacy. You can revoke consent anytime." }} />
+      <TopBar title={lang === "hi" ? "Parivaar" : "Family"} speakText={{ hi: "Yahan parivaar ke sadasya, consent aur privacy hai. Consent kabhi bhi band kar sakte hain.", en: "Family members, consents and privacy. You can stop DhanYukti using your data anytime." }} />
 
       <div className="mx-5 lg:mx-0 mt-3 grid grid-cols-5 rounded-full bg-white p-1 shadow-soft">
         {TABS.map((x) => (
@@ -161,7 +161,7 @@ export default function Family() {
             <button onClick={() => setReceipt(c)} className="mt-3 w-full min-h-11 rounded-[18px] bg-haldi text-ink font-bold text-sm">🧾 {lang === "hi" ? "Raseed dekho / bhejo" : "View / share receipt"}</button>
             {c.status === "ACTIVE" && (
               <button onClick={() => { setRevoked(null); setRevoke(c); }} className="mt-2 w-full min-h-12 rounded-[18px] bg-white/10 border border-white/20 font-bold flex items-center justify-center gap-2">
-                <ShieldOff size={18} />{lang === "hi" ? "Consent band karein" : "Revoke consent"}
+                <ShieldOff size={18} />{lang === "hi" ? "DhanYukti mein band karein" : "Stop in DhanYukti"}
               </button>
             )}
           </div>
@@ -234,13 +234,13 @@ export default function Family() {
       <HelpLink />
       <ConsentReceipt c={receipt} onClose={() => setReceipt(null)} />
 
-      <Sheet open={!!revoke} onClose={() => setRevoke(null)} title={<p className="text-xl font-extrabold">{lang === "hi" ? "Consent band karein?" : "Revoke consent?"}</p>}>
+      <Sheet open={!!revoke} onClose={() => setRevoke(null)} title={<p className="text-xl font-extrabold">{lang === "hi" ? "DhanYukti mein band karein?" : "Stop in DhanYukti?"}</p>}>
         {replay && <p className="mb-3 rounded-full bg-amber-soft px-3 py-1 text-[12px] font-bold w-fit">{t({ hi: "Recorded sandbox (replay) — Anumati ko kuch nahi bheja jaata", en: "Recorded sandbox (replay) — nothing is sent to Anumati" })}</p>}
         {!revoked ? (
           <div className="space-y-3">
             <p className="text-[15px]">{t({ hi: "DhanYukti ab yeh data istemaal nahi karega aur apni copy mita dega. Consent poori tarah band karne ke liye Anumati app mein bhi band karein.", en: "DhanYukti stops using this data now and deletes its copy. To end the consent itself, close it in the Anumati app." })}</p>
             <p className="text-xs text-muted">{t({ hi: "Parivaar ki permission ki zaroorat nahi — yeh aapka haq hai.", en: "No household vote needed — this is your right." })}</p>
-            <Btn variant="danger" className="w-full" onClick={doRevoke}>{lang === "hi" ? "Haan, band karo" : "Yes, revoke"}</Btn>
+            <Btn variant="danger" className="w-full" onClick={doRevoke}>{lang === "hi" ? "Haan, band karo" : "Yes, stop"}</Btn>
             <OpenAnumati className="w-full" />
           </div>
         ) : (

@@ -35,7 +35,7 @@ function buildScript(d: Dashboard): Record<string, Node> {
     done: { bot: [{ hi: "✅ UPI AutoPay set. +50 Paisa Points 🎉", en: "✅ UPI AutoPay set. +50 Paisa Points 🎉" }], replies: [{ label: { hi: "Aage", en: "Next" }, to: lender ? "lender" : "receipt" }] },
     lender: { bot: lender ? [{ hi: `⚠️ ${lender.app} RBI ki list mein nahi hai. ${lender.days} din mein ${inr(lender.charges)} byaaj laga.`, en: `⚠️ ${lender.app} is not on RBI's list. ${inr(lender.charges)} interest in ${lender.days} days.` }] : [],
       replies: [{ label: { hi: "Aage", en: "Next" }, to: "receipt" }] },
-    receipt: { bot: [{ hi: `🧾 Consent raseed\nKya: savings khaate ka 12 mahine ka len-den (ek baar)\nKyon: mahine ke aakhir ki warning\nKab tak: 12 mahine\nKaun: ${aa.hi} (Account Aggregator)\nBand karne ke liye STOP likhein`, en: `🧾 Consent receipt\nWhat: 12 months of savings account transactions (fetched once)\nWhy: month-end warnings\nUntil: 12 months\nHandled by: ${aa.en} (Account Aggregator)\nReply STOP to revoke` }], replies: [] },
+    receipt: { bot: [{ hi: `🧾 Consent raseed\nKya: savings khaate ka 12 mahine ka len-den (ek baar)\nKyon: mahine ke aakhir ki warning\nKab tak: 12 mahine\nKaun: ${aa.hi} (Account Aggregator)\nDhanYukti ko rokne ke liye STOP likhein · consent khatam karne ke liye Anumati app`, en: `🧾 Consent receipt\nWhat: 12 months of savings account transactions (fetched once)\nWhy: month-end warnings\nUntil: 12 months\nHandled by: ${aa.en} (Account Aggregator)\nReply STOP to stop DhanYukti using it · end the consent in the Anumati app` }], replies: [] },
   };
 }
 const DEMO_PATH = ["kyon", "karo", "salary", "confirm", "done", "lender", "receipt"];

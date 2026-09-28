@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 const FEATURES = [
   { Icon: BellRing, t: { hi: "Pehle se warning", en: "Early warning" }, d: { hi: "Mahine ke aakhir ki kami 5 din pehle", en: "Month-end shortfall, 5 days ahead" } },
   { Icon: Mic, t: { hi: "Roz ek kaam, bolkar", en: "One task a day, by voice" }, d: { hi: "Hindi aur English mein, bina padhe", en: "In Hindi or English, no reading needed" } },
-  { Icon: ShieldCheck, t: { hi: "Consent aapke haath", en: "You control consent" }, d: { hi: "Anumati AA se, kabhi bhi band karein", en: "Via Anumati AA, revoke anytime" } },
+  { Icon: ShieldCheck, t: { hi: "Consent aapke haath", en: "You control consent" }, d: { hi: "Anumati AA se — DhanYukti mein kabhi bhi rokein, Anumati app mein band karein", en: "Via Anumati AA — stop DhanYukti anytime, end it in the Anumati app" } },
 ];
 // Source: Department of Financial Services, AA progress as of 31 Mar 2026.
 const ENABLED = 2880; // million accounts that can share data on AA
