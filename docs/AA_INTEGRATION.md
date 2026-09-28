@@ -102,6 +102,16 @@ shortened references and the provider's HTTP status (never secrets or data).
 If data arrived but couldn't be decrypted, the encrypted payload is kept for
 24 hours under `aa:raw:<link id>` so it can be re-opened with the jar.
 
+## Reveal summary
+
+After a live approval, onboarding's reveal step shows "From your bank via
+Anumati (sandbox)" from `GET /api/aa/links/{id}/summary`
+(`lib/server/aa/summary.ts`): balances, data window, monthly inflow,
+recurring debits and the Jan Suraksha result, each with its source. It then
+says the rest of the demo uses the demo household's data, labelled "Demo".
+Check it with `npm run test:aa-summary` (mobile ending in 3 in the mock
+gives 40 days of history, so inflow is "unknown").
+
 ## Government insurance check (Job 2a)
 
 After data arrives, the link card and the post-approval screen show a

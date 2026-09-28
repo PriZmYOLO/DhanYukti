@@ -13,7 +13,10 @@ import { Btn, HelpLink, SpeakBtn } from "@/components/ui/bits";
 import { metricValue } from "@/components/home/HealthTiles";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
-import { aaLive, liveStage, LIVE_CONSENT, LIVE_STEPS, type SourceLink } from "@/lib/aa-live";
+import { aaLive, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
+import BankSummaryCard from "@/components/BankSummaryCard";
+import DemoDataChip from "@/components/DemoDataChip";
+import { demoHouseholdName } from "@/lib/demo-data";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
 import { gov } from "@/lib/gov";
@@ -53,7 +56,10 @@ export default function Onboarding() {
   const [liveLink, setLiveLink] = useState<SourceLink | null>(null);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [polling, setPolling] = useState<string | null>(null);
-
+  // The member's own facts from a live, active link (worked out on the server).
+  const [summary, setSummary] = useState<AccountSummary | null>(null);
+  const [summaryErr, setSummaryErr] = useState<string | null>(null);
+  const liveActive = liveLink !== null && !liveLink.is_demo && liveLink.consent.status === "active";
 
   const go = (s: Step) => setStep(s);
   const profileOn = dpdp.status("member_profile") === "granted";
@@ -185,6 +191,16 @@ export default function Onboarding() {
       setErr(e instanceof Error ? e.message : "error");
     }
   }
+
+  useEffect(() => {
+    if (step !== "reveal" || !liveActive || !liveLink) return;
+    let stop = false;
+    setSummaryErr(null);
+    aaLive.summary(liveLink.link_id)
+      .then((s) => { if (!stop) setSummary(s); })
+      .catch((e) => { if (!stop) setSummaryErr(e instanceof Error ? e.message : "error"); });
+    return () => { stop = true; };
+  }, [step, liveActive, liveLink]);
 
   const finish = () => { setOnboarded(true); router.push("/app"); };
   const idx = STEPS.indexOf(step);
@@ -353,7 +369,16 @@ export default function Onboarding() {
           </>)}
 
           {step === "reveal" && data && (<>
+            {liveActive && liveLink ? (<>
+              <BankSummaryCard link={liveLink} summary={summary} err={summaryErr} />
+              {demoHouseholdName(data) && <p className="mt-3 text-[14px] font-semibold leading-snug">{t(liveLink.is_sandbox
+                ? { hi: `Sandbox test bank mein ek asli parivaar ka poora saal nahi hota, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Sandbox test banks don't carry a real family's year, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` }
+                : { hi: `Aapka poora hisaab abhi aapke bank data se nahi banta, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Your full picture isn't built from your bank data yet, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` })}</p>}
+            </>) : (
+              <p className="mt-4 text-xs font-bold text-muted">Anumati + Perfios · Recorded sandbox (replay)</p>
+            )}
             <Title v={{ hi: "Yeh raha aapka hisaab", en: "Here's your picture" }} sub={{ hi: `${primaryMember(data)?.name ?? ""} ji, parivaar ki paisa sehat`, en: `${primaryMember(data)?.name ?? ""}, your family's money health` }} />
+            <DemoDataChip short className="mt-2" />
             <div className="mt-5 rounded-[32px] bg-ink text-white p-5">
               <p className="text-[12px] text-haldi font-bold uppercase tracking-widest">{t(data.metrics.resilience_days.label)}</p>
               <p className="text-[64px] font-extrabold num leading-none mt-1">{data.metrics.resilience_days.value ?? "?"}<span className="text-lg ml-2 text-white/60">{lang === "hi" ? "din" : "days"}</span></p>

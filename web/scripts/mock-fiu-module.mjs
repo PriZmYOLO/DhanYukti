@@ -26,6 +26,8 @@
  * insurers (HDFC ERGO, ICICI Lombard, ACKO, Axis Max Life, SBI General).
  * Mobile number ending in 0 → the second account "fails to deliver"
  * (to rehearse the partial state).
+ * Mobile number ending in 3 → only the last 40 days of history (fewer than
+ * 2 complete months, so monthly inflow must come back "unknown").
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
@@ -81,13 +83,20 @@ async function post(path, body) {
   }
 }
 
-/** Twelve months of a salaried household's savings account (test data). */
-function rebitDeposit(masked, seed, withSchemes = false, withPrivate = false) {
+/** Twelve months (or 40 days) of a salaried household's savings account (test data). */
+function rebitDeposit(
+  masked,
+  seed,
+  withSchemes = false,
+  withPrivate = false,
+  shortHistory = false,
+) {
   const today = new Date();
   const txns = [];
   let balance = 18_000 + seed * 7_000;
   const start = new Date(today);
-  start.setMonth(start.getMonth() - 12);
+  if (shortHistory) start.setDate(start.getDate() - 40);
+  else start.setMonth(start.getMonth() - 12);
   const push = (date, type, mode, amount, narration) => {
     balance += type === "CREDIT" ? amount : -amount;
     txns.push({
@@ -222,6 +231,7 @@ async function deliver(journey) {
           i,
           i === 0 && journey.mobile.endsWith("5"),
           i === 0 && journey.mobile.endsWith("7"),
+          journey.mobile.endsWith("3"),
         ),
       }),
       fipKeyMaterial: {

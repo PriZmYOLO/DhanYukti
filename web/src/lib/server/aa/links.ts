@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { LIVE_TERMS } from "@/lib/aa/live-terms";
+import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import type { ErrorEnvelope, IsoTimestamp } from "@/lib/contracts/common";
 import type { SchemeCheckResult } from "@/lib/contracts/scheme-check";
 import type {
@@ -26,6 +27,7 @@ import {
   type ParsedDepositAccount,
 } from "@/lib/server/aa/rebit";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
+import { summariseAccounts } from "@/lib/server/aa/summary";
 import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
 import { detectPolicies, summariseCover } from "@/lib/server/insurance/cover";
 import { readTags, saveTags, validTags } from "@/lib/server/insurance/tags";
@@ -710,6 +712,36 @@ export async function readAccountData(
   if (!record || record.session_id !== sid) return null;
   if (record.consent_status !== "active") return null;
   return kvGet<StoredAccountData>(keys.data(linkId));
+}
+
+export type AccountSummaryResult =
+  | { status: "ready"; summary: AccountSummary }
+  /** Active link in this session, but no fetched data (yet). */
+  | { status: "no_data" }
+  | { status: "not_found" };
+
+/**
+ * Derived facts from this session's own fetched data for the reveal step.
+ * Worked out here; the browser never receives transactions or narrations.
+ * The Jan Suraksha part runs only if the member allowed "Alerts and
+ * suggested actions" for this source.
+ */
+export async function accountSummary(
+  sid: string,
+  linkId: string,
+): Promise<AccountSummaryResult> {
+  const record = await loadLink(linkId);
+  if (!record || record.session_id !== sid) return { status: "not_found" };
+  if (record.consent_status !== "active") return { status: "not_found" };
+  const data = await readAccountData(sid, linkId);
+  if (!data || data.accounts.length === 0) return { status: "no_data" };
+  return {
+    status: "ready",
+    summary: summariseAccounts(data, {
+      alertsAllowed: record.grants.alerts_and_actions,
+      isSandbox: aaConfig.isSandbox,
+    }),
+  };
 }
 
 /**

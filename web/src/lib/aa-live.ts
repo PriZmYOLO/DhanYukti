@@ -9,11 +9,12 @@
  * src/lib/server/aa/fiu-client.ts): savings account (DEPOSIT) transactions,
  * 12 months of history, fetched once on approval, consent valid 12 months.
  */
+import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import type { ConsentChoices, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 import { ensureSession } from "@/lib/session";
 
-export type { SourceLink };
+export type { AccountSummary, SourceLink };
 
 export type AaStatus = {
   credentials_configured: boolean;
@@ -94,6 +95,12 @@ export const aaLive = {
   async get(linkId: string): Promise<SourceLink> {
     const r = await json<{ link: SourceLink }>(await fetch(`/api/aa/links/${linkId}`, opts("GET")));
     return r.link;
+  },
+
+  /** Facts worked out on the server from this link's data (no transactions). */
+  async summary(linkId: string): Promise<AccountSummary> {
+    const r = await json<{ summary: AccountSummary }>(await fetch(`/api/aa/links/${linkId}/summary`, opts("GET")));
+    return r.summary;
   },
 
   async revoke(linkId: string): Promise<SourceLink> {
