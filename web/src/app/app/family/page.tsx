@@ -155,7 +155,7 @@ export default function Family() {
             <div className="mt-3 space-y-2 text-[13px]">
               <p className="flex gap-2"><Eye size={16} className="text-haldi shrink-0" /><span>{c.fi_types.join(" · ")} · {c.range_months} {lang === "hi" ? "mahine" : "months"}</span></p>
               <p className="flex gap-2"><Target size={16} className="text-haldi shrink-0" /><span>{t(c.purpose)}</span></p>
-              <p className="flex gap-2"><Hourglass size={16} className="text-haldi shrink-0" /><span>{lang === "hi" ? "Tak" : "Until"} {day(c.expiry)} · {t(c.data_life)}</span></p>
+              <p className="flex gap-2"><Hourglass size={16} className="text-haldi shrink-0" /><span>{lang === "hi" ? "Tak" : "Until"} {day(c.expiry)} {c.expiry.slice(0, 4)} · {t(c.data_life)}</span></p>
             </div>
             <p className="mt-2 text-[11px] text-white/40 font-mono truncate">{c.handle}</p>
             <button onClick={() => setReceipt(c)} className="mt-3 w-full min-h-11 rounded-[18px] bg-haldi text-ink font-bold text-sm">🧾 {lang === "hi" ? "Raseed dekho / bhejo" : "View / share receipt"}</button>

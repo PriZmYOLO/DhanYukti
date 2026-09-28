@@ -25,7 +25,7 @@ def capabilities():
 
 @router.post("/admin/reset")
 def reset(x_admin_token: str | None = Header(default=None)):
-    """Team-only demo helper (not in contract): reset all in-memory state for everyone.
+    """Team-only demo helper (not in contract): drop every visitor's demo copy and reseed the shared one.
 
     Needs X-Admin-Token equal to ADMIN_RESET_TOKEN. With the env unset, or a wrong
     or missing header, it refuses (403). The browser never calls this; the team
@@ -34,5 +34,12 @@ def reset(x_admin_token: str | None = Header(default=None)):
     expected = (os.getenv("ADMIN_RESET_TOKEN") or "").strip()
     if not expected or not x_admin_token or not hmac.compare_digest(x_admin_token.encode(), expected.encode()):
         raise HTTPException(403, "admin reset is not allowed")
-    store.reset()
+    store.reset_all()
     return {"ok": True}
+
+
+@router.post("/demo/forget")
+def forget_demo():
+    """This visitor's own demo copy (their corrections, deposits, points) is dropped; the next visit reseeds it.
+    Acts only on the caller's X-DY-Demo id; never on anyone else's copy or the shared one."""
+    return {"ok": True, "forgotten": store.forget_current_visitor()}

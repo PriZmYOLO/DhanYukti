@@ -204,7 +204,7 @@ export function liveArtefact(link: SourceLink, member: { id: string; name: strin
     range_months: LIVE_CONSENT.history_months,
     fetch: "ONETIME",
     expiry,
-    data_life: { hi: "Bank data aane ke 24 ghante baad delete; kuch nikaale gaye tathya consent band karne tak, zyada se zyada 30 din", en: "Bank data deleted 24 hours after it arrives; a few derived facts kept until you revoke, at most 30 days" },
+    data_life: { hi: "Poora statement aane ke 24 ghante baad delete; balance, aamdani aur niyamit bill (naam ka chhota label, rakam, tareekh) band karne tak, zyada se zyada 30 din", en: "Full statement deleted 24 hours after it arrives; balance, income and regular payments (short payee label, amount, date) kept until you stop, at most 30 days" },
     created_at: link.consent.requested_at,
   };
 }
