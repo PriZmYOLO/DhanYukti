@@ -63,7 +63,11 @@ def _days(q: str) -> int | None:
 
 
 def answer(hid: str, question: str) -> tuple[dict, list[str]]:
-    db = pipeline.dashboard(hid)
+    return answer_with(pipeline.dashboard(hid), lambda **kw: pipeline.simulate(hid, **kw), question)
+
+
+def answer_with(db: dict, simulate, question: str) -> tuple[dict, list[str]]:
+    """Answer from one household's dashboard; `simulate(**kw)` runs a scenario on the same household."""
     intent = match_intent(question)
     nba = db["nba"]
     m = db["metrics"]
@@ -72,7 +76,7 @@ def answer(hid: str, question: str) -> tuple[dict, list[str]]:
         fee = next((e for day in db["river"]["days"] for e in day["events"] if e["type"] == "fee" and e["movable"]), None)
         pay = next((day["date"] for day in db["river"]["days"] for e in day["events"] if e["type"] in ("salary",)), None)
         if fee and pay:
-            sim = pipeline.simulate(hid, moves=[{"event_id": fee["id"], "new_date": pay}])
+            sim = simulate(moves=[{"event_id": fee["id"], "new_date": pay}])
             return sim["message"], ["simulate_cashflow"]
         intent = "hero"
 
@@ -80,9 +84,9 @@ def answer(hid: str, question: str) -> tuple[dict, list[str]]:
         amt = _amount(question)
         days = _days(question)
         if days and re.search(r"salary|tankhwah|pagar|late|der", question.lower()):
-            sim = pipeline.simulate(hid, salary_delay_days=days)
+            sim = simulate(salary_delay_days=days)
             return sim["message"], ["simulate_cashflow"]
-        sim = pipeline.simulate(hid, shock_amount=amt or 2000)
+        sim = simulate(shock_amount=amt or 2000)
         return sim["message"], ["simulate_shock"]
 
     if intent == "why" and nba:

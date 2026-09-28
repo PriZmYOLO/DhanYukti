@@ -42,7 +42,7 @@ def classify(narration: str, amount: int) -> str:
         return "other_credit"
     if "CHRG" in n or "PENAL" in n or " RTN " in n or "BOUNCE" in n:
         return "penalty"
-    if "PMJJBY" in n or "PMSBY" in n or "PREMIUM" in n or "LIC " in n:
+    if "PMJJBY" in n or "PMSBY" in n or "PREMIUM" in n or "LIC " in n or "INSURANCE" in n:
         return "premium"
     if "EMI" in n:
         return "emi"

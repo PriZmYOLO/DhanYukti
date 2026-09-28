@@ -1,6 +1,8 @@
 """Household Twin pipeline: fixture (+ user overlays) -> engines -> Dashboard JSON."""
 from __future__ import annotations
 
+import copy
+
 from app import connectors, store
 from app.engines import e03_cashflow as e03
 from app.engines import e04_debt as e04
@@ -60,6 +62,21 @@ def validate_correction(hid: str, field: str, value) -> None:
     apply_overlay(hh, {field: value})  # raises CorrectionError / ValueError
 
 
+def load_twin(twin: dict, state: dict | None) -> dict:
+    """A linked member's household: their twin (from their own bank data) + their own state."""
+    state = state or {}
+    hh = apply_overlay(copy.deepcopy(twin), state.get("overlays") or {})
+    for e in hh["upcoming"]:
+        if e.get("_corrected"):
+            e["certainty"], e["basis"] = e17.date_certainty(e, [])
+    hh["jars_live"] = game.jars_suggest(state.get("jars") or [], hh["as_of"])
+    return hh
+
+
+def validate_twin_correction(twin: dict, field: str, value) -> None:
+    apply_overlay(copy.deepcopy(twin), {field: value})  # raises CorrectionError / ValueError
+
+
 def load(hid: str) -> dict | None:
     hh = get_household(hid)
     if not hh:
@@ -86,7 +103,8 @@ def _deficit_fix(hh: dict, cash: dict) -> dict | None:
 
 def compute(hh: dict) -> dict:
     as_of = hh["as_of"]
-    norm = normalise(hh["transactions"], as_of, hh["accounts"])
+    # A linked user's twin carries E01's output (compute-then-delete: the full ledger is gone).
+    norm = copy.deepcopy(hh["_norm"]) if hh.get("_norm") else normalise(hh["transactions"], as_of, hh["accounts"])
     if hh.get("_monthly_income_override"):
         norm["monthly_income_p"] = P(hh["_monthly_income_override"])
     cash = e03.run(hh)
@@ -172,8 +190,14 @@ SPEND_LABELS = {
 
 
 def spend(ctx: dict) -> list[dict]:
+    if ctx["hh"].get("_spend") is not None:
+        return ctx["hh"]["_spend"]
+    return spend_from_norm(ctx["norm"], ctx["as_of"])
+
+
+def spend_from_norm(norm: dict, as_of: str) -> list[dict]:
     out = []
-    for b in spend_last_month(ctx["norm"], ctx["as_of"]):
+    for b in spend_last_month(norm, as_of):
         top = sorted(b["rows"], key=lambda r: r["paise"])[:3]
         out.append({"key": b["key"], "label": SPEND_LABELS[b["key"]], "amount": R(b["total_p"]),
                     "top": [txn_out(r) for r in top]})
@@ -219,22 +243,29 @@ def dashboard(hid: str) -> dict | None:
     hh = load(hid)
     if not hh:
         return None
-    ctx = compute(hh)
     pa, amode = analytics_for(hh["id"], hh)
     ds = dict(store.STATE["data_source"][hh["id"]])
     if amode == "live":
         ds["analytics"] = "Perfios (live)"
+    return dashboard_for(hh, data_source=ds, analytics=pa, game_block=game.game_out(hh["id"]))
+
+
+def dashboard_for(hh: dict, *, data_source: dict, analytics: dict | None, game_block: dict) -> dict:
+    """Dashboard for any household: a fixture (A/B/C) or a linked user's twin."""
+    ctx = compute(hh)
     norm = ctx["norm"]
     return {
         "household": {
             "id": hh["id"], "family_name": hh["family_name"], "primary_user": hh["primary_user"], "city": hh["city"],
-            "income_type": hh["income_type"], "monthly_income": R(norm["monthly_income_p"]),
+            "income_type": hh["income_type"],
+            # unknown is not zero: a twin with no complete month has no monthly income yet
+            "monthly_income": R(norm["monthly_income_p"]) if norm.get("income_known", True) else None,
             "members": [{k: m[k] for k in ("id", "name", "role", "earner", "age", "sharing", "avatar") if k in m}
                         for m in hh["members"]],
             "literacy_mode": hh["literacy_mode"], "language": hh["language"],
         },
         "as_of": hh["as_of"],
-        "data_source": ds,
+        "data_source": data_source,
         "metrics": metrics(ctx),
         "protection_detail": ctx["protection"]["detail"],
         "river": ctx["cash"]["river"],
@@ -242,8 +273,9 @@ def dashboard(hid: str) -> dict | None:
         "jars": hh["jars_live"],
         "spend": spend(ctx),
         "lender_shield": [_public_lender(x) for x in ctx["lenders"]],
-        "crosscheck": crosscheck(ctx, pa),
-        "game": game.game_out(hh["id"]),
+        # Perfios cross-check only exists where Perfios analysed the same data (the replay fixtures).
+        "crosscheck": crosscheck(ctx, analytics) if analytics else [],
+        "game": game_block,
     }
 
 
@@ -263,11 +295,17 @@ def household_list() -> list[dict]:
 # --------------------------------------------------------------------------------------------
 def simulate(hid: str, moves=None, shock_amount: int = 0, salary_delay_days: int = 0, cut_per_day: int = 0,
              purchase: dict | None = None) -> dict | None:
-    """Scenario branch. Returns the after-river plus the before figures on the same baseline and horizon,
-    the responses that would (or would not) close a shortfall, loan terms, and goal impact."""
     hh = load(hid)
     if not hh:
         return None
+    return simulate_for(hh, moves=moves, shock_amount=shock_amount, salary_delay_days=salary_delay_days,
+                        cut_per_day=cut_per_day, purchase=purchase)
+
+
+def simulate_for(hh: dict, moves=None, shock_amount: int = 0, salary_delay_days: int = 0, cut_per_day: int = 0,
+                 purchase: dict | None = None) -> dict:
+    """Scenario branch. Returns the after-river plus the before figures on the same baseline and horizon,
+    the responses that would (or would not) close a shortfall, loan terms, and goal impact."""
     base_ctx = compute(hh)
     base = base_ctx["cash"]
 
