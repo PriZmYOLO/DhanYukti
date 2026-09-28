@@ -22,15 +22,24 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
     detail = []
     unknowns = 0
     uncovered_earners = []
+    unknown_life = []
     for m in members:
         cov = m.get("cover", {})
         life = cov.get("life")
         health = cov.get("health")
         if m["name"].upper() in evidence_names and "PMJJBY" in evidence_names:
             life = True
+        # The account holder's own premiums are evidence for them (a linked member's twin).
+        if m.get("account_holder") and any(k in evidence_names for k in ("PMJJBY", "LIFE", "LIC ", "TERM")):
+            life = True
+        if m.get("account_holder") and any(k in evidence_names for k in ("HEALTH", "MEDICLAIM", "PMJAY")):
+            health = True
         if health is None:
             unknowns += 1
-        if m.get("earner") and not life:
+        if m.get("earner") and life is None and m.get("account_holder"):
+            # not seen in bank data is not the same as "no cover": say it's unknown
+            unknown_life.append(m)
+        elif m.get("earner") and not life:
             uncovered_earners.append(m)
         detail.append({"member_id": m["id"], "name": m["name"], "life": bool(life), "health": bool(health),
                        "note": cov.get("note", L("", ""))})
@@ -39,7 +48,7 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
     main_uncovered = any(m.get("main_earner") for m in uncovered_earners)
     if main_uncovered:
         status = "red" if len(earners) == 1 else "amber"
-    elif uncovered_earners or unknowns:
+    elif uncovered_earners or unknowns or unknown_life:
         status = "amber"
     else:
         status = "green"
@@ -48,6 +57,9 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
     for m in uncovered_earners:
         parts_hi.append(f"{m['name']}: jeevan bima nahi")
         parts_en.append(f"{m['name']}: no life cover")
+    for m in unknown_life:
+        parts_hi.append(f"{m['name']}: jeevan bima bank data mein nahi dikha")
+        parts_en.append(f"{m['name']}: no life cover seen in bank data")
     if unknowns:
         parts_hi.append("Ayushman: pata nahi")
         parts_en.append("Ayushman: unknown")
@@ -60,5 +72,6 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
         "unknowns": unknowns,
         "uncovered_earners": uncovered_earners,
         "sole_earner": len(earners) == 1,
+        "unknown_life": unknown_life,
         "confidence": "pata_nahi" if unknowns and not uncovered_earners else ("andaaza" if unknowns or uncovered_earners else "pakka"),
     }

@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { Phone, PhoneOff, Play } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { topTask } from "./allGood";
 import { inr } from "@/lib/format";
 import type { Dashboard, L } from "@/lib/types";
 import { sayText, useRunner, wait } from "./VoiceScript";
@@ -9,7 +10,7 @@ import { sayText, useRunner, wait } from "./VoiceScript";
 type State = "idle" | "lang" | "menu" | "task" | "sent" | "spend" | "amount" | "confirm" | "pin" | "paid" | "help";
 
 function prompts(d: Dashboard, amt: number): Record<Exclude<State, "idle">, L> {
-  const n = d.nba[0];
+  const n = topTask(d);
   const s = d.metrics.safe_to_spend, r = d.metrics.resilience_days;
   return {
     lang: { hi: "Namaste! DhanYukti mein aapka swagat hai. Hindi ke liye 1, English ke liye 2 dabaiye.", en: "Welcome to DhanYukti. For Hindi press 1, for English press 2." },

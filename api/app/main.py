@@ -6,7 +6,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import ask, consent, enrich, game, households, meta
+from app.routers import ask, consent, enrich, game, households, meta, twin
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)  # our connectors log only request ids + status codes
@@ -20,5 +20,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (meta.router, households.router, consent.router, game.router, ask.router, enrich.router):
+for r in (meta.router, households.router, consent.router, game.router, ask.router, enrich.router, twin.router):
     app.include_router(r)

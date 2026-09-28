@@ -37,6 +37,8 @@ export interface ParsedDepositAccount {
   data_to: string | null;
   /** Holder date of birth from Profile, used only to work out an age. */
   holder_dob: string | null;
+  /** Holder's first name only (Profile), to greet the member; the full name is not kept. */
+  holder_first_name?: string | null;
   transactions: ParsedTransaction[];
 }
 
@@ -226,6 +228,15 @@ function holderDob(account: unknown): string | null {
   return isoDate(pick(holder, "dob"));
 }
 
+function holderFirstName(account: unknown): string | null {
+  const holder = asArray(
+    pick(pick(pick(account, "Profile"), "Holders"), "Holder"),
+  )[0];
+  const name = str(pick(holder, "name"));
+  const first = name?.trim().split(/\s+/)[0] ?? "";
+  return /^[A-Za-z\u0900-\u097F.'-]{2,30}$/.test(first) ? first : null;
+}
+
 function common(account: unknown, maskedKeys: string[]): Common {
   const txns = pick(account, "Transactions");
   return {
@@ -265,6 +276,7 @@ function deposit(account: unknown): ParsedDepositAccount {
     data_from: isoDate(pick(txns, "startDate")),
     data_to: isoDate(pick(txns, "endDate")),
     holder_dob: holderDob(account),
+    holder_first_name: holderFirstName(account),
     transactions: asArray(pick(txns, "Transaction")).map(txn),
   };
 }

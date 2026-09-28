@@ -2,6 +2,7 @@ import { after } from "next/server";
 
 import { collectIfPending, handleDataReady } from "@/lib/server/aa/links";
 import { noStore, storageGuard } from "@/lib/server/aa/http";
+import { rebuildTwinQuietly } from "@/lib/server/twin/engine";
 
 /** Gives the collection below time to finish on Vercel. */
 export const maxDuration = 60;
@@ -22,7 +23,11 @@ export async function POST(request: Request) {
   const { accepted, record } = await handleDataReady(payload);
   if (record) {
     after(async () => {
-      await collectIfPending(record);
+      const done = await collectIfPending(record);
+      // Build the member's own household from this data while it is here.
+      if (done.import_status === "complete" || done.import_status === "partial") {
+        await rebuildTwinQuietly(done.session_id);
+      }
     });
   }
   // Unknown references are acknowledged too, so the module stops retrying.

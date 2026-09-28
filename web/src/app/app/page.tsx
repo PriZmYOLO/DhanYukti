@@ -10,9 +10,10 @@ import AffordCheck from "@/components/AffordCheck";
 import DemoDataChip from "@/components/DemoDataChip";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
+import SuggestionsOff from "@/components/home/SuggestionsOff";
 
 export default function Home() {
-  const { data, error, onboarded, lang, mode, refresh, speak } = useApp();
+  const { data, error, onboarded, lang, mode, refresh, speak, hid } = useApp();
   const router = useRouter();
   const spoke = useRef(false);
   useEffect(() => { if (!onboarded) router.replace("/"); }, [onboarded, router]);
@@ -32,7 +33,12 @@ export default function Home() {
       <button onClick={refresh} className="mt-5 rounded-[20px] bg-ink text-white px-6 min-h-12 font-bold">{lang === "hi" ? "Dobara" : "Retry"}</button>
     </div>
   );
-  if (!data) return <div className="p-5 space-y-4 mt-4"><Skeleton h={56} /><Skeleton h={300} /><Skeleton h={200} /></div>;
+  if (!data) return (
+    <div className="p-5 space-y-4 mt-4">
+      {hid === "me" && <p role="status" className="text-center text-sm font-bold text-muted">{lang === "hi" ? "Aapke bank data se aapka hisaab ban raha hai…" : "Building your picture from your own bank data…"}</p>}
+      <Skeleton h={56} /><Skeleton h={300} /><Skeleton h={200} />
+    </div>
+  );
 
   return (
     <div>
@@ -41,7 +47,7 @@ export default function Home() {
       <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-6 lg:items-start mt-2">
         <div>
           <SectionTitle v={{ hi: "Aaj ka kaam", en: "Today's task" }} />
-          <TodayCards nba={data.nba} />
+          {data.suggestions_off ? <SuggestionsOff /> : <TodayCards nba={data.nba} />}
         </div>
         <div>
           <SectionTitle v={{ hi: "Parivaar ki sehat", en: "Family health" }} />

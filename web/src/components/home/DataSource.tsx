@@ -19,7 +19,9 @@ export default function DataSource() {
       </button>
       {open && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs font-bold text-muted">{lang === "hi" ? "Hamara hisaab vs Perfios analytics" : "Our E01 vs Perfios analytics"}</p>
+          {data.crosscheck.length === 0 ? (
+            <p className="text-xs text-muted leading-snug">{lang === "hi" ? `Yeh hisaab DhanYukti ke engines ne aapke apne bank data se banaya (${data.as_of} tak). Perfios ka mel-milaan is data par nahi chala.` : `Worked out by DhanYukti's engines from your own bank data (up to ${data.as_of}). No Perfios cross-check ran on this data.`}</p>
+          ) : <p className="text-xs font-bold text-muted">{lang === "hi" ? "Hamara hisaab vs Perfios analytics" : "Our E01 vs Perfios analytics"}</p>}
           {data.crosscheck.map((c, i) => (
             <div key={i} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center text-xs rounded-xl bg-white px-3 py-2">
               <span className="font-semibold">{t(c.field)}</span><span className="num">{c.ours}</span><span className="num text-muted">{c.perfios}</span>

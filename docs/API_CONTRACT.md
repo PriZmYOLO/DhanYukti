@@ -154,3 +154,30 @@ Rules:
   in 3+ months; otherwise `andaaza` (with `basis:L`). A date the user corrected is `andaaza`.
 - `Jar` gains `remaining` and `target_date`.
 - Demo fallback (`web/src/lib/mock.ts`) mirrors these; refresh its data with `python api/scripts/refresh_demo_whatif.py`.
+
+## My household (v1.3 — linked member, additive)
+
+A member who links a bank account through Anumati gets their own household, id `"me"`. No demo
+household data is used for them. Demo households (A/B/C) open only when someone picks one.
+
+Browser → Next.js (same paths as A/B/C, served by route handlers, never proxied to FastAPI):
+`GET /api/households/me/dashboard`, `POST /api/households/me/simulate`, `POST /api/households/me/correct`,
+`POST /api/game/me/event`, `POST /api/ask/me` (`{question, lang}`), `GET /api/consent/passport/me`,
+`GET /api/households/me/status` → `{linked, ready}`.
+Errors: `{error: {code, safe_message, retryable, missing?: L[]}}` with `code` one of `not_linked` (404),
+`data_pending` (409), `twin_insufficient` (409, `missing` lists what the bank didn't send), `data_expired` (410),
+`engine_unreachable` / `engine_error` (503).
+
+Next.js server → FastAPI (stateless; header `x-twin-secret` when `TWIN_SHARED_SECRET` is set on both):
+`POST /api/twin/build {as_of, fetched_at, sandbox, accounts:[{id, masked, fip, type, fi_type, balance, transactions:[{date, narration, amount}]}], profile:{first_name, age, answers}}`
+→ `{status: "ready"|"insufficient", missing, twin?, state?}`; then `/api/twin/{dashboard,simulate,correct,game-event,ask}`
+with `{twin, state, …}`. `correct` and `game-event` return the new `state`, which Next.js saves.
+
+Twin rules (E02): upcoming dates are projected from the member's own recurring payments (per payee and account;
+monthly/quarterly/yearly cadence, or the typical gap for payouts), each `pakka` only with 3+ months on the same
+day; essentials per day = the middle month of everyday spend; safety floor = 7 days of essentials; income and EMIs
+average over the complete months the data covers (none → `monthly_income: null`). Everyday rows are dropped after
+the build; the twin keeps E01's figures, the income/obligation rows that evidence them, and last month's spend
+buckets, for at most 30 days (deleted on revoke or "delete everything"). Family members come from the onboarding
+answers only with DPDP "profile" consent. Suggested tasks follow the link's "Alerts & suggestions" grant
+(off → `nba: []`, `suggestions_off: true`).

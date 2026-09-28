@@ -57,16 +57,20 @@ def level_for(points: int) -> tuple[int, dict, int]:
 
 def game_out(hid: str) -> dict:
     with store.lock():
-        g = _state(hid)
-        lvl, name, nxt = level_for(g["points"])
-        return {
-            "points": g["points"], "streak": g["streak"], "streak_shield": g["streak_shield"],
-            "level": lvl, "level_name": name, "next_level_at": nxt,
-            "badges": [{**b, "earned": b["id"] in g["badges_earned"]} for b in BADGES],
-            "mission": copy.deepcopy(g["mission"]),
-            "leaderboard": sorted(copy.deepcopy(g["leaderboard"]), key=lambda x: (-x["habits"], x["name"])),
-            "ledger": copy.deepcopy(g["ledger"]),
-        }
+        return game_out_g(_state(hid))
+
+
+def game_out_g(g: dict) -> dict:
+    """Contract Game block from one game state (a fixture household's or a linked user's)."""
+    lvl, name, nxt = level_for(g["points"])
+    return {
+        "points": g["points"], "streak": g["streak"], "streak_shield": g["streak_shield"],
+        "level": lvl, "level_name": name, "next_level_at": nxt,
+        "badges": [{**b, "earned": b["id"] in g["badges_earned"]} for b in BADGES],
+        "mission": copy.deepcopy(g["mission"]),
+        "leaderboard": sorted(copy.deepcopy(g["leaderboard"]), key=lambda x: (-x["habits"], x["name"])),
+        "ledger": copy.deepcopy(g["ledger"]),
+    }
 
 
 def _badge(bid: str) -> dict:
@@ -75,86 +79,102 @@ def _badge(bid: str) -> dict:
 
 
 def apply_event(hid: str, type_: str, ref: str | None = None, amount: int | None = None) -> dict:
-    if type_ not in POINTS:
-        raise ValueError(f"unknown event type {type_}")
     with store.lock():
-        g = _state(hid)
-        today = _today().isoformat()
-        delta = POINTS[type_]
-        jars_out = None
-
-        if type_ == "checkin":
-            last = g.get("last_checkin")
-            if last == today:
-                delta = 0
-            else:
-                gap = (_today() - date.fromisoformat(last)).days if last else None
-                if gap == 1:
-                    g["streak"] += 1
-                elif gap == 2 and g["streak_shield"] > 0:
-                    g["streak_shield"] -= 1
-                    g["streak"] += 1
-                else:
-                    g["streak"] = 1
-                g["last_checkin"] = today
-                if g["streak"] % 7 == 0:
-                    g["streak_shield"] = min(3, g["streak_shield"] + 1)
-
-        if type_ == "gullak_deposit":
-            amt = max(0, int(amount or 0))
-            jars = store.STATE["jars"][hid]
-            jar = next((j for j in jars if j["id"] == ref), None) or next((j for j in jars if j["kind"] == "emergency"), jars[0])
-            jar["saved"] += amt
-            g["mission"]["progress"] = min(g["mission"]["target"], g["mission"]["progress"] + amt)
-            if amt:
-                g["ledger"].append({"date": today, "what": L(f"{jar['name']['hi']} mein bachat", f"Saved in {jar['name']['en']}"),
-                                    "amount": amt, "evidenced": False})
-            jars_out = jars
-
-        if type_ == "task_done" and ref:
-            store.STATE["open_actions"][hid].append({"ref": ref, "done_at": today})
-
-        g["points"] += delta
-        if delta:
-            primary = HOUSEHOLDS[hid]["primary_user"]
-            for row in g["leaderboard"]:
-                if row["member_id"] == primary:
-                    row["habits"] += 1
-                    row["streak"] = max(row["streak"], g["streak"])
-
-        # badge unlocks (first new one is returned)
-        unlocked = None
-        earned = g["badges_earned"]
-        cands = []
-        if type_ in ("task_done", "setup", "gullak_deposit", "protection_check"):
-            cands.append("pehla_kadam")
-        if type_ == "task_done" and ref and ("lender" in ref or "loan" in ref):
-            cands.append("karz_mukti")
-        if type_ == "protection_check":
-            cands.append("suraksha_kavach")
-        if type_ == "gullak_deposit":
-            em = next((j for j in store.STATE["jars"][hid] if j["kind"] == "emergency"), None)
-            if em and em["saved"] >= HOUSEHOLDS[hid]["essentials_per_day"] * 30:
-                cands.append("bachav_30")
-        if sum(r["habits"] for r in g["leaderboard"]) >= FAMILY_HABITS_FOR_CHAMPION:
-            cands.append("parivaar_champion")
-        for c in cands:
-            if c not in earned:
-                earned.append(c)
-                unlocked = unlocked or _badge(c)
-
-        lvl, _, _ = level_for(g["points"])
-        out = {"points": g["points"], "delta": delta, "streak": g["streak"], "level": lvl}
-        if unlocked:
-            out["badge_unlocked"] = unlocked
-        if jars_out is not None:
+        hh = HOUSEHOLDS[hid]
+        out = apply_event_g(_state(hid), store.STATE["jars"][hid], store.STATE["open_actions"][hid],
+                            hh["primary_user"], hh["essentials_per_day"], type_, ref, amount)
+        if "jars" in out:
             out["jars"] = jars_with_suggest(hid)
         return out
 
 
+def apply_event_g(g: dict, jars: list[dict], open_actions: list[dict], primary_user: str, essentials_per_day: int,
+                  type_: str, ref: str | None = None, amount: int | None = None, as_of: str | None = None) -> dict:
+    """Apply one game event to a game state + jars (both mutated in place). Stateless otherwise."""
+    if type_ not in POINTS:
+        raise ValueError(f"unknown event type {type_}")
+    today = _today().isoformat()
+    delta = POINTS[type_]
+    jars_touched = False
+
+    if type_ == "checkin":
+        last = g.get("last_checkin")
+        if last == today:
+            delta = 0
+        else:
+            gap = (_today() - date.fromisoformat(last)).days if last else None
+            if gap == 1:
+                g["streak"] += 1
+            elif gap == 2 and g["streak_shield"] > 0:
+                g["streak_shield"] -= 1
+                g["streak"] += 1
+            else:
+                g["streak"] = 1
+            g["last_checkin"] = today
+            if g["streak"] % 7 == 0:
+                g["streak_shield"] = min(3, g["streak_shield"] + 1)
+
+    if type_ == "gullak_deposit":
+        amt = max(0, int(amount or 0))
+        jar = next((j for j in jars if j["id"] == ref), None) or next((j for j in jars if j["kind"] == "emergency"), None) \
+            or (jars[0] if jars else None)
+        if jar is None:
+            raise ValueError("no jar to deposit into")
+        jar["saved"] += amt
+        g["mission"]["progress"] = min(g["mission"]["target"], g["mission"]["progress"] + amt)
+        if amt:
+            g["ledger"].append({"date": today, "what": L(f"{jar['name']['hi']} mein bachat", f"Saved in {jar['name']['en']}"),
+                                "amount": amt, "evidenced": False})
+        jars_touched = True
+
+    if type_ == "task_done" and ref:
+        open_actions.append({"ref": ref, "done_at": today})
+
+    g["points"] += delta
+    if delta:
+        for row in g["leaderboard"]:
+            if row["member_id"] == primary_user:
+                row["habits"] += 1
+                row["streak"] = max(row["streak"], g["streak"])
+
+    # badge unlocks (first new one is returned)
+    unlocked = None
+    earned = g["badges_earned"]
+    cands = []
+    if type_ in ("task_done", "setup", "gullak_deposit", "protection_check"):
+        cands.append("pehla_kadam")
+    if type_ == "task_done" and ref and ("lender" in ref or "loan" in ref):
+        cands.append("karz_mukti")
+    if type_ == "protection_check":
+        cands.append("suraksha_kavach")
+    if type_ == "gullak_deposit":
+        em = next((j for j in jars if j["kind"] == "emergency"), None)
+        if em and essentials_per_day and em["saved"] >= essentials_per_day * 30:
+            cands.append("bachav_30")
+    if sum(r["habits"] for r in g["leaderboard"]) >= FAMILY_HABITS_FOR_CHAMPION:
+        cands.append("parivaar_champion")
+    for c in cands:
+        if c not in earned:
+            earned.append(c)
+            unlocked = unlocked or _badge(c)
+
+    lvl, _, _ = level_for(g["points"])
+    out = {"points": g["points"], "delta": delta, "streak": g["streak"], "level": lvl}
+    if unlocked:
+        out["badge_unlocked"] = unlocked
+    if jars_touched:
+        out["jars"] = jars_suggest(jars, as_of or today)
+    return out
+
+
 def jars_with_suggest(hid: str, as_of: str = "2026-09-23") -> list[dict]:
+    return jars_suggest(store.STATE["jars"][hid], as_of)
+
+
+def jars_suggest(jars: list[dict], as_of: str) -> list[dict]:
+    """Contract jars with the ₹/day needed to reach each goal by its target date."""
     out = []
-    for j in store.STATE["jars"][hid]:
+    for j in jars:
         days = max(1, (date.fromisoformat(j["target_date"]) - date.fromisoformat(as_of)).days)
         remaining = max(0, j["goal"] - j["saved"])
         per_day = -(-remaining // days)  # ceil

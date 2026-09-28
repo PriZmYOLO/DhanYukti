@@ -7,11 +7,11 @@ const DEMO_HOUSEHOLD_IDS = ["A", "B", "C"];
 
 /**
  * The demo household's name when the dashboard is fixture data, else null.
- * Nothing in this build turns a member's own bank data into a dashboard,
- * so every A/B/C dashboard is a demo, even after a real Anumati approval.
+ * A linked member's own household (id "me", built by the engines from their
+ * own bank data) is never a demo.
  */
 export function demoHouseholdName(d: Dashboard | null): string | null {
-  if (!d) return null;
+  if (!d || d.household.id === "me") return null;
   const demo = isDemoMode() || d.data_source.mode === "fixture" || DEMO_HOUSEHOLD_IDS.includes(d.household.id);
   return demo ? (primaryMember(d)?.name ?? d.household.primary_user) : null;
 }

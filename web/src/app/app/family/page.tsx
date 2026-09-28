@@ -39,7 +39,7 @@ const SHARE: { k: Member["sharing"]; hi: string; en: string }[] = [
 ];
 
 export default function Family() {
-  const { data, hid, setHid, t, lang, mode, setMode, setOnboarded, consentHandle, setConsentHandle, refresh } = useApp();
+  const { data, hid, setHid, t, lang, mode, setMode, setOnboarded, consentHandle, setConsentHandle, refresh, linked, showMyHousehold } = useApp();
   const router = useRouter();
   const [tab, setTab] = useState<(typeof TABS)[number]["k"]>("family");
   const [homes, setHomes] = useState<HouseholdSummary[]>([]);
@@ -89,11 +89,18 @@ export default function Family() {
         ))}
       </div>
       {tab === "family" && (<>
-      <SectionTitle v={{ hi: "Demo parivaar badlein", en: "Switch demo household" }} />
+      <SectionTitle v={linked ? { hi: "Kiska hisaab dekhein", en: "Whose picture" } : { hi: "Demo parivaar badlein", en: "Switch demo household" }} />
       <div className="flex gap-3 overflow-x-auto no-scrollbar px-5">
+        {linked && (
+          <button onClick={showMyHousehold} className={`shrink-0 w-56 rounded-[28px] p-4 text-left transition ${hid === "me" ? "bg-ink text-white shadow-lift" : "bg-white"}`}>
+            <p className="text-[11px] font-bold opacity-60">{lang === "hi" ? "Aapke bank data se" : "From your own bank data"}</p>
+            <p className="font-extrabold text-[17px] mt-0.5">{lang === "hi" ? "Mera parivaar" : "My household"}</p>
+            <p className="text-xs mt-2 opacity-80">{lang === "hi" ? "Anumati se juda khaata" : "Linked through Anumati"}</p>
+          </button>
+        )}
         {homes.map((h) => (
           <button key={h.id} onClick={() => setHid(h.id)} className={`shrink-0 w-56 rounded-[28px] p-4 text-left transition ${hid === h.id ? "bg-ink text-white shadow-lift" : "bg-white"}`}>
-            <p className="text-[11px] font-bold opacity-60">{t(h.city)} · {inr(h.income)}/{lang === "hi" ? "mahina" : "mo"}</p>
+            <p className="text-[11px] font-bold opacity-60">{lang === "hi" ? "Demo · " : "Demo · "}{t(h.city)} · {inr(h.income)}/{lang === "hi" ? "mahina" : "mo"}</p>
             <p className="font-extrabold text-[17px] mt-0.5">{t(h.family_name)}</p>
             <p className="text-xs mt-2 opacity-80 line-clamp-2">{t(h.problem)}</p>
             <p className={`text-[11px] font-bold mt-2 ${hid === h.id ? "text-haldi" : "text-clay"}`}>→ {t(h.hero)}</p>
