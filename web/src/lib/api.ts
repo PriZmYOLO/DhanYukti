@@ -1,6 +1,7 @@
 import type {
   Capability, ConsentArtefact, Dashboard, DpdpGrant, GameEventResult, HouseholdSummary, L, SimResult,
 } from "./types";
+import type { MyBillsView } from "./contracts/my-bills";
 
 /** A "my household" (linked member) error: says what's wrong, never swaps in demo data. */
 export class MeError extends Error {
@@ -67,6 +68,10 @@ const real = {
       : post<{ answer: L; tools_used: string[]; tag: string }>("/ask", { household_id, question, lang }),
   /** Linked member: is a bank account linked in this browser, and is their picture built? */
   meStatus: () => call<{ linked: boolean; ready: boolean }>("/households/me/status"),
+  /** Confirm your bills: repeating payments from the member's own data, and their decisions. */
+  myBills: () => call<{ bills: MyBillsView }>("/households/me/bills"),
+  decideBill: (series: string, action: "confirm" | "fix" | "ignore" | "undo", extra: { amount?: number; day?: number } = {}) =>
+    post<{ bills: MyBillsView; receipt_id: string | null }>("/households/me/bills", { series, action, ...extra }),
   enrich: (hid: string, kind: "electricity" | "rc" | "ration" | "epf", input: Record<string, string> = {}) =>
     post<{ kind: string; mode: string; result: Record<string, unknown>; used_for: L }>(`/enrich/${hid}/${kind}`, { consent: true, input }),
   bsaUpload: async (file: File) => {

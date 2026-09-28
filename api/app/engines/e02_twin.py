@@ -120,7 +120,7 @@ def project_upcoming(rows: list[dict], as_of: str) -> list[dict]:
                 nxt += timedelta(days=step)
             k = 0
             while nxt <= until and k < 12:
-                out.append(_event(kind, key, nxt, amt, acct))
+                out.append(_event(kind, key, nxt, amt, acct, {"days": step}))
                 nxt += timedelta(days=step)
                 k += 1
             continue
@@ -139,15 +139,18 @@ def project_upcoming(rows: list[dict], as_of: str) -> list[dict]:
         while _on_day(m0, day) <= as_of_d:
             m0 += cadence
         while (nx := _on_day(m0, day)) <= until:
-            out.append(_event(kind, key, nx, amt, acct))
+            out.append(_event(kind, key, nx, amt, acct, {"months": cadence}))
             m0 += cadence
     out.sort(key=lambda e: (e["date"], e["amount"] < 0))
     return out
 
 
-def _event(kind: str, key: str, when: date, amount: int, account: str) -> dict:
+def _event(kind: str, key: str, when: date, amount: int, account: str, every: dict) -> dict:
     slug = re.sub(r"[^a-z0-9]+", "_", f"{key} {account[-4:]}".lower()).strip("_")[:28] or "x"
-    ev = {"id": f"{kind}_{slug}_{when.isoformat()}", "date": iso(when), "type": EVENT_TYPE[kind],
+    # `series` names the repeating payment (same payee, kind and account) across its dates, so the
+    # member's decision on it (confirm / fix / ignore) applies to every date and survives a rebuild.
+    ev = {"id": f"{kind}_{slug}_{when.isoformat()}", "series": f"{kind}_{slug}", "every": every,
+          "date": iso(when), "type": EVENT_TYPE[kind],
           "label": _label(kind, key), "amount": int(amount), "movable": kind == "fee", "_kind": kind}
     if kind in PROTECTED:
         ev["protected"] = True

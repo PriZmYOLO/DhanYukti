@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { aaLive, liveSee, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
 import { DEFAULT_FI_TYPES, FI_TYPE_TEXT, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import BankSummaryCard from "@/components/BankSummaryCard";
+import ConfirmBills from "@/components/ConfirmBills";
 import DemoDataChip from "@/components/DemoDataChip";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
@@ -418,6 +419,8 @@ export default function Onboarding() {
                 ))}
               </div>
             </div>
+            {/* E02 with a consent step: the member checks what the engines found in their own data. */}
+            {liveActive && data.household.id === "me" && <ConfirmBills />}
             {data.nba[0] && (
               <div className="mt-4 rounded-[28px] bg-danger-soft p-4 flex items-center gap-3">
                 <Scene kind={data.nba[0].icon} size={56} />

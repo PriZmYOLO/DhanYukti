@@ -19,6 +19,8 @@ export type RiverEvent = {
   label: L; amount: number; movable: boolean;
   /** pakka = seen on this date in bank data (3+ months); andaaza = our estimate. Absent on scenario-only events. */
   certainty?: Confidence; basis?: L; scenario?: boolean;
+  /** The repeating payment this date belongs to, and the member's own word on it (Confirm your bills). */
+  series?: string; checked?: "confirmed" | "corrected";
   /** Set in a scenario when the user asked to move this bill: the payee has NOT agreed yet. */
   moved?: boolean; original_date?: string; needs?: L;
 };
