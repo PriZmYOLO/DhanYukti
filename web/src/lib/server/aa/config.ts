@@ -1,5 +1,7 @@
 import "server-only";
 
+import { parseAllowList, type FiType } from "@/lib/aa/fi-types";
+
 /**
  * Server-only settings for the Anumati FIU module (Vercel → Settings →
  * Environment Variables). Nothing here is ever sent to the browser.
@@ -32,6 +34,15 @@ export const aaConfig = {
     process.env.ANUMATI_BASE_URL ?? "uat",
   ),
 };
+
+/**
+ * FI types this server may request (env AA_FI_TYPES, comma-separated ReBIT
+ * names). Unset → DEPOSIT only, the verified behaviour. Rollback: set
+ * AA_FI_TYPES=DEPOSIT and redeploy.
+ */
+export function allowedFiTypes(): FiType[] {
+  return parseAllowList(process.env.AA_FI_TYPES);
+}
 
 export function aaConfigured(): boolean {
   return Boolean(aaConfig.clientId && aaConfig.clientSecret);

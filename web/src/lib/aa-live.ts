@@ -10,6 +10,7 @@
  * 12 months of history, fetched once on approval, consent valid 12 months.
  */
 import type { AccountSummary } from "@/lib/contracts/aa-summary";
+import { DEFAULT_FI_TYPES, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import type { ConsentChoices, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 import { ensureSession } from "@/lib/session";
@@ -21,6 +22,8 @@ export type AaStatus = {
   storage_ready: boolean;
   live_ui_enabled: boolean;
   sandbox: boolean;
+  /** FI types this server may request (AA_FI_TYPES; default DEPOSIT). */
+  fi_types_allowed?: FiType[];
 };
 
 export type Handoff =
@@ -37,6 +40,15 @@ export const LIVE_CONSENT = {
   why: { hi: "Taaki mahine ke aakhir mein paise kam na padein", en: "So you don't run short at month-end" } as L,
   until: { hi: "12 mahine. Data ek baar aata hai. Kabhi bhi band kar sakte hain", en: "12 months. Data is fetched once. Stop anytime" } as L,
 };
+
+/** "We'll see": exactly the FI types being requested. */
+export function liveSee(fiTypes: readonly FiType[]): L {
+  if (fiTypes.length === 1 && fiTypes[0] === "DEPOSIT") return LIVE_CONSENT.see;
+  return {
+    hi: `12 mahine ka data: ${fiTypeList(fiTypes, "hi")}`,
+    en: `12 months of: ${fiTypeList(fiTypes, "en")}`,
+  };
+}
 
 const PENDING_KEY = "dy.aa.pendingLink";
 
@@ -58,14 +70,19 @@ const opts = (method: "GET" | "POST", body?: unknown): RequestInit => ({
 });
 
 export const aaLive = {
+  /** This deployment's AA status; null if it can't be read. */
+  async status(): Promise<AaStatus | null> {
+    try {
+      return await json<AaStatus>(await fetch("/api/aa/status", opts("GET")));
+    } catch {
+      return null;
+    }
+  },
+
   /** True only when this deployment has Anumati credentials, storage and the live flag on. */
   async available(): Promise<boolean> {
-    try {
-      const s = await json<AaStatus>(await fetch("/api/aa/status", opts("GET")));
-      return s.credentials_configured && s.storage_ready && s.live_ui_enabled;
-    } catch {
-      return false;
-    }
+    const s = await aaLive.status();
+    return Boolean(s && s.credentials_configured && s.storage_ready && s.live_ui_enabled);
   },
 
   async list(): Promise<SourceLink[]> {
@@ -81,6 +98,7 @@ export const aaLive = {
   async create(grants: Omit<ConsentChoices, "source_access">): Promise<SourceLink> {
     await ensureSession();
     const r = await json<{ ok: boolean; link?: SourceLink; reason?: string }>(
+      // grants may carry fi_types ("Which accounts to share").
       await fetch("/api/aa/links", opts("POST", { source_access: true, ...grants })),
     );
     if (!r.ok || !r.link) throw new Error(r.reason ?? "could_not_create");
@@ -170,7 +188,7 @@ export function liveArtefact(link: SourceLink, member: { id: string; name: strin
     aa: link.is_sandbox ? "Anumati (live sandbox)" : "Anumati",
     status: status[link.consent.status] ?? "UNKNOWN",
     purpose: { hi: "Khaate ka saar (Aggregated statement)", en: "Aggregated statement" },
-    fi_types: ["DEPOSIT"],
+    fi_types: link.fi_types ?? DEFAULT_FI_TYPES,
     range_months: LIVE_CONSENT.history_months,
     fetch: "ONETIME",
     expiry,

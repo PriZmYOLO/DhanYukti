@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Account xmlns="http://api.rebit.org.in/FISchema/sip" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" linkedAccRef="test-ref-6" maskedFolioNo="XXXXX4567" version="1.0.0" type="sip">
+  <Profile>
+    <Holders type="SINGLE">
+      <Holder name="TEST HOLDER" dob="1994-03-15" mobile="9999999999" nominee="REGISTERED" email="test@example.invalid" pan="AAAAA0000A" kycCompliance="Completed"/>
+    </Holders>
+  </Profile>
+  <Summary folioNo="XXXXX4567">
+    <Holdings>
+      <Holding amc="TEST AMC ONE" registrar="TEST RTA" amfiCode="100001" holder2Name="">
+        <Schemes>
+          <Scheme scheme="TEST LARGE CAP FUND - DIRECT GROWTH" schemeOption="GROWTH_TYPE" schemeTypes="EQUITY_SCHEMES" schemeCategory="LARGE_CAP_FUND" isin="INF000T01010">
+            <Sips>
+              <Sip SIPRefNo="SIP-TEST-1" amount="5000.00" frequency="Monthly" installmentDay="2026-10-05" pendingInstallments="25" completeInstallments="11" lastInstallmentDate="2026-09-05" nextInstallmentDate="2026-10-05" creationDate="2025-10-05" ceasedDate=""/>
+            </Sips>
+          </Scheme>
+          <Scheme scheme="TEST SHORT DURATION FUND" schemeOption="IDCW" schemeTypes="DEBT_SCHEMES" schemeCategory="SHORT_DURATION_FUND" isin="INF000T02026">
+            <Sips>
+              <Sip SIPRefNo="SIP-TEST-2" amount="2000" frequency="Monthly" installmentDay="2025-12-01" pendingInstallments="0" completeInstallments="6" lastInstallmentDate="2025-11-01" nextInstallmentDate="" creationDate="2025-06-01" ceasedDate="2025-12-01"/>
+            </Sips>
+          </Scheme>
+        </Schemes>
+      </Holding>
+    </Holdings>
+  </Summary>
+  <Transactions/>
+</Account>

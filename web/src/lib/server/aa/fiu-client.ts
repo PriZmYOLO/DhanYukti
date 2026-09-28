@@ -122,13 +122,19 @@ export function buildConsentBody(
   };
 }
 
+/**
+ * Starts the onboarding consent for these FI types. Only fiTypes change;
+ * purpose 103, ONETIME, 12-month range, dataLife and frequency are the
+ * values verified with Anumati.
+ */
 export function startConsent(
   mobileNumber: string,
   idempotencyKey: string,
+  fiTypes: string[] = ONBOARDING_CONSENT.fiTypes,
 ): Promise<FiuResult<StartConsentResponse>> {
   return call<StartConsentResponse>(
     "/module/initiate/consent",
-    buildConsentBody(mobileNumber),
+    buildConsentBody(mobileNumber, { ...ONBOARDING_CONSENT, fiTypes }),
     { "X-Idempotency-Key": idempotencyKey },
   );
 }

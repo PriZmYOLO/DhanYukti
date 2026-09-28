@@ -6,6 +6,7 @@
  */
 import type { IsoDate, IsoTimestamp, MoneyPaise } from "./common";
 import type { SchemeId, SchemeStatus } from "./scheme-check";
+import type { FiType } from "../aa/fi-types";
 
 export interface SummaryAccount {
   /** Masked label, e.g. "Savings account · SBI-FIP-UAT ··9648". */
@@ -70,4 +71,59 @@ export interface AccountSummary {
   monthly_inflow: MonthlyInflow;
   recurring_debits: { items: RecurringDebit[]; reason: string | null };
   jan_suraksha: SummaryJanSuraksha;
+  /** FD/RD, mutual funds, shares and SIPs (only the types requested). */
+  savings_investments: SavingsInvestments;
+}
+
+/**
+ * - not_requested: the member didn't share this kind of account.
+ * - none_found: shared, but the bank sent no account of this kind.
+ * - ready: facts below; a value that couldn't be read is null, never 0.
+ */
+type Fact<T> = { status: "not_requested" } | { status: "none_found" } | ({ status: "ready" } & T);
+
+export interface SavingsInvestments {
+  /** FI types this link asked for; the facts cover only these. */
+  requested: FiType[];
+  /** TERM_DEPOSIT + RECURRING_DEPOSIT. */
+  deposits: Fact<{
+    source_fi_types: ("TERM_DEPOSIT" | "RECURRING_DEPOSIT")[];
+    accounts: number;
+    /** Sum of current values the bank sent; null when none did. */
+    total_current_value: MoneyPaise | null;
+    accounts_without_value: number;
+    /** Earliest maturity from today on; null when no date is known. */
+    next_maturity: {
+      date: IsoDate;
+      amount: MoneyPaise | null;
+      fi_type: "TERM_DEPOSIT" | "RECURRING_DEPOSIT";
+      account_label: string;
+    } | null;
+  }>;
+  /** MUTUAL_FUNDS: market value, can go down. */
+  mutual_funds: Fact<{
+    current_value: MoneyPaise | null;
+    cost_value: MoneyPaise | null;
+    schemes: number;
+    accounts_without_value: number;
+    /** Latest NAV date among the schemes. */
+    as_of: IsoDate | null;
+  }>;
+  /** EQUITIES: market value, can go down. */
+  equities: Fact<{
+    current_value: MoneyPaise | null;
+    holdings: number;
+    accounts_without_value: number;
+  }>;
+  /** SIP. */
+  sips: Fact<{
+    active: {
+      scheme: string | null;
+      amc: string | null;
+      amount: MoneyPaise | null;
+      frequency: string | null;
+      next_date: IsoDate | null;
+    }[];
+    ceased: number;
+  }>;
 }

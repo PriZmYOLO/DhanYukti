@@ -13,7 +13,8 @@ import { Btn, HelpLink, SpeakBtn } from "@/components/ui/bits";
 import { metricValue } from "@/components/home/HealthTiles";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
-import { aaLive, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
+import { aaLive, liveSee, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
+import { DEFAULT_FI_TYPES, FI_TYPE_TEXT, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import BankSummaryCard from "@/components/BankSummaryCard";
 import DemoDataChip from "@/components/DemoDataChip";
 import { demoHouseholdName } from "@/lib/demo-data";
@@ -56,6 +57,9 @@ export default function Onboarding() {
   const [liveLink, setLiveLink] = useState<SourceLink | null>(null);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [polling, setPolling] = useState<string | null>(null);
+  // "Which accounts to share": only types this server allows (AA_FI_TYPES).
+  const [fiAllowed, setFiAllowed] = useState<FiType[]>(DEFAULT_FI_TYPES);
+  const [fiChoice, setFiChoice] = useState<FiType[]>(DEFAULT_FI_TYPES);
   // The member's own facts from a live, active link (worked out on the server).
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [summaryErr, setSummaryErr] = useState<string | null>(null);
@@ -93,8 +97,13 @@ export default function Onboarding() {
     if (s === "consent") setStep("passport");
     if (s === "connect" && h) { setConsentHandle(h); setStep("connect"); runFetch(h); }
     // Is the live Anumati flow switched on for this deployment?
-    aaLive.available().then(async (on) => {
+    aaLive.status().then(async (st) => {
+      const on = Boolean(st && st.credentials_configured && st.storage_ready && st.live_ui_enabled);
       setLive(on);
+      const allowed = st?.fi_types_allowed?.length ? st.fi_types_allowed : DEFAULT_FI_TYPES;
+      setFiAllowed(allowed);
+      // Savings on by default; FD, RD, funds, SIP and shares start off.
+      setFiChoice(DEFAULT_FI_TYPES.filter((f) => allowed.includes(f)));
       if (!on) return;
       // Came back (or reloaded) mid-approval: pick the live link up again.
       const pending = aaLive.pending();
@@ -169,7 +178,7 @@ export default function Onboarding() {
     // Open the tab inside the tap, before any await, so it isn't blocked as a popup.
     const tab = window.open("about:blank", "_blank");
     try {
-      const link = await aaLive.create(grants);
+      const link = await aaLive.create({ ...grants, fi_types: fiChoice });
       const h = await aaLive.approve(link.link_id, mobile);
       if (h.mode === "redirect") {
         aaLive.rememberPending(link.link_id);
@@ -328,7 +337,17 @@ export default function Onboarding() {
               </p>
             </div>
             <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
-              see={LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
+              see={live ? liveSee(fiChoice) : LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
+            {live && fiAllowed.length > 1 && (
+              <fieldset className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
+                <legend className="sr-only">{t({ hi: "Kaunse khaate share karein", en: "Which accounts to share" })}</legend>
+                <p className="text-[13px] font-extrabold px-1">{t({ hi: "Kaunse khaate share karein", en: "Which accounts to share" })}</p>
+                {fiAllowed.map((f) => (
+                  <FiRow key={f} type={f} on={fiChoice.includes(f)} set={(v) => setFiChoice(v ? [...fiChoice, f] : fiChoice.filter((x) => x !== f))} />
+                ))}
+                {fiChoice.length === 0 && <p className="px-1 text-[12px] font-semibold text-danger">{t({ hi: "Kam se kam ek chunein", en: "Choose at least one" })}</p>}
+              </fieldset>
+            )}
             {live && (
               <div className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
                 <p className="text-[12px] font-bold text-muted px-1">{t({ hi: "Bank data ka istemaal — teeno pehle se band", en: "How the bank data may be used — all start off" })}</p>
@@ -339,7 +358,7 @@ export default function Onboarding() {
             )}
             {err && <p className="mt-3 text-sm text-danger font-semibold">{err}{live ? "" : ` — ${t({ hi: "API chal raha hai?", en: "Is the API running?" })}`}</p>}
             <div className="flex-1" />
-            <Btn variant="haldi" className="w-full mt-5" onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
+            <Btn variant="haldi" className="w-full mt-5" disabled={live === true && fiChoice.length === 0} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
             {live && <button onClick={startReplay} className="mt-2 w-full min-h-11 text-[13px] font-bold text-muted underline">{t({ hi: "Net kharab? Recorded sandbox (replay) chalayein", en: "Bad network? Use the recorded sandbox (replay)" })}</button>}
             <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}{live ? " · live sandbox" : ""}</p>
           </>)}
@@ -497,6 +516,7 @@ function LiveConnect({ link, url, err, onRetry, onNext }: {
           : t({ hi: "Aapka hisaab ban raha hai…", en: "Preparing your account…" })}
       </h2>
       <p className="mt-1 text-xs font-bold text-muted">Anumati AA · {link.is_sandbox ? "live sandbox" : "live"}</p>
+      <p className="mt-1 text-xs text-muted text-center">{t({ hi: "Share ho raha hai", en: "Sharing" })}: {fiTypeList(link.fi_types ?? DEFAULT_FI_TYPES, lang)}</p>
       {stage === "sent" && (
         <p className="mt-3 text-center text-sm text-muted">{t({ hi: "Anumati naye tab mein khula hai. Wahan OTP daal kar manzoor karein, phir yahan laut aayein.", en: "Anumati opened in a new tab. Enter the OTP there and approve, then come back here." })}</p>
       )}
@@ -568,6 +588,21 @@ function CountRow({ e, l, a, set }: { e: string; l: L; a: Answer<number>; set: (
       <span className={`w-6 text-center font-extrabold num ${n === null ? "text-muted text-lg" : "text-2xl"}`}>{n ?? (dk ? "?" : "–")}</span>
       <button aria-label="+" onClick={() => set(answered((n ?? 0) + 1))} className="grid place-items-center h-10 w-10 rounded-full bg-ink text-white shrink-0"><Plus size={16} /></button>
     </div>
+  );
+}
+
+/** One "Which accounts to share" row: label and one line on why it helps. */
+function FiRow({ type, on, set }: { type: FiType; on: boolean; set: (v: boolean) => void }) {
+  const { t } = useApp();
+  const text = FI_TYPE_TEXT[type];
+  return (
+    <button onClick={() => set(!on)} role="checkbox" aria-checked={on} className="w-full flex items-center gap-3 rounded-[16px] px-1 min-h-12 text-left">
+      <span className="flex-1 min-w-0">
+        <span className="block text-[13px] font-bold leading-snug">{t(text.label)}</span>
+        <span className="block text-[12px] text-muted leading-snug">{t(text.why)}</span>
+      </span>
+      <span className={`h-6 w-6 rounded-md grid place-items-center shrink-0 ${on ? "bg-ink text-white" : "border-2 border-ink/20"}`}>{on && <Check size={14} />}</span>
+    </button>
   );
 }
 

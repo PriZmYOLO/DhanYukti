@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_FI_TYPES, fiTypeList } from "@/lib/aa/fi-types";
 import { useEffect, useRef, useState } from "react";
 import { Check, ExternalLink, Landmark, ShieldOff, Loader2 } from "lucide-react";
 import { useApp } from "@/lib/store";
@@ -82,6 +83,9 @@ export default function LiveLinkCard({ link, onChange, redirectUrl }: { link: So
         {lang === "hi" ? "Maksad" : "Purpose"}: {lang === "hi" ? "Aggregated statement (103)" : "Aggregated statement (code 103)"} · {link.terms.history_months} {lang === "hi" ? "mahine" : "months"} · {lang === "hi" ? "ek baar fetch" : "fetched once"}
       </p>
       <p className="text-[11px] text-white/60">
+        {lang === "hi" ? "Kya share kiya" : "Shared"}: {fiTypeList(link.fi_types ?? DEFAULT_FI_TYPES, lang)}
+      </p>
+      <p className="text-[11px] text-white/60">
         {lang === "hi" ? "Parivaar ke hisaab mein" : "Household calculation"}: {link.grants.household_computation ? "✓" : "✗"} · {lang === "hi" ? "Alert/salah" : "Alerts & actions"}: {link.grants.alerts_and_actions ? "✓" : "✗"} · {lang === "hi" ? "Kaun dekhe" : "Who sees"}: {link.grants.viewer_scope === "only_me" ? (lang === "hi" ? "sirf main" : "only me") : (lang === "hi" ? "ghar ke bade" : "household adults")}
       </p>
 
@@ -91,7 +95,7 @@ export default function LiveLinkCard({ link, onChange, redirectUrl }: { link: So
             <div key={a.account_id} className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-[13px]">
               <Landmark size={16} className="text-haldi shrink-0" />
               <span className="flex-1 truncate">{a.account_label}</span>
-              <span className="font-bold num">{a.balance ? inr(paise(a.balance)) : a.status === "failed" ? "—" : "…"}</span>
+              <span className="font-bold num">{a.balance ? inr(paise(a.balance)) : a.status === "processing" ? "…" : "—"}</span>
             </div>
           ))}
         </div>
