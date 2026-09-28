@@ -29,7 +29,9 @@ STEPS = [
     ("decrypted", L("Data khola gaya", "Decrypted")),
     ("perfios_analytics", L("Perfios analytics", "Perfios analytics")),
     ("twin_built", L("Household Twin bana", "Household Twin built")),
-    ("raw_deleted", L("Kachcha data delete (hisaab ke baad)", "Raw data deleted (compute-then-delete)")),
+    # Replay only: nothing real is fetched here, so this step is simulated.
+    ("raw_deleted", L("Replay: kachcha data delete (sirf dikhawa, asli data nahi aaya)",
+                      "Replay: raw data deleted (simulated, nothing real was fetched)")),
 ]
 
 

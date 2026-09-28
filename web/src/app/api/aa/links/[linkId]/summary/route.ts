@@ -29,6 +29,9 @@ export async function GET(
       "This request isn't in your session.",
     );
   }
+  if (result.status === "expired") {
+    return errorResponse(410, "expired", result.safe_message);
+  }
   if (result.status === "no_data") {
     return errorResponse(
       409,

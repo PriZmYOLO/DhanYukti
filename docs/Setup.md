@@ -30,7 +30,7 @@ npm run dev                   # http://localhost:3000
 
 ## Demo shortcuts
 - `http://localhost:3000/?demo=A` (or `B`, `C`) skips onboarding and opens that household.
-- `POST /api/admin/reset` resets consents, game and corrections.
+- `POST /api/admin/reset` resets consents, game and corrections for everyone. Team only: it needs `X-Admin-Token` = `ADMIN_RESET_TOKEN` (403 otherwise). Run `ADMIN_RESET_TOKEN=… API_URL=… web/scripts/reset-demo.sh`; never put the token in git or a `NEXT_PUBLIC_` variable.
 
 ## Phone testing
 Same Wi-Fi: `npm run dev -- -H 0.0.0.0`, open `http://<laptop-ip>:3000` on the Android phone, "Add to Home screen".

@@ -1,4 +1,4 @@
-import { tagPolicy } from "@/lib/server/aa/links";
+import { EXPIRED_MESSAGE, tagPolicy } from "@/lib/server/aa/links";
 import {
   errorResponse,
   noStore,
@@ -31,7 +31,9 @@ export async function PUT(
         ? [403, "Allow “Who your insurance covers” first. Nothing was saved."]
         : result.reason === "invalid"
           ? [400, "Choose at least one member and a kind this insurer sells."]
-          : [404, "This policy isn't in your linked data."];
+          : result.reason === "expired"
+            ? [410, EXPIRED_MESSAGE]
+            : [404, "This policy isn't in your linked data."];
     return errorResponse(status, result.reason, message);
   }
   return Response.json({ ok: true }, { headers: noStore });

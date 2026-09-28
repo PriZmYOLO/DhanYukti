@@ -9,7 +9,7 @@ We will **not**:
 - Give points for taking loans or buying products; points have no cash value.
 - Infer health, caste, religion or "worth" from any data.
 - Use Aadhaar for account discovery, or ask for Aadhaar/PAN for planning.
-- Keep raw AA payloads beyond 24 hours.
+- Keep decrypted bank data beyond 24 hours after it arrives, or derived facts beyond 30 days or after revoke. (Decrypted bank data is deleted 24 hours after it arrives. Only a few derived facts are kept, until you revoke or for at most 30 days.)
 - Request investment FI types (equities, MF) in v1 — only DEPOSIT, RECURRING_DEPOSIT, INSURANCE_POLICIES.
 - Build ML models in v1 — detection is rules-based.
 - Build a native Android app (PWA only; Capacitor APK is optional stretch).

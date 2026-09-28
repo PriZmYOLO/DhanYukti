@@ -15,6 +15,8 @@ import Avatar from "@/components/art/Avatar";
 import Sheet from "@/components/ui/Sheet";
 import { Btn, HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp, type Mode } from "@/lib/store";
+import OpenAnumati from "@/components/OpenAnumati";
+import { demoHouseholdName } from "@/lib/demo-data";
 import { api } from "@/lib/api";
 import { day, inr } from "@/lib/format";
 import type { Capability, ConsentArtefact, HouseholdSummary, Member } from "@/lib/types";
@@ -57,6 +59,8 @@ export default function Family() {
   useEffect(() => { if (tab === "consent") reloadDpdp(); }, [tab, reloadDpdp]);
 
   if (!data) return <div className="p-5 space-y-4"><Skeleton h={200} /><Skeleton h={300} /></div>;
+  // Demo households on replay/fixture data: the revoke never reaches Anumati.
+  const replay = demoHouseholdName(data) !== null && data.data_source.mode !== "live";
 
   // Household Consent Bundle: each earning adult consents for their own accounts.
   const askConsent = async (memberId: string) => {
@@ -217,20 +221,24 @@ export default function Family() {
       <ConsentReceipt c={receipt} onClose={() => setReceipt(null)} />
 
       <Sheet open={!!revoke} onClose={() => setRevoke(null)} title={<p className="text-xl font-extrabold">{lang === "hi" ? "Consent band karein?" : "Revoke consent?"}</p>}>
+        {replay && <p className="mb-3 rounded-full bg-amber-soft px-3 py-1 text-[12px] font-bold w-fit">{t({ hi: "Recorded sandbox (replay) — Anumati ko kuch nahi bheja jaata", en: "Recorded sandbox (replay) — nothing is sent to Anumati" })}</p>}
         {!revoked ? (
           <div className="space-y-3">
-            <p className="text-[15px]">{t({ hi: "Anumati par consent turant band hoga. Aage koi data nahi aayega, aur humari banayi profile mita di jayegi.", en: "Consent is revoked at Anumati right away. No future fetches, and your derived profile is deleted." })}</p>
+            <p className="text-[15px]">{t({ hi: "DhanYukti ab yeh data istemaal nahi karega aur apni copy mita dega. Consent poori tarah band karne ke liye Anumati app mein bhi band karein.", en: "DhanYukti stops using this data now and deletes its copy. To end the consent itself, close it in the Anumati app." })}</p>
             <p className="text-xs text-muted">{t({ hi: "Parivaar ki permission ki zaroorat nahi — yeh aapka haq hai.", en: "No household vote needed — this is your right." })}</p>
             <Btn variant="danger" className="w-full" onClick={doRevoke}>{lang === "hi" ? "Haan, band karo" : "Yes, revoke"}</Btn>
+            <OpenAnumati className="w-full" />
           </div>
         ) : (
           <div className="space-y-2">
-            {[{ hi: "Anumati par consent REVOKED", en: "Consent REVOKED at Anumati" }, { hi: "Aage ki fetch radd", en: "Future fetches cancelled" },
+            {[{ hi: "DhanYukti ne yeh data istemaal karna band kiya", en: "DhanYukti stopped using this data" }, { hi: "DhanYukti dobara fetch nahi karega", en: "DhanYukti won't fetch it again" },
               ...revoked.map((d) => ({ hi: `Mita diya: ${d}`, en: `Deleted: ${d}` }))].map((s, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.35 }} className="flex items-center gap-3 rounded-2xl bg-white p-3">
                 <span className="grid place-items-center h-7 w-7 rounded-full bg-leaf text-white"><Check size={16} /></span><span className="font-semibold text-sm">{t(s)}</span>
               </motion.div>
             ))}
+            <p className="pt-1 text-[14px] font-semibold">{t({ hi: "Consent poori tarah band karne ke liye Anumati app mein bhi band karein.", en: "To end the consent itself, close it in the Anumati app." })}</p>
+            <OpenAnumati className="w-full" />
             <Btn variant="ink" className="w-full mt-2" onClick={() => setRevoke(null)}>{lang === "hi" ? "Theek hai" : "Done"}</Btn>
           </div>
         )}

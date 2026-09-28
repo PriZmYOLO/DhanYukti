@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { appendLedger } from "@/lib/server/dpdp/ledger";
-import { kvGet, kvSet } from "@/lib/server/aa/store";
+import { kvDel, kvGet, kvSet } from "@/lib/server/aa/store";
 
 /**
  * "Report a recommendation": the person's redress route for a card they
@@ -60,4 +60,11 @@ export async function fileReport(sid: string, input: { card_id?: unknown; engine
   // Server log for the team's review queue: ids and reason only.
   console.info("[report] filed", JSON.stringify({ report: report.report_id, card: cardId, engine, reason: report.reason }));
   return report;
+}
+
+/** "Delete everything": this session's reports go; their ledger receipts stay. */
+export async function deleteReports(sid: string): Promise<number> {
+  const count = (await listReports(sid)).length;
+  await kvDel(key(sid));
+  return count;
 }

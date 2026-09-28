@@ -52,7 +52,6 @@ const real = {
     if (!res.ok) throw apiError(res, "/bsa/upload");
     return res.json() as Promise<{ mode: string; status: string; report_id: string }>;
   },
-  reset: () => post<{ ok: boolean }>("/admin/reset"),
   capabilities: () => call<Capability[]>("/capabilities"),
 };
 

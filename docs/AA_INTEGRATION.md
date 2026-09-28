@@ -45,7 +45,7 @@ Browser (DhanYukti)          DhanYukti server (Vercel)            Anumati FIU mo
                                          ◀── POST /api/aa/webhooks/data-ready { id, secret }
                                          POST /module/fi/fetch ─────────────▶ encrypted sessions
                                          decrypt (Node, lib/server/aa/crypto.ts), parse ReBIT,
-                                         store accounts for 30 days
+                                         store data 24 h + derived facts ≤ 30 days
  page polls GET /api/aa/links/{id} ◀──── status, accounts, balances, "What happened" trail
 ```
 
@@ -54,7 +54,19 @@ Browser (DhanYukti)          DhanYukti server (Vercel)            Anumati FIU mo
 - A browser is identified by an httpOnly `dy_aa_session` cookie. This is not
   authentication; it only keeps one browser's links apart until H01 sign-in.
 - Revoke deletes DhanYukti's copy and refuses late results. The FIU module
-  has no revoke call, so the consent itself is ended in the Anumati app.
+  has no revoke call, so the consent itself is ended in the Anumati app
+  (the revoke screens link to it: `lib/aa/anumati-app.ts`).
+- Retention: Decrypted bank data is deleted 24 hours after it arrives. Only a few derived facts are kept, until you revoke or for at most 30 days. Decrypted data lives under `aa:data:<link>`
+  (`RAW_DATA_TTL` = 24 h); the reveal summary is stored beside it under
+  `aa:summary:<link>` (`SUMMARY_TTL` = 30 days). Both go on revoke. After 24 h
+  the scheme check, cover hints and policy tags answer `expired` ("Bank data
+  is deleted 24 hours after fetching. Link again to refresh."), never "not
+  seen" or 0; the summary route keeps serving the derived copy. Balances on
+  the link record are dropped after 30 days too.
+- "Delete everything" (`POST /api/me/delete`) revokes and removes every
+  link of the session, withdraws every granted DPDP purpose and deletes
+  reports; the Value Ledger stays. Checked by
+  `scripts/privacy-retention-check.ts` (part of `npm run test:engine`).
 - Decryption runs in Node because Vercel can't run Java. It was verified
   against Anumati's `fiu-crypto-lib.jar` in both directions on 27 Sep 2026
   (`node scripts/aa-crosscheck.mjs <jar>`).

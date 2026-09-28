@@ -82,9 +82,10 @@ export default function SurakshaCheck() {
       {head}
       <p className="mt-3 text-[14px]">
         {check?.status === "not_allowed" ? t({ hi: "Is bank link ke liye aapne 'Alert aur salah' band rakha tha, isliye check nahi chala. Naya link banate waqt use chalu karein.", en: "You kept “Alerts & suggestions” off for this bank link, so the check didn't run. Turn it on when you link again." })
-          : check?.status === "unavailable" ? check.safe_message
+          : check?.status === "unavailable" || check?.status === "expired" ? check.safe_message
           : t({ hi: "Bank ka data abhi aa raha hai…", en: "Bank data is still arriving…" })}
       </p>
+      {check?.status === "expired" && <button onClick={() => router.push("/?step=consent")} className="mt-3 w-full min-h-12 rounded-[18px] bg-ink text-white font-bold flex items-center justify-center gap-2"><Link2 size={16} />{t({ hi: "Bank dobara jodein (Anumati)", en: "Link bank again (Anumati)" })}</button>}
       {check?.status === "no_data" && <button onClick={() => void load()} className="mt-2 rounded-full bg-lav px-4 min-h-10 text-xs font-bold">{lang === "hi" ? "Dobara dekhein" : "Check again"}</button>}
     </div>
   );

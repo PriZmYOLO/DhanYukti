@@ -174,7 +174,7 @@ export function liveArtefact(link: SourceLink, member: { id: string; name: strin
     range_months: LIVE_CONSENT.history_months,
     fetch: "ONETIME",
     expiry,
-    data_life: { hi: "Kachcha data 1 din mein delete; saar consent band hote hi delete", en: "Raw data deleted within 1 day; summary deleted when consent ends" },
+    data_life: { hi: "Bank data aane ke 24 ghante baad delete; kuch nikaale gaye tathya consent band karne tak, zyada se zyada 30 din", en: "Bank data deleted 24 hours after it arrives; a few derived facts kept until you revoke, at most 30 days" },
     created_at: link.consent.requested_at,
   };
 }

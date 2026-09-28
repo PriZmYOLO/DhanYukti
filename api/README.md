@@ -31,7 +31,7 @@ Responses always say which one served them (`mode`).
 - `app/fixtures/households.py`: golden households A, B and C. `replay_aa_fetch.json` is a redacted ReBIT FI sample for A.
 - `app/connectors/`: interfaces in `base.py`. Anumati (`anumati/client.py` live, `anumati/replay.py`). Perfios (`perfios/analytics.py`, `perfios/bsa.py`, `perfios/hub.py` live, `perfios/replay.py`). The factory and fallback live in `__init__.py`. All route and header constants are marked `TODO(confirm with sandbox docs)`.
 - `app/game/service.py`: points, streaks, levels, badges, mission, habit leaderboard and value ledger.
-- `app/store.py`: in-memory state. `POST /api/admin/reset` resets it (a demo helper that is not in the contract).
+- `app/store.py`: in-memory state. `POST /api/admin/reset` resets it for everyone (a team-only demo helper, not in the contract). It needs `X-Admin-Token` equal to `ADMIN_RESET_TOKEN` and returns 403 when that env is unset or the header is wrong; use `web/scripts/reset-demo.sh`.
 
 ## Finishing live integrations
 

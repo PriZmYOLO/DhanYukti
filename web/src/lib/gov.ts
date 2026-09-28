@@ -51,6 +51,9 @@ export type CoverHints = {
   policies: (DetectedPolicy & { link_id: string })[];
   pmjjby: "seen" | "not_seen" | "unknown";
   pmsby: "seen" | "not_seen" | "unknown";
+  /** "expired": bank data was deleted 24 hours after fetching (not "nothing found"). */
+  bank_data: "ready" | "expired" | "none";
+  expired_message: string | null;
 };
 
 export type Report = {

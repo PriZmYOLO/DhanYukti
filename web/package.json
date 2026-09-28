@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:engine": "tsx scripts/cover-engine-fixtures.ts && tsx scripts/voice-fixtures.ts",
+    "test:engine": "tsx scripts/cover-engine-fixtures.ts && tsx scripts/voice-fixtures.ts && tsx --conditions=react-server scripts/privacy-retention-check.ts",
     "test:aa-summary": "node scripts/aa-summary-check.mjs",
     "voice:record": "tsx --conditions=react-server scripts/bhashini-record.ts"
   },
