@@ -17,6 +17,10 @@ export type Metric = {
 export type RiverEvent = {
   id: string; type: "salary" | "bill" | "fee" | "emi" | "rent" | "premium" | "gig";
   label: L; amount: number; movable: boolean;
+  /** pakka = seen on this date in bank data (3+ months); andaaza = our estimate. Absent on scenario-only events. */
+  certainty?: Confidence; basis?: L; scenario?: boolean;
+  /** Set in a scenario when the user asked to move this bill: the payee has NOT agreed yet. */
+  moved?: boolean; original_date?: string; needs?: L;
 };
 export type RiverDay = { date: string; balance: number; events: RiverEvent[] };
 export type River = { floor: number; days: RiverDay[]; min_balance: number; min_date: string; gap: number };
@@ -32,7 +36,10 @@ export type NBA = {
   icon: "school" | "shield" | "loan" | "jar" | "bolt" | "heart" | "grow" | "alert";
   title: L; body: L; task: L; if_not: L; second_step?: L; action: Action; why: Why; points: number;
 };
-export type Jar = { id: string; name: L; goal: number; saved: number; kind: "emergency" | "school" | "festival" | "education"; daily_suggest: number };
+export type Jar = {
+  id: string; name: L; goal: number; saved: number; kind: "emergency" | "school" | "festival" | "education"; daily_suggest: number;
+  remaining?: number; target_date?: string;
+};
 export type Badge = { id: string; name: L; desc: L; earned: boolean; icon: string };
 export type Game = {
   points: number; streak: number; streak_shield: number; level: 1 | 2 | 3 | 4 | 5; level_name: L; next_level_at: number;
@@ -66,7 +73,32 @@ export type Dashboard = {
 
 export type HouseholdSummary = { id: string; family_name: L; city: L; income: number; members: number; problem: L; hero: L };
 
-export type SimResult = { river: River; resilience_days: number; gap_before: number; gap_after: number; message: L; scenario: true };
+export type SimResponse = {
+  id: string; kind: "move" | "cut" | "gullak" | "all"; label: L; gap_after: number; fixes: boolean;
+  conditional: boolean; needs?: L; jar_id?: string;
+};
+export type LoanResult = {
+  principal: number; complete: boolean; missing: string[]; missing_labels: L[];
+  annual_rate_pct?: number; months?: number; processing_fee?: number; emi?: number; total_repay?: number;
+  total_cost?: number; extra_over_price?: number; extra_per_100?: number;
+  debt_per100_before?: number | null; debt_per100_after?: number | null; debt_status_after?: Status | null; first_emi?: string;
+};
+export type GoalImpact = {
+  jar_id: string; name: L; goal: number; target_date: string; used: number; saved_before: number; saved_after: number;
+  gap_before: number; gap_after: number; daily_before: number; daily_after: number;
+};
+export type SimResult = {
+  river: River; resilience_days: number; gap_before: number; gap_after: number; message: L; scenario: true;
+  // Before figures on the same baseline and horizon (optional: older backends omit them).
+  resilience_before?: number; min_balance_before?: number; min_date_before?: string;
+  first_deficit_date_before?: string | null; first_deficit_date?: string | null;
+  /** Bills the scenario moved — each still needs the payee to agree. */
+  conditional?: RiverEvent[];
+  /** Present when there is a shortfall: which permitted responses close it. */
+  responses?: SimResponse[]; feasible?: boolean;
+  goal_impact?: GoalImpact;
+  loan?: LoanResult; purchase?: { amount: number; pay: "cash" | "loan" };
+};
 
 export type ConsentArtefact = {
   handle: string; member_id: string; member_name: string; aa: string; status: string; purpose: L;

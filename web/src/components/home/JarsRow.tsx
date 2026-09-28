@@ -7,6 +7,11 @@ import { useApp } from "@/lib/store";
 import { inr } from "@/lib/format";
 import type { Jar } from "@/lib/types";
 
+const monthYear = (iso: string) => {
+  const d = new Date(iso + "T00:00:00");
+  return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+};
+
 const TONE: Record<Jar["kind"], "clay" | "haldi" | "rose"> = { emergency: "clay", school: "haldi", festival: "rose", education: "haldi" };
 
 export default function JarsRow({ big }: { big?: boolean }) {
@@ -25,6 +30,13 @@ export default function JarsRow({ big }: { big?: boolean }) {
               </button>
               <p className="font-extrabold text-[15px] mt-1 leading-tight">{t(j.name)}</p>
               <p className="text-xs text-muted num">{inr(j.saved)} / {inr(j.goal)}</p>
+              {big && j.remaining != null && j.target_date && (
+                <p className="text-[11px] font-bold mt-0.5 leading-snug num">
+                  {j.remaining > 0
+                    ? lang === "hi" ? `${inr(j.remaining)} aur, ${monthYear(j.target_date)} tak · ${inr(j.daily_suggest)}/din` : `${inr(j.remaining)} to go by ${monthYear(j.target_date)} · ${inr(j.daily_suggest)}/day`
+                    : lang === "hi" ? "Lakshya poora" : "Goal reached"}
+                </p>
+              )}
               <div className="mt-2 h-2 rounded-full bg-white overflow-hidden"><div className="h-full rounded-full bg-clay" style={{ width: `${pct}%` }} /></div>
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-xs font-extrabold num">{pct}%</span>

@@ -26,6 +26,7 @@ const post = <T,>(path: string, body: unknown = {}) => call<T>(path, { method: "
 export type SimInput = {
   moves?: { event_id: string; new_date: string }[];
   shock_amount?: number; salary_delay_days?: number; cut_per_day?: number;
+  purchase?: { amount: number; pay: "cash" | "loan"; loan?: { annual_rate_pct?: number; months?: number; processing_fee?: number } };
 };
 
 const real = {
