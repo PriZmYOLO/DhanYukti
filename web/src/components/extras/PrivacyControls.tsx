@@ -6,6 +6,7 @@ import { Btn } from "@/components/ui/bits";
 import OpenAnumati from "@/components/OpenAnumati";
 import { purposeTitle } from "@/components/gov/Dpdp";
 import { useApp } from "@/lib/store";
+import { api } from "@/lib/api";
 import type {
   DeleteEverythingResult,
   DeletedItem,
@@ -70,6 +71,8 @@ export default function PrivacyControls() {
         result = { deleted: [], kept: { kind: "value_ledger", receipts: 0 } };
         serverStore = false;
       } else throw new Error(body?.error?.safe_message ?? `${res.status}`);
+      // This visitor's own copy of the demo households (their taps on Sunita/Farida/Meena) goes too.
+      await api.forgetDemo().catch(() => {});
       try {
         Object.keys(localStorage)
           .filter((k) => k.startsWith("dy."))
@@ -130,8 +133,8 @@ export default function PrivacyControls() {
       <p className="flex items-start gap-2 px-1 text-xs text-muted">
         <ShieldCheck size={14} className="shrink-0 mt-0.5" />
         {t({
-          hi: "Bank ka khula (decrypted) data aane ke 24 ghante baad mita diya jaata hai. Sirf kuch nikaale gaye tathya rakhe jaate hain — consent band karne tak, zyada se zyada 30 din.",
-          en: "Decrypted bank data is deleted 24 hours after it arrives. Only a few derived facts are kept, until you revoke or for at most 30 days.",
+          hi: "Bank ka poora khula (decrypted) statement — har len-den — aane ke 24 ghante baad mita diya jaata hai. Aap band karne tak, zyada se zyada 30 din, sirf yeh rakhte hain: balance, mahine ki aamdani, aapki niyamit aamdani aur bill (chhota naam, rakam, tareekh — bank ka apna likha text kabhi nahi), pichhle mahine ke kharch ka jod, aur unse nikli agli tareekhein.",
+          en: "Your full decrypted statement — every transaction — is deleted 24 hours after it arrives. Until you stop, for at most 30 days, we keep only: your balance, monthly income, your regular income and bill payments (a short payee label, amount and date — never the bank's own text), last month's spending totals, and the upcoming dates worked out from them.",
         })}
       </p>
 

@@ -69,7 +69,8 @@ def _artefact(c: dict) -> dict:
             "purpose": L("Khaate ka saar (Aggregated statement)", "Aggregated statement"),
             "fi_types": ["DEPOSIT"], "range_months": 12, "fetch": "ONETIME",
             "expiry": (created + timedelta(days=365)).date().isoformat(),
-            "data_life": L("1 din — hisaab ke baad kachcha data delete", "1 day — raw data deleted after compute"),
+            "data_life": L("Poora statement 24 ghante baad delete; balance, aamdani aur niyamit bill band karne tak, zyada se zyada 30 din",
+                           "Full statement deleted after 24 hours; balance, income and regular payments kept until you stop, at most 30 days"),
             "created_at": c["created_at"]}
 
 

@@ -26,7 +26,11 @@ Confirm your bills (E02 with a consent step) runs on the twin: each projected
 date carries its `series` (same payee, kind and account) and rhythm (`every`);
 the member's decisions are overlays `series:<id>.status|amount|day` (and
 `series:everyday.status` + `essentials_per_day`) applied in
-`api/app/pipeline.py`, so they cover every date and survive a rebuild.
+`api/app/pipeline.py`, so they cover every date and survive a rebuild while
+the twin exists. They are deleted with the bank data (stop/revoke) and on a
+fresh build after the twin is gone (`withoutBankCorrections`,
+`src/lib/server/twin/keys.ts`): corrections name payments, so they share the
+30-day cap. Twin rows keep a derived payee label, never the bank narration.
 `/api/households/me/bills` (`src/lib/server/twin/bills.ts`) lists and records
 them, each as a Value Ledger entry (`bill:<hash>`, no payee or amount); the
 reveal step shows `ConfirmBills`. Checks: `api/tests/test_twin.py` and

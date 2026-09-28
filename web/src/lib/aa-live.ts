@@ -158,6 +158,16 @@ export const LIVE_STEPS: { key: LiveStage; label: L }[] = [
   { key: "done", label: { hi: "Data khola, hisaab taiyaar", en: "Decrypted, your picture is ready" } },
 ];
 
+/**
+ * True when the member stopped this link inside DhanYukti (data deleted, late
+ * data refused) and Anumati hasn't told us the consent itself has ended.
+ */
+export function stoppedHere(link: SourceLink): boolean {
+  const acts = link.activity ?? [];
+  const i = acts.map((a) => a.event).lastIndexOf("stopped");
+  return i >= 0 && !acts.slice(i + 1).some((a) => a.event === "revoked");
+}
+
 /** Plain-language status for a live link, for the Consent Passport. */
 export function liveStatusLabel(link: SourceLink): L {
   switch (link.consent.status) {
@@ -165,7 +175,9 @@ export function liveStatusLabel(link: SourceLink): L {
     case "requested":
     case "awaiting_approval": return { hi: "Manzoori baaki", en: "Waiting for approval" };
     case "denied": return { hi: "Mana kiya", en: "Declined" };
-    case "revoked": return { hi: "Band kiya", en: "Revoked" };
+    case "revoked": return stoppedHere(link)
+      ? { hi: "DhanYukti mein band — Anumati mein bhi band karein", en: "Stopped in DhanYukti — also end it in Anumati" }
+      : { hi: "Anumati par band", en: "Revoked at Anumati" };
     case "expired": return { hi: "Samay khatam", en: "Expired" };
     default: return { hi: "Sthiti pata nahi", en: "Status not known" };
   }
@@ -192,7 +204,7 @@ export function liveArtefact(link: SourceLink, member: { id: string; name: strin
     range_months: LIVE_CONSENT.history_months,
     fetch: "ONETIME",
     expiry,
-    data_life: { hi: "Bank data aane ke 24 ghante baad delete; kuch nikaale gaye tathya consent band karne tak, zyada se zyada 30 din", en: "Bank data deleted 24 hours after it arrives; a few derived facts kept until you revoke, at most 30 days" },
+    data_life: { hi: "Poora statement aane ke 24 ghante baad delete; balance, aamdani aur niyamit bill (naam ka chhota label, rakam, tareekh) band karne tak, zyada se zyada 30 din", en: "Full statement deleted 24 hours after it arrives; balance, income and regular payments (short payee label, amount, date) kept until you stop, at most 30 days" },
     created_at: link.consent.requested_at,
   };
 }

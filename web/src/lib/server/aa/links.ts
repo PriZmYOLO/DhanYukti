@@ -45,7 +45,7 @@ import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
 import { detectPolicies, summariseCover } from "@/lib/server/insurance/cover";
 import { readTags, saveTags, validTags } from "@/lib/server/insurance/tags";
 import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
-import { twinKeys } from "@/lib/server/twin/keys";
+import { STATE_TTL, twinKeys, withoutBankCorrections } from "@/lib/server/twin/keys";
 
 /**
  * Live Account Aggregator links (Anumati FIU module). This is the server
@@ -259,6 +259,9 @@ async function purgeData(record: LinkRecord) {
     keys.raw(record.link_id),
     twinKeys.twin(record.session_id),
   );
+  // Decisions about this bank data's payments go too; jars and points stay.
+  const state = await kvGet<Record<string, unknown>>(twinKeys.state(record.session_id));
+  if (state) await kvSet(twinKeys.state(record.session_id), withoutBankCorrections(state), STATE_TTL);
 }
 
 type DataRead =
@@ -485,8 +488,10 @@ export async function revokeLink(
     record.consent_status === "active" ||
     record.consent_status === "paused"
   ) {
+    // DhanYukti can't end the consent at the AA: it stops using the data, deletes
+    // its copy and refuses late data. The member ends the consent in the Anumati app.
     setConsent(record, "revoked");
-    addActivity(record, "revoked");
+    addActivity(record, "stopped");
     await purgeData(record);
     await saveLink(record);
     await ledger(sid, "aa_revoked", record);

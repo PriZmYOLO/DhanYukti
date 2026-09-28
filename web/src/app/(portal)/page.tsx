@@ -276,7 +276,7 @@ export default function Onboarding() {
             </button>
             {assisted && mobile.length === 10 && <p className="mt-3 rounded-[20px] bg-ink text-white p-3 text-sm font-semibold">✋ {t({ hi: "OTP daalne se pehle phone khud le lijiye. Helper OTP na dekhein.", en: "Take the phone back before entering the OTP. The helper must not see it." })}</p>}
             {err && step === "login" && <p className="mt-3 text-sm text-danger font-semibold">{err}</p>}
-            <div className="mt-3 flex items-center gap-3 rounded-[20px] bg-mint/70 p-3 text-[13px]"><Lock size={18} className="text-leaf shrink-0" />{t({ hi: "Helper (bank mitra) kabhi aapka OTP ya balance nahi dekhte", en: "A helper never sees your OTP or balance" })}</div>
+            <div className="mt-3 flex items-center gap-3 rounded-[20px] bg-mint/70 p-3 text-[13px]"><Lock size={18} className="text-leaf shrink-0" />{t({ hi: "Sahayak mode mein rakam chhupi rehti hai jab tak aap 'Dikhayein' na dabayein. OTP hamesha khud daalein.", en: "In assisted mode, amounts stay hidden until you tap Show. Always type the OTP yourself." })}</div>
             <div className="flex-1" />
             <Btn variant="ink" className="w-full mt-6" disabled={mobile.length !== 10 || otp.length !== 6} onClick={() => go("family")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
           </>)}

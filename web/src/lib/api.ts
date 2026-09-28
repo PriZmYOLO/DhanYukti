@@ -10,10 +10,28 @@ export class MeError extends Error {
   }
 }
 
+/**
+ * A random id this browser keeps, so the demo households (A/B/C) are this
+ * visitor's own copy on the server: nothing one visitor taps changes the demo
+ * for anyone else. Not an identity; never linked to a person or their data.
+ */
+function demoVisitor(): string {
+  try {
+    let id = localStorage.getItem("dy.demoVisitor");
+    if (!id || !/^[A-Za-z0-9-]{8,64}$/.test(id)) {
+      id = crypto.randomUUID();
+      localStorage.setItem("dy.demoVisitor", id);
+    }
+    return id;
+  } catch {
+    return (globalThis as { __dyVisitor?: string }).__dyVisitor ??= crypto.randomUUID();
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "Content-Type": "application/json", "X-DY-Demo": demoVisitor(), ...(init?.headers ?? {}) },
     cache: "no-store",
   });
   if (!res.ok) {
@@ -76,11 +94,13 @@ const real = {
     post<{ kind: string; mode: string; result: Record<string, unknown>; used_for: L }>(`/enrich/${hid}/${kind}`, { consent: true, input }),
   bsaUpload: async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
-    const res = await fetch("/api/bsa/upload", { method: "POST", body: fd });
+    const res = await fetch("/api/bsa/upload", { method: "POST", body: fd, headers: { "X-DY-Demo": demoVisitor() } });
     if (!res.ok) throw apiError(res, "/bsa/upload");
     return res.json() as Promise<{ mode: string; status: string; report_id: string }>;
   },
   capabilities: () => call<Capability[]>("/capabilities"),
+  /** "Delete everything": drop this visitor's own copy of the demo households (their corrections, deposits, points). */
+  forgetDemo: () => post<{ ok: boolean; forgotten: boolean }>("/demo/forget"),
 };
 
 import { mock } from "./mock";

@@ -4,7 +4,7 @@ import { listLinks, readAccountData } from "@/lib/server/aa/links";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
 import { hasConsent } from "@/lib/server/dpdp/ledger";
 import { readAnswers } from "@/lib/server/onboarding/store";
-import { twinKeys } from "@/lib/server/twin/keys";
+import { STATE_TTL, twinKeys, withoutBankCorrections } from "@/lib/server/twin/keys";
 import type { L } from "@/lib/types";
 
 /**
@@ -19,7 +19,7 @@ import type { L } from "@/lib/types";
 const DAY = 24 * 60 * 60;
 /** Same life as the other derived facts from a bank link. */
 export const TWIN_TTL = 30 * DAY;
-const STATE_TTL = 90 * DAY;
+
 
 export type Twin = Record<string, unknown> & { id: "me"; as_of: string; fetched_at?: string; built_from?: string[] };
 export type TwinState = Record<string, unknown>;
@@ -70,6 +70,12 @@ const istDate = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone:
 
 /** Build (or rebuild) from every active link in this session whose data is still here. */
 export async function buildTwin(sid: string): Promise<Twin> {
+  // A fresh build (no twin now: first link, or after stop/revoke/expiry) never inherits
+  // decisions made on an earlier twin's payments.
+  if (!(await kvGet(twinKeys.twin(sid)))) {
+    const old = await kvGet<TwinState>(twinKeys.state(sid));
+    if (old) await kvSet(twinKeys.state(sid), withoutBankCorrections(old), STATE_TTL);
+  }
   const links = (await listLinks(sid)).filter((l) => l.consent.status === "active" && !l.is_demo);
   if (!links.length) throw new TwinError(404, "not_linked", "No bank account is linked yet.");
   const datas = (await Promise.all(links.map((l) => readAccountData(sid, l.link_id)))).filter(
