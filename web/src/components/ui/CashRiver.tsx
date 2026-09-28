@@ -2,7 +2,7 @@
 import { motion } from "motion/react";
 import { useId, useMemo, useRef, useState } from "react";
 import { useApp } from "@/lib/store";
-import { day, inrSigned } from "@/lib/format";
+import { day, inr, inrSigned } from "@/lib/format";
 import type { River, RiverEvent } from "@/lib/types";
 
 const W = 340, H = 200, TOP = 44, BOT = 176;
@@ -75,7 +75,7 @@ export default function CashRiver({ river, onMove, compact }: {
 
         {/* floor + zero */}
         <line x1="8" x2={W - 8} y1={floorY} y2={floorY} stroke="#1F8A5B" strokeDasharray="4 5" strokeOpacity=".6" />
-        <text x={W - 8} y={floorY - 5} textAnchor="end" fontSize="10" fontWeight="700" fill="#1F8A5B">{lang === "hi" ? "Safety floor" : "Safety floor"} ₹{river.floor.toLocaleString("en-IN")}</text>
+        <text x={W - 8} y={floorY - 5} textAnchor="end" fontSize="10" fontWeight="700" fill="#1F8A5B">Safety floor {inr(river.floor)}</text>
         <line x1="8" x2={W - 8} y1={zeroY} y2={zeroY} stroke="#17153b" strokeOpacity=".25" />
         <text x="10" y={zeroY + 12} fontSize="10" fill="#6B6887">₹0</text>
 

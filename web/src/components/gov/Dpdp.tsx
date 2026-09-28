@@ -90,7 +90,7 @@ const KIND: Record<LedgerEntry["kind"], L> = {
   dpdp_withdrawn: { hi: "Consent band", en: "Consent withdrawn" },
   aa_requested: { hi: "AA request bani", en: "AA request made" },
   aa_approved: { hi: "AA manzoor", en: "AA approved" },
-  aa_revoked: { hi: "AA band kiya", en: "AA revoked" },
+  aa_revoked: { hi: "Bank link DhanYukti mein band", en: "Bank link stopped in DhanYukti" },
   aa_ended: { hi: "AA khatam", en: "AA ended" },
   engine_run: { hi: "Engine chala", en: "Engine run" },
   report_filed: { hi: "Report darj", en: "Report filed" },

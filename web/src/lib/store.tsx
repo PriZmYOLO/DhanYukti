@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { gov, GovError } from "./gov";
 import VoiceLayer from "@/components/gov/VoiceLayer";
 import { api, ME, MeError } from "./api";
+import { setHideAmounts } from "./amount-flag";
 import type { Badge, Dashboard, L } from "./types";
 
 export type Lang = "hi" | "en";
@@ -46,10 +47,17 @@ type Ctx = {
   consentHandle: string | null; setConsentHandle: (h: string | null) => void;
   doneIds: string[];
   assisted: boolean; setAssisted: (v: boolean) => void;
+  /** Assisted mode hides amounts until the member taps "Show" (not saved; hidden again on reload). */
+  showAmounts: boolean; setShowAmounts: (v: boolean) => void;
   online: boolean;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
+
+/** Assisted mode: every rupee amount in a sentence or read-out becomes ₹•••. */
+function maskAmounts(s: string): string {
+  return (globalThis as { __dyHideAmounts?: boolean }).__dyHideAmounts ? s.replace(/[−-]?\s?₹\s?[\d,]+(\.\d+)?/g, "₹•••") : s;
+}
 
 function read<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v == null ? fallback : (JSON.parse(v) as T); } catch { return fallback; }
@@ -73,6 +81,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [doneIds, setDoneIds] = useState<string[]>([]);
   const [assisted, setAssistedS] = useState(false);
   const [online, setOnline] = useState(true);
+  const [showAmounts, setShowAmounts] = useState(false);
+  // Before any child renders: in assisted mode every formatted amount becomes ₹••• (read by lib/format).
+  setHideAmounts(assisted && !showAmounts);
 
   useEffect(() => {
     setLangS(read("dy.lang", "hi")); setHidS(read("dy.hid", "A")); setModeS(read("dy.mode", "saathi"));
@@ -98,7 +109,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setMode = (m: Mode) => { setModeS(m); write("dy.mode", m); };
   const setOnboarded = (v: boolean) => { setOnbS(v); write("dy.onboarded", v); };
   const setConsentHandle = (h: string | null) => { setHandleS(h); write("dy.handle", h); };
-  const setAssisted = (v: boolean) => { setAssistedS(v); write("dy.assisted", v); };
+  const setAssisted = (v: boolean) => { setAssistedS(v); write("dy.assisted", v); setShowAmounts(false); };
 
   const refresh = useCallback(async () => {
     try { setError(null); setMeIssue(null); setData(await api.dashboard(hid)); }
@@ -112,8 +123,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Switching household: drop the old one's numbers first, so nobody sees another family's data.
   useEffect(() => { if (hydrated) { setData(null); setLoading(true); refresh(); } }, [hydrated, refresh]);
 
-  const t = useCallback((v: L | undefined | null) => (v ? v[lang] || v.en : ""), [lang]);
-  const sub = useCallback((v: L | undefined | null) => (v ? v[lang === "hi" ? "en" : "hi"] : ""), [lang]);
+  const hideMoney = assisted && !showAmounts;
+  const t = useCallback((v: L | undefined | null) => (v ? maskAmounts(v[lang] || v.en) : ""), [lang, hideMoney]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sub = useCallback((v: L | undefined | null) => (v ? maskAmounts(v[lang === "hi" ? "en" : "hi"]) : ""), [lang, hideMoney]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [voice, setVoice] = useState<VoiceState>({ source: null, note: null, prompt: false, lang: null, caption: null });
   // A language the person picked for read-outs; until they pick one, read-outs follow the screen language.
@@ -137,7 +149,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deviceSpeak = useCallback((text: string, speakLang: Lang, note: L | null) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const s = window.speechSynthesis;
-    const u = new SpeechSynthesisUtterance(text.replace(/₹/g, speakLang === "hi" ? "rupaye " : "rupees "));
+    const u = new SpeechSynthesisUtterance(maskAmounts(text).replace(/₹•••/g, speakLang === "hi" ? "rakam chhupi hai" : "amount hidden").replace(/₹/g, speakLang === "hi" ? "rupaye " : "rupees "));
     u.lang = speakLang === "hi" ? "hi-IN" : "en-IN";
     const vo = s.getVoices().find((x) => x.lang === u.lang) ?? s.getVoices().find((x) => x.lang.startsWith(speakLang));
     if (vo) u.voice = vo;
@@ -157,7 +169,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [data]);
 
   const bhashini = useCallback(async (v: L, code: string) => {
-    const text = scrub(v.en);
+    const text = scrub(maskAmounts(v.en)).replace(/₹•••/g, "amount hidden");
     try {
       const key = `${code}|${text}`;
       let hit = clips.current.get(key);
@@ -223,7 +235,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(() => ({
     lang, setLang, t, sub, hid, setHid, data, error, loading, refresh, setData, onboarded, setOnboarded, mode, setMode, meIssue, linked, showMyHousehold,
     celebration, celebrate, award, speak, speaking, voice, answerVoicePrompt, voiceLang, setVoiceLang, speakIn, consentHandle, setConsentHandle, doneIds, assisted, setAssisted, online,
-  }), [lang, t, sub, hid, data, error, loading, refresh, onboarded, mode, meIssue, linked, showMyHousehold, celebration, award, speak, speaking, voice, answerVoicePrompt, voiceLang, speakIn, consentHandle, doneIds, assisted, online]);
+    showAmounts, setShowAmounts,
+  }), [lang, t, sub, hid, data, error, loading, refresh, onboarded, mode, meIssue, linked, showMyHousehold, celebration, award, speak, speaking, voice, answerVoicePrompt, voiceLang, speakIn, consentHandle, doneIds, assisted, online, showAmounts]);
 
   return <AppCtx.Provider value={value}>{hydrated ? <>{children}<VoiceLayer /></> : null}</AppCtx.Provider>;
 }
