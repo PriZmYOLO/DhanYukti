@@ -227,3 +227,86 @@ def test_older_twin_without_series_field_still_takes_decisions():
     sid = rent_id.rsplit("_", 1)[0]
     c = _correct(twin, state, f"series:{sid}.status", "ignored")
     assert not any(e["type"] == "rent" for _, e in _river_events(c["dashboard"]))
+
+# ---- what the member told us: fills gaps, never overrides the bank ------------------------------
+def _a(v):
+    return {"state": "answered", "value": v}
+
+
+def _declared(**money):
+    return {"own_income": _a("fixed"), "earners": _a(1),
+            "dependents": {"children": _a(1)},
+            "money": {k: _a(v) for k, v in money.items()}}
+
+
+def _thin():
+    """Only September so far: no complete month, no income ahead in the bank data."""
+    p = _statement()
+    p["accounts"][0]["transactions"] = [t for t in p["accounts"][0]["transactions"]
+                                        if t["date"] >= "2026-09-01" and "SALARY" not in t["narration"]]
+    r = client.post("/api/twin/build", json=p).json()
+    return r["twin"], r["state"]
+
+
+def test_declared_fills_thin_bank_data():
+    twin, state = _thin()
+    decl = _declared(cash=3000, income_amount=18000, income_frequency="monthly", next_pay="2026-10-03",
+                     bill_name="School fee", bill_amount=2500, bill_due="2026-10-10")
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": decl}).json()
+    ev = {e["id"]: e for d in db["river"]["days"] for e in d["events"]}
+    inc = ev["declared_income_2026-10-03"]
+    assert inc["amount"] == 18000 and inc["certainty"] == "andaaza" and "told" in inc["basis"]["en"]
+    fee = ev["declared_bill_2026-10-10"]
+    assert fee["type"] == "fee" and fee["amount"] == -2500 and fee["movable"]
+    assert db["household"]["monthly_income"] == 18000          # was unknown
+    assert "cash at home" in db["metrics"]["resilience_days"]["sub"]["en"]
+    assert [m["id"] for m in db["household"]["members"]] == ["me", "child1"]
+    # without the answers (no consent): back to the bank-only picture
+    bare = client.post("/api/twin/dashboard", json={"twin": twin, "state": state}).json()
+    assert bare["household"]["monthly_income"] is None
+    assert not any(e["id"].startswith("declared_") for d in bare["river"]["days"] for e in d["events"])
+
+
+def test_bank_wins_over_declared():
+    twin, state = _built()
+    decl = _declared(income_amount=99999, income_frequency="monthly", next_pay="2026-10-03",
+                     bill_name="Rent", bill_amount=9000, bill_due="2026-10-06")
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": decl}).json()
+    ids = {e["id"] for d in db["river"]["days"] for e in d["events"]}
+    assert not any(i.startswith("declared_") for i in ids)    # bank shows salary on 1 Oct and rent on 5 Oct
+    assert db["household"]["monthly_income"] == 35000
+
+
+def test_income_varies_makes_pay_dates_estimates():
+    twin, state = _built()
+    decl = {"own_income": _a("varies")}
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": decl}).json()
+    sal = next(e for d in db["river"]["days"] for e in d["events"] if e["type"] == "salary")
+    assert sal["certainty"] == "andaaza" and "varies" in sal["basis"]["en"]
+
+
+def test_no_income_of_my_own_only_when_bank_agrees():
+    twin, state = _thin()
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": {"own_income": _a("none")}}).json()
+    assert db["household"]["members"][0]["earner"] is False
+    twin2, state2 = _built()   # bank shows salary: bank wins
+    db2 = client.post("/api/twin/dashboard", json={"twin": twin2, "state": state2, "declared": {"own_income": _a("none")}}).json()
+    assert db2["household"]["members"][0]["earner"] is True
+
+
+def test_debt_unknown_without_a_complete_month_even_with_declared_income():
+    twin, state = _thin()
+    decl = _declared(income_amount=18000, income_frequency="monthly", next_pay="2026-10-03")
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": decl}).json()
+    assert db["household"]["monthly_income"] == 18000 and db["metrics"]["debt_load"]["value"] is None
+
+
+def test_declared_income_fills_after_member_ignores_a_bank_income():
+    twin, state = _built()
+    sal = next(e for e in twin["upcoming"] if e["type"] == "salary")
+    sid = sal.get("series") or sal["id"].rsplit("_", 1)[0]
+    c = client.post("/api/twin/correct", json={"twin": twin, "state": state, "field": f"series:{sid}.status", "value": "ignored"}).json()
+    decl = _declared(income_amount=20000, income_frequency="monthly", next_pay="2026-10-04")
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": c["state"], "declared": decl}).json()
+    ids = {e["id"] for d in db["river"]["days"] for e in d["events"]}
+    assert "declared_income_2026-10-04" in ids

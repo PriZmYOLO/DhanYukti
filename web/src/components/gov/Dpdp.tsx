@@ -13,8 +13,8 @@ import type { L } from "@/lib/types";
 const HI: Record<PurposeId, { title: string; purpose: string; data: string; retention: string }> = {
   member_profile: {
     title: "Parivaar mein aapki profile",
-    purpose: "Aapke jawaab (parivaar, kaam, loan, lakshya) aur invite yaad rakhne ke liye, taaki dobara na poochna pade.",
-    data: "Onboarding ke jawaab — kaunse chhode ya 'pata nahi' kaha, woh bhi — aur invite code. Bank data kabhi nahi.",
+    purpose: "Aapke jawaab (parivaar, kaam, aamdani, loan, lakshya, aur jo paise ki baatein aap batayein) aur invite yaad rakhne ke liye, aur jahan bank data mein kami ho wahan 'aapne bataya' likh kar hisaab mein lagane ke liye.",
+    data: "Onboarding ke jawaab — kaunse chhode ya 'pata nahi' kaha, woh bhi: parivaar, kaam, aamdani kaisi aati hai, aur marzi se ghar ka cash, aamdani, agli tareekh, ek bill. Invite code. Bank data kabhi nahi.",
     retention: "Jab tak consent chalu hai, zyada se zyada 90 din. Band karte hi turant mita diya jaata hai, invite bhi.",
   },
   voice: {

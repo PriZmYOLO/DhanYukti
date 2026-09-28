@@ -7,8 +7,8 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { type?: unknown; ref?: unknown; amount?: unknown };
   return withTwinSession(async (sid) => {
-    const { twin, state } = await loadTwin(sid);
-    const r = await callEngine<{ result: unknown; state: TwinState }>("game-event", { twin, state, type: body.type, ref: body.ref ?? null, amount: body.amount ?? null });
+    const { twin, state, declared } = await loadTwin(sid);
+    const r = await callEngine<{ result: unknown; state: TwinState }>("game-event", { twin, state, declared, type: body.type, ref: body.ref ?? null, amount: body.amount ?? null });
     await saveState(sid, r.state);
     return r.result;
   });

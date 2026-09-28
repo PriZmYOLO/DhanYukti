@@ -297,6 +297,7 @@ def build(payload: dict) -> dict:
     norm["emi_monthly_p"] = _rescale(emi_by_month, months) or 0
     norm["fixed_monthly_p"] = _rescale(fixed_by_month, months) or 0
     norm["income_known"] = income_p is not None
+    norm["emi_known"] = bool(months)   # no complete month: EMIs per month unknown, not zero
     norm["months_covered"] = len(months)
 
     upcoming = project_upcoming(rows, as_of)
@@ -334,7 +335,108 @@ def build(payload: dict) -> dict:
         "essentials_per_day": ess or 0, "essentials_basis": ess_basis, "essentials_known": ess is not None,
         "upcoming": upcoming, "transactions": [],
         "data_window": {"from": data_from, "to": as_of, "full_months": len(months)},
+        # what the bank told us about the person; members are rebuilt from this + their latest answers on every load
+        "profile": {"first_name": profile.get("first_name"), "age": profile.get("age"), "has_income": has_income},
         "sandbox": bool(payload.get("sandbox")),
         "_norm": norm, "_spend": spend,
     }
     return {"status": "ready", "missing": [], "twin": twin, "state": fresh_state(twin)}
+
+
+# ----------------------------------------------------------------------------------------------
+# What the member TOLD us (onboarding answers): fills gaps in the bank data, never overrides it
+# ----------------------------------------------------------------------------------------------
+TOLD = L("Aapne bataya — bank data mein nahi dikha", "You told us — not seen in bank data")
+VARIES = L("Aapne bataya aamdani badalti hai — yeh tareekh andaaza hai", "You told us your income varies — this date is an estimate")
+PER_MONTH = {"monthly": 1.0, "weekly": 52 / 12, "daily": 26.0}   # daily = 26 working days (assumption)
+
+
+def _ans(a: dict | None, *path: str):
+    node = a or {}
+    for p in path:
+        node = node.get(p) if isinstance(node, dict) else None
+    return node.get("value") if isinstance(node, dict) and node.get("state") == "answered" else None
+
+
+def _bill_type(name: str) -> str:
+    n = name.lower()
+    if any(k in n for k in ("fee", "school", "phees", "tuition")):
+        return "fee"
+    if any(k in n for k in ("rent", "kiraya")):
+        return "rent"
+    if any(k in n for k in ("emi", "loan", "karz")):
+        return "emi"
+    return "bill"
+
+
+def apply_declared(hh: dict, answers: dict | None) -> dict:
+    """Layer the member's answers onto their twin (a copy). Bank facts always win:
+    - members come from their family answers (+ whether the bank shows their own income);
+    - "income varies" makes income dates estimates; "no income of my own" only if the bank shows none;
+    - declared income is used only if the bank shows no income in the next 30 days / no complete month;
+    - a declared bill is added only if no bank-projected payment of about that amount falls near its date;
+    - cash at home counts toward days without income (not toward the bank balance).
+    Everything added is certainty "andaaza" with basis "you told us"."""
+    prof = hh.get("profile")
+    if prof is None:          # a twin built before declared answers existed
+        return hh
+    as_of = d(hh["as_of"])
+    horizon = as_of + timedelta(days=HORIZON_DAYS)
+    own = _ans(answers, "own_income")
+    bank_income = bool(prof.get("has_income"))
+    declares_income = own in ("fixed", "varies")
+    hh["members"] = build_members({"first_name": prof.get("first_name"), "age": prof.get("age"), "answers": answers},
+                                  bank_income or declares_income)
+    if not bank_income and declares_income:
+        hh["members"][0]["role"] = L("Aap (kamai: aapne bataya)", "You (income: you told us)")
+
+    up = hh["upcoming"]
+    if own == "varies":
+        for e in up:
+            if e["amount"] > 0 and e["type"] in ("salary", "gig"):
+                e["certainty"], e["basis"] = "andaaza", VARIES
+
+    amt, freq, nxt = _ans(answers, "money", "income_amount"), _ans(answers, "money", "income_frequency"), _ans(answers, "money", "next_pay")
+    in30 = [e for e in up if e["amount"] > 0 and e["type"] in ("salary", "gig") and as_of < d(e["date"]) <= as_of + timedelta(days=30)]
+    if amt and nxt and not in30 and d(nxt) > as_of:
+        kind = "salary" if freq == "monthly" else "gig"
+        when = d(nxt)
+        while when <= horizon:
+            up.append({"id": f"declared_income_{iso(when)}", "date": iso(when), "type": kind, "amount": int(amt),
+                       "label": L("Aamdani (aapne bataya)", "Income (you told us)"), "movable": False,
+                       "certainty": "andaaza", "basis": TOLD, "declared": True})
+            if freq == "monthly":
+                m0 = _month_idx(when) + 1
+                when = _on_day(m0, d(nxt).day)
+            elif freq == "weekly":
+                when += timedelta(days=7)
+            else:
+                break
+        if not bank_income and hh.get("income_type") == "salary" and kind == "gig":
+            hh["income_type"] = "gig"
+
+    norm = hh["_norm"]
+    if amt and freq in PER_MONTH and not norm.get("income_known", True):
+        norm["monthly_income_p"] = P(round(amt * PER_MONTH[freq]))
+        norm["income_known"] = True
+        norm["income_declared"] = True
+
+    bname, bamt, bdue = _ans(answers, "money", "bill_name"), _ans(answers, "money", "bill_amount"), _ans(answers, "money", "bill_due")
+    if bamt and bdue and as_of < d(bdue) <= horizon:
+        near = [e for e in up if e["amount"] < 0 and abs((d(e["date"]) - d(bdue)).days) <= 3
+                and abs(abs(e["amount"]) - bamt) <= 0.1 * bamt]
+        if not near:
+            name = (bname or "Bill").strip()[:40]
+            t = _bill_type(name)
+            ev = {"id": f"declared_bill_{bdue}", "date": bdue, "type": t, "amount": -int(bamt),
+                  "label": L(f"{name} (aapne bataya)", f"{name} (you told us)"), "movable": t == "fee", "protected": True,
+                  "certainty": "andaaza", "basis": TOLD, "declared": True}
+            if t == "fee":
+                ev["contact"] = name
+            up.append(ev)
+
+    cash = _ans(answers, "money", "cash")
+    if cash:
+        hh["declared_cash"] = int(cash)
+    up.sort(key=lambda e: (e["date"], e["amount"] < 0))
+    return hh

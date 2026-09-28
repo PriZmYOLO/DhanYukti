@@ -64,6 +64,8 @@ class BuildIn(BaseModel):
 class TwinIn(BaseModel):
     twin: dict[str, Any]
     state: dict[str, Any] = Field(default_factory=dict)
+    # the member's onboarding answers (only sent with their DPDP profile consent); fills gaps, never overrides
+    declared: dict[str, Any] | None = None
 
 
 class TwinSimIn(TwinIn):
@@ -90,7 +92,7 @@ def _hh(body: TwinIn) -> dict:
     t = body.twin
     if t.get("id") != "me" or not isinstance(t.get("upcoming"), list) or "_norm" not in t:
         raise HTTPException(422, "not a twin")
-    return pipeline.load_twin(t, body.state)
+    return pipeline.load_twin(t, body.state, body.declared)
 
 
 def _data_source(twin: dict) -> dict:
@@ -138,7 +140,7 @@ def correct(body: TwinCorrectIn):
         raise HTTPException(422, f"unsupported correction '{body.field}'. Supported: {pipeline.SUPPORTED_CORRECTIONS}")
     state = copy.deepcopy(body.state)
     state.setdefault("overlays", {})[body.field] = body.value
-    hh = pipeline.load_twin(body.twin, state)
+    hh = pipeline.load_twin(body.twin, state, body.declared)
     return {"ok": True, "state": state, "dashboard": _dashboard(hh, state)}
 
 
@@ -160,5 +162,5 @@ def game_event(body: TwinEventIn):
 def ask(body: TwinAskIn):
     hh = _hh(body)
     db = _dashboard(hh, body.state)
-    ans, tools = answer_with(db, lambda **kw: pipeline.simulate_for(pipeline.load_twin(body.twin, body.state), **kw), body.question)
+    ans, tools = answer_with(db, lambda **kw: pipeline.simulate_for(pipeline.load_twin(body.twin, body.state, body.declared), **kw), body.question)
     return {"answer": rephrase(ans), "tools_used": tools, "tag": "jaankari"}

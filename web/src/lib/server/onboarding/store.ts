@@ -3,9 +3,11 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import {
-  EMPTY_ANSWERS,
+  FREQUENCIES,
   GOALS,
+  OWN_INCOME,
   WORK_KINDS,
+  withDefaults,
   type Answer,
   type Invite,
   type InviteRole,
@@ -53,13 +55,47 @@ function yesNo(input: unknown): Answer<boolean> {
   return { state: "unanswered" };
 }
 
+function rupees(input: unknown, max = 10_00_00_000): Answer<number> {
+  const a = input as { state?: unknown; value?: unknown } | null;
+  if (!a || typeof a !== "object") return { state: "unanswered" };
+  if (a.state === "dont_know") return { state: "dont_know" };
+  if (a.state === "none") return { state: "none" };
+  if (a.state === "answered" && typeof a.value === "number" && Number.isInteger(a.value) && a.value >= 0 && a.value <= max) {
+    return { state: "answered", value: a.value };
+  }
+  return { state: "unanswered" };
+}
+
+function isoDay(input: unknown): Answer<string> {
+  const a = input as { state?: unknown; value?: unknown } | null;
+  if (!a || typeof a !== "object") return { state: "unanswered" };
+  if (a.state === "dont_know") return { state: "dont_know" };
+  if (a.state === "none") return { state: "none" };
+  if (a.state === "answered" && typeof a.value === "string" && /^20\d\d-[01]\d-[0-3]\d$/.test(a.value) && !Number.isNaN(Date.parse(a.value))) {
+    return { state: "answered", value: a.value };
+  }
+  return { state: "unanswered" };
+}
+
+function shortText(input: unknown): Answer<string> {
+  const a = input as { state?: unknown; value?: unknown } | null;
+  if (!a || typeof a !== "object") return { state: "unanswered" };
+  if (a.state === "none") return { state: "none" };
+  if (a.state === "answered" && typeof a.value === "string") {
+    const v = a.value.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 40);
+    return v ? { state: "answered", value: v } : { state: "unanswered" };
+  }
+  return { state: "unanswered" };
+}
+
 /** Strict: unknown fields are dropped, bad values become "unanswered". */
 export function sanitizeAnswers(input: unknown): OnboardingAnswers | null {
   if (!input || typeof input !== "object") return null;
   const raw = input as Record<string, unknown>;
   const dep = (raw.dependents ?? {}) as Record<string, unknown>;
+  const m = (raw.money ?? {}) as Record<string, unknown>;
   return {
-    version: 1,
+    version: 2,
     members: count(raw.members, 30),
     earners: count(raw.earners, 30),
     dependents: {
@@ -69,15 +105,25 @@ export function sanitizeAnswers(input: unknown): OnboardingAnswers | null {
       other: count(dep.other, 20),
     },
     work: pick(raw.work, WORK_KINDS),
+    own_income: pick(raw.own_income, OWN_INCOME),
     loans: yesNo(raw.loans),
     goal: pick(raw.goal, GOALS),
+    money: {
+      cash: rupees(m.cash),
+      income_amount: rupees(m.income_amount),
+      income_frequency: pick(m.income_frequency, FREQUENCIES),
+      next_pay: isoDay(m.next_pay),
+      bill_name: shortText(m.bill_name),
+      bill_amount: rupees(m.bill_amount),
+      bill_due: isoDay(m.bill_due),
+    },
     updated_at: new Date().toISOString(),
   };
 }
 
 export async function readAnswers(sid: string): Promise<OnboardingAnswers | null> {
   const stored = await kvGet<OnboardingAnswers>(answersKey(sid));
-  return stored ? { ...EMPTY_ANSWERS, ...stored } : null;
+  return stored ? withDefaults(stored) : null;
 }
 
 export async function saveAnswers(sid: string, answers: OnboardingAnswers) {

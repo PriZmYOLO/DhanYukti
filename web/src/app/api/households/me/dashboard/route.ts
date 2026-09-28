@@ -7,7 +7,7 @@ export const maxDuration = 60;
 /** The linked member's own dashboard, from their own bank data (tasks always included). */
 export async function GET() {
   return withTwinSession(async (sid) => {
-    const { twin, state } = await loadTwin(sid);
-    return callEngine("dashboard", { twin, state });
+    const { twin, state, declared } = await loadTwin(sid);
+    return callEngine("dashboard", { twin, state, declared });
   });
 }
