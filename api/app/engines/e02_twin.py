@@ -91,13 +91,14 @@ def project_upcoming(rows: list[dict], as_of: str) -> list[dict]:
     (it is essentials per day)."""
     as_of_d = d(as_of)
     until = as_of_d + timedelta(days=HORIZON_DAYS)
-    groups: dict[tuple[str, str], list[dict]] = {}
+    # one series per (kind, payee, account): the same payee paid from two accounts is two obligations
+    groups: dict[tuple[str, str, str], list[dict]] = {}
     for r in rows:
         if r["kind"] in OBLIGATION_KINDS or r["kind"] in INCOME_KINDS:
-            groups.setdefault((r["kind"], payee_key(r["narration"])), []).append(r)
+            groups.setdefault((r["kind"], payee_key(r["narration"]), r.get("account") or ""), []).append(r)
 
     out: list[dict] = []
-    for (kind, key), rs in groups.items():
+    for (kind, key, acct), rs in groups.items():
         rs = sorted(rs, key=lambda r: r["date"])
         dates = [d(r["date"]) for r in rs]
         amounts = [r["amount"] for r in rs]
@@ -119,7 +120,7 @@ def project_upcoming(rows: list[dict], as_of: str) -> list[dict]:
                 nxt += timedelta(days=step)
             k = 0
             while nxt <= until and k < 12:
-                out.append(_event(kind, key, nxt, amt, rs))
+                out.append(_event(kind, key, nxt, amt, acct))
                 nxt += timedelta(days=step)
                 k += 1
             continue
@@ -138,14 +139,14 @@ def project_upcoming(rows: list[dict], as_of: str) -> list[dict]:
         while _on_day(m0, day) <= as_of_d:
             m0 += cadence
         while (nx := _on_day(m0, day)) <= until:
-            out.append(_event(kind, key, nx, amt, rs))
+            out.append(_event(kind, key, nx, amt, acct))
             m0 += cadence
     out.sort(key=lambda e: (e["date"], e["amount"] < 0))
     return out
 
 
-def _event(kind: str, key: str, when: date, amount: int, seen: list[dict]) -> dict:
-    slug = re.sub(r"[^a-z0-9]+", "_", key.lower()).strip("_")[:24] or "x"
+def _event(kind: str, key: str, when: date, amount: int, account: str) -> dict:
+    slug = re.sub(r"[^a-z0-9]+", "_", f"{key} {account[-4:]}".lower()).strip("_")[:28] or "x"
     ev = {"id": f"{kind}_{slug}_{when.isoformat()}", "date": iso(when), "type": EVENT_TYPE[kind],
           "label": _label(kind, key), "amount": int(amount), "movable": kind == "fee", "_kind": kind}
     if kind in PROTECTED:

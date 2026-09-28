@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, Eye, Target, Hourglass, Volume2, Minus, Plus, ShieldCheck, Lock, ExternalLink, Landmark } from "lucide-react";
 import HomeScene from "@/components/art/HomeScene";
 import DemoHouseholds from "@/components/DemoHouseholds";
-import Avatar from "@/components/art/Avatar";
+import MyHouseholdIssue from "@/components/MyHouseholdIssue";
 import Scene from "@/components/art/Scene";
 import Gullak from "@/components/art/Gullak";
 import { LangToggle } from "@/components/TopBar";
@@ -17,7 +17,6 @@ import { aaLive, liveSee, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSumma
 import { DEFAULT_FI_TYPES, FI_TYPE_TEXT, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import BankSummaryCard from "@/components/BankSummaryCard";
 import DemoDataChip from "@/components/DemoDataChip";
-import { demoHouseholdName } from "@/lib/demo-data";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
 import { gov } from "@/lib/gov";
@@ -38,7 +37,7 @@ const LANGS = [
 export default function Onboarding() {
   const router = useRouter();
   const app = useApp();
-  const { t, lang, setLang, speak, hid, data, setOnboarded, setConsentHandle, refresh, celebrate, assisted, setAssisted } = app;
+  const { t, lang, setLang, speak, hid, data, setOnboarded, setConsentHandle, refresh, celebrate, assisted, setAssisted, showMyHousehold, meIssue } = app;
   const [step, setStep] = useState<Step>("splash");
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
@@ -132,7 +131,8 @@ export default function Onboarding() {
         if (stage === "done") {
           aaLive.rememberPending(null); setPolling(null);
           setConsentHandle(link.link_id);
-          await refresh();
+          // From here on the app shows this member's own household (built from their bank data).
+          showMyHousehold();
           return;
         }
         if (stage === "ended") {
@@ -280,7 +280,6 @@ export default function Onboarding() {
 
           {step === "family" && (<>
             <Title v={{ hi: "Aapka parivaar", en: "Your family" }} sub={{ hi: "Jo pata ho woh batayein — chhodna bhi theek hai", en: "Answer what you know — skipping is fine" }} />
-            <div className="mt-3 flex -space-x-3 justify-center">{(data?.household.members ?? []).map((m) => <Avatar key={m.id} kind={m.avatar} size={52} ring />)}</div>
             <div className="mt-4 space-y-2">
               <CountRow e="👨‍👩‍👧‍👦" l={{ hi: "Ghar mein kitne log?", en: "People at home" }} a={ans.members} set={(v) => setAns({ ...ans, members: v })} />
               <CountRow e="💼" l={{ hi: "Kitne kamaate hain?", en: "How many earn?" }} a={ans.earners} set={(v) => setAns({ ...ans, earners: v })} />
@@ -387,16 +386,24 @@ export default function Onboarding() {
             </div>
           </>)}
 
-          {step === "reveal" && data && (<>
-            {liveActive && liveLink ? (<>
+          {step === "reveal" && liveActive && liveLink && data?.household.id !== "me" && (<>
+            <BankSummaryCard link={liveLink} summary={summary} err={summaryErr} />
+            {meIssue ? <div className="-mx-5"><MyHouseholdIssue /></div> : (
+              <div role="status" className="mt-5 rounded-[28px] bg-ink text-white p-5 text-center">
+                <motion.div className="mx-auto h-10 w-10 rounded-full border-4 border-haldi border-t-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} />
+                <p className="mt-3 font-extrabold">{t({ hi: "Aapke bank data se aapka hisaab ban raha hai…", en: "Building your picture from your own bank data…" })}</p>
+                <p className="mt-1 text-[12px] text-white/70">{t({ hi: "Pehli baar mein ek minute lag sakta hai", en: "The first time can take up to a minute" })}</p>
+              </div>
+            )}
+          </>)}
+
+          {step === "reveal" && data && (!liveActive || data.household.id === "me") && (<>
+            {liveActive && liveLink ? (
               <BankSummaryCard link={liveLink} summary={summary} err={summaryErr} />
-              {demoHouseholdName(data) && <p className="mt-3 text-[14px] font-semibold leading-snug">{t(liveLink.is_sandbox
-                ? { hi: `Sandbox test bank mein ek asli parivaar ka poora saal nahi hota, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Sandbox test banks don't carry a real family's year, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` }
-                : { hi: `Aapka poora hisaab abhi aapke bank data se nahi banta, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Your full picture isn't built from your bank data yet, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` })}</p>}
-            </>) : (
+            ) : (
               <p className="mt-4 text-xs font-bold text-muted">Anumati + Perfios · Recorded sandbox (replay)</p>
             )}
-            <Title v={{ hi: "Yeh raha aapka hisaab", en: "Here's your picture" }} sub={{ hi: `${primaryMember(data)?.name ?? ""} ji, parivaar ki paisa sehat`, en: `${primaryMember(data)?.name ?? ""}, your family's money health` }} />
+            <Title v={{ hi: "Yeh raha aapka hisaab", en: "Here's your picture" }} sub={greeting(primaryMember(data)?.name)} />
             <DemoDataChip short className="mt-2" />
             <div className="mt-5 rounded-[32px] bg-ink text-white p-5">
               <p className="text-[12px] text-haldi font-bold uppercase tracking-widest">{t(data.metrics.resilience_days.label)}</p>
@@ -457,6 +464,12 @@ export default function Onboarding() {
       </AnimatePresence>
     </div>
   );
+}
+
+function greeting(name: string | undefined): L {
+  return !name || name === "Aap"
+    ? { hi: "Aapke parivaar ki paisa sehat", en: "Your family's money health" }
+    : { hi: `${name} ji, parivaar ki paisa sehat`, en: `${name}, your family's money health` };
 }
 
 function Title({ v, sub }: { v: L; sub?: L }) {

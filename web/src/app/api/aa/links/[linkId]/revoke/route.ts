@@ -1,4 +1,7 @@
+import { after } from "next/server";
+
 import { revokeLink } from "@/lib/server/aa/links";
+import { rebuildTwinQuietly } from "@/lib/server/twin/engine";
 import {
   errorResponse,
   noStore,
@@ -22,5 +25,7 @@ export async function POST(
       "This request isn't in your session.",
     );
   }
+  // The picture built from this link is deleted; rebuild from any other link still active.
+  if (sid) after(() => rebuildTwinQuietly(sid));
   return Response.json({ link }, { headers: noStore });
 }

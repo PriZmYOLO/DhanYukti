@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCheck, Play, Square, Volume2 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { nextSalary, topTask } from "./allGood";
 import { inr } from "@/lib/format";
 import type { Dashboard, L } from "@/lib/types";
 import { sayText, useRunner, wait } from "./VoiceScript";
@@ -12,8 +13,9 @@ type Node = { bot: L[]; replies: Reply[] };
 type Msg = { from: "bot" | "me"; text: L; time: string };
 
 function buildScript(d: Dashboard): Record<string, Node> {
-  const n = d.nba[0];
+  const n = topTask(d);
   const jar = d.jars[0];
+  const pay = nextSalary(d) ?? "salary day";
   const lender = d.lender_shield.find((l) => !l.on_rbi_list);
   const aa = { hi: "Anumati", en: "Anumati" };
   const karo: L = n.action.type === "message" && n.action.payload.text && typeof n.action.payload.text === "object"
@@ -28,7 +30,7 @@ function buildScript(d: Dashboard): Record<string, Node> {
     later: { bot: [{ hi: "Theek hai. Kal subah 9 baje yaad dilayenge.", en: "Okay. We'll remind you tomorrow at 9 am." }], replies: [{ label: { hi: "Aage", en: "Next" }, to: "salary" }] },
     salary: { bot: [{ hi: `Salary aa gayi! ₹800 ${jar?.name.hi ?? "Gullak"} mein daalein?`, en: `Salary arrived! Put ₹800 in ${jar?.name.en ?? "Gullak"}?` }],
       replies: [{ label: { hi: "Haan, AutoPay", en: "Yes, AutoPay" }, to: "confirm" }, { label: { hi: "Abhi nahi", en: "Not now" }, to: lender ? "lender" : "receipt" }] },
-    confirm: { bot: [{ hi: `₹800, 30 Sep, ${jar?.name.hi ?? "Gullak"} — sahi hai?`, en: `₹800, 30 Sep, ${jar?.name.en ?? "Gullak"} — correct?` }],
+    confirm: { bot: [{ hi: `₹800, ${pay}, ${jar?.name.hi ?? "Gullak"} — sahi hai?`, en: `₹800, ${pay}, ${jar?.name.en ?? "Gullak"} — correct?` }],
       replies: [{ label: { hi: "Haan, sahi hai", en: "Yes, correct" }, to: "done" }] },
     done: { bot: [{ hi: "✅ UPI AutoPay set. +50 Paisa Points 🎉", en: "✅ UPI AutoPay set. +50 Paisa Points 🎉" }], replies: [{ label: { hi: "Aage", en: "Next" }, to: lender ? "lender" : "receipt" }] },
     lender: { bot: lender ? [{ hi: `⚠️ ${lender.app} RBI ki list mein nahi hai. ${lender.days} din mein ${inr(lender.charges)} byaaj laga.`, en: `⚠️ ${lender.app} is not on RBI's list. ${inr(lender.charges)} interest in ${lender.days} days.` }] : [],

@@ -7,6 +7,7 @@ import TabBar from "./TabBar";
 import Celebration from "./ui/Celebration";
 import { LangToggle } from "./TopBar";
 import { useApp } from "@/lib/store";
+import MyHouseholdIssue from "./MyHouseholdIssue";
 
 export const NAV = [
   { href: "/app", hi: "घर", en: "Home", Icon: House },
@@ -20,7 +21,7 @@ export const NAV = [
 /** The web app: bottom tabs on a phone, sidebar + wide layout on a laptop. */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { online, lang, assisted, data, t } = useApp();
+  const { online, lang, assisted, data, t, meIssue } = useApp();
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-dvh app-bg">
@@ -40,16 +41,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="mt-auto space-y-3">
-            {data && <p className="px-3 text-xs text-white/60">{t(data.household.family_name)} · {t(data.household.city)}</p>}
+            {data && <p className="px-3 text-xs text-white/60">{t(data.household.family_name)}{data.household.city.en !== "—" ? ` · ${t(data.household.city)}` : ""}</p>}
             <div className="px-1"><LangToggle dark /></div>
             <Link href="/" className="flex items-center gap-2 px-3 text-sm text-white/60 hover:text-white"><LogOut size={16} />{lang === "hi" ? "Portal par wapas" : "Back to portal"}</Link>
             <p className="px-3 text-[11px] text-white/40">Anumati AA · Perfios</p>
           </div>
         </aside>
         <div className="lg:pl-64">
-          {!online && <div className="sticky top-0 z-20 flex items-center gap-2 bg-ink text-white px-5 py-2 text-xs font-semibold"><WifiOff size={14} />{lang === "hi" ? "Internet nahi hai — demo data dikh raha hai" : "Offline — showing demo data"}</div>}
+          {!online && <div className="sticky top-0 z-20 flex items-center gap-2 bg-ink text-white px-5 py-2 text-xs font-semibold"><WifiOff size={14} />{data?.household.id === "me" ? (lang === "hi" ? "Internet nahi hai — pichhla hisaab dikh raha hai" : "Offline — showing your last picture") : lang === "hi" ? "Internet nahi hai — demo data dikh raha hai" : "Offline — showing demo data"}</div>}
           {assisted && <div className="bg-haldi-soft px-5 py-1.5 text-[12px] font-semibold text-center">🤝 {lang === "hi" ? "Sahayak mode: helper sirf steps dekhte hain" : "Assisted mode: helper sees steps only"}</div>}
-          <main className="mx-auto max-w-6xl pb-32 lg:pb-12 lg:px-6">{children}</main>
+          <main className="mx-auto max-w-6xl pb-32 lg:pb-12 lg:px-6">{meIssue && !data ? <MyHouseholdIssue /> : children}</main>
         </div>
         <TabBar />
         <Celebration />

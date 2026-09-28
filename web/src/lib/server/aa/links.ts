@@ -45,6 +45,7 @@ import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
 import { detectPolicies, summariseCover } from "@/lib/server/insurance/cover";
 import { readTags, saveTags, validTags } from "@/lib/server/insurance/tags";
 import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
+import { twinKeys } from "@/lib/server/twin/keys";
 
 /**
  * Live Account Aggregator links (Anumati FIU module). This is the server
@@ -243,7 +244,11 @@ function setConsent(record: LinkRecord, status: ConsentStatus) {
   }
 }
 
-/** Data from an ended consent is deleted and later results are refused. */
+/**
+ * Data from an ended consent is deleted and later results are refused. The
+ * Household Twin built from it goes too (it is rebuilt from any other link
+ * whose data is still here the next time the member opens the app).
+ */
 async function purgeData(record: LinkRecord) {
   record.pending = null;
   record.accounts = [];
@@ -252,6 +257,7 @@ async function purgeData(record: LinkRecord) {
     keys.data(record.link_id),
     keys.summary(record.link_id),
     keys.raw(record.link_id),
+    twinKeys.twin(record.session_id),
   );
 }
 
@@ -1106,6 +1112,6 @@ export async function deleteSessionLinks(
     );
     removed.push({ ref: shortRef(id)!, was });
   }
-  await kvDel(keys.session(sid));
+  await kvDel(keys.session(sid), twinKeys.twin(sid), twinKeys.state(sid));
   return removed;
 }

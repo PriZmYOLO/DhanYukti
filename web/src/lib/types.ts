@@ -56,7 +56,8 @@ export type SpendSlice = { key: "ghar" | "khana" | "emi" | "bachat" | "baaki"; l
 export type Dashboard = {
   household: {
     id: string; family_name: L; primary_user: string; city: L; income_type: "salary" | "gig" | "dual";
-    monthly_income: number; members: Member[]; literacy_mode: "aasaan" | "saathi" | "pro"; language: string;
+    /** null = not known yet (fewer than one complete month of the member's own data). */
+    monthly_income: number | null; members: Member[]; literacy_mode: "aasaan" | "saathi" | "pro"; language: string;
   };
   as_of: string;
   data_source: { mode: "live" | "replay" | "fixture"; aa: string; analytics: string; fetched_at: string };
@@ -69,6 +70,8 @@ export type Dashboard = {
   lender_shield: LenderCheck[];
   crosscheck: { field: L; ours: string; perfios: string; agree: boolean }[];
   game: Game;
+  /** Linked member who hasn't allowed "Alerts & suggestions" on their bank link: no tasks are suggested. */
+  suggestions_off?: boolean;
 };
 
 export type HouseholdSummary = { id: string; family_name: L; city: L; income: number; members: number; problem: L; hero: L };

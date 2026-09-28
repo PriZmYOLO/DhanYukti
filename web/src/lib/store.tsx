@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gov, GovError } from "./gov";
 import VoiceLayer from "@/components/gov/VoiceLayer";
-import { api } from "./api";
+import { api, ME, MeError } from "./api";
 import type { Badge, Dashboard, L } from "./types";
 
 export type Lang = "hi" | "en";
@@ -25,6 +25,12 @@ type Ctx = {
   sub: (v: L | undefined | null) => string;
   hid: string; setHid: (id: string) => void;
   data: Dashboard | null; error: string | null; loading: boolean;
+  /** Why the linked member's own household can't be shown (never replaced by a demo). */
+  meIssue: MeError | null;
+  /** This browser has a linked bank account (live Anumati), so "me" is the default household. */
+  linked: boolean;
+  /** Switch to the member's own household after a live link. */
+  showMyHousehold: () => void;
   refresh: () => Promise<void>;
   setData: (d: Dashboard) => void;
   onboarded: boolean; setOnboarded: (v: boolean) => void;
@@ -58,6 +64,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [consentHandle, setHandleS] = useState<string | null>(null);
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [meIssue, setMeIssue] = useState<MeError | null>(null);
+  const [linked, setLinked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [celebration, celebrate] = useState<Celebration>(null);
   const [speaking, setSpeaking] = useState(false);
@@ -69,27 +77,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setLangS(read("dy.lang", "hi")); setHidS(read("dy.hid", "A")); setModeS(read("dy.mode", "saathi"));
     const demo = new URLSearchParams(location.search).get("demo");
-    if (demo) { write("dy.onboarded", true); if (["A", "B", "C"].includes(demo)) write("dy.hid", demo); }
-    setHidS(read("dy.hid", "A")); setOnbS(read("dy.onboarded", false)); setHandleS(read("dy.handle", null)); setAssistedS(read("dy.assisted", false)); setOnline(navigator.onLine); setHydrated(true);
+    if (demo) { write("dy.onboarded", true); if (["A", "B", "C"].includes(demo)) { write("dy.hid", demo); write("dy.demoChosen", true); } }
+    setOnbS(read("dy.onboarded", false)); setHandleS(read("dy.handle", null)); setAssistedS(read("dy.assisted", false)); setOnline(navigator.onLine);
+    // A linked member sees their own household unless they deliberately opened a demo family.
+    const stored = read<string | null>("dy.hid", null);
+    const chose = read("dy.demoChosen", false);
+    const start = (h: string) => { setHidS(h); setHydrated(true); };
+    if (demo || (stored && stored !== ME && chose)) { start(read("dy.hid", "A")); api.meStatus().then((s) => setLinked(s.linked)).catch(() => {}); }
+    else api.meStatus()
+      .then((s) => { setLinked(s.linked); start(s.linked || stored === ME ? ME : stored ?? "A"); })
+      .catch(() => start(stored ?? "A"));
     const on = () => setOnline(true), off = () => setOnline(false);
     window.addEventListener("online", on); window.addEventListener("offline", off);
     if ("serviceWorker" in navigator && location.hostname !== "localhost") navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
 
   const setLang = (l: Lang) => { setLangS(l); write("dy.lang", l); };
-  const setHid = (id: string) => { setHidS(id); write("dy.hid", id); };
+  const setHid = (id: string) => { setHidS(id); write("dy.hid", id); write("dy.demoChosen", id !== ME); };
+  const showMyHousehold = useCallback(() => { setHidS(ME); write("dy.hid", ME); write("dy.demoChosen", false); setLinked(true); }, []);
   const setMode = (m: Mode) => { setModeS(m); write("dy.mode", m); };
   const setOnboarded = (v: boolean) => { setOnbS(v); write("dy.onboarded", v); };
   const setConsentHandle = (h: string | null) => { setHandleS(h); write("dy.handle", h); };
   const setAssisted = (v: boolean) => { setAssistedS(v); write("dy.assisted", v); };
 
   const refresh = useCallback(async () => {
-    try { setError(null); setData(await api.dashboard(hid)); }
-    catch (e) { setError(e instanceof Error ? e.message : "error"); }
+    try { setError(null); setMeIssue(null); setData(await api.dashboard(hid)); }
+    catch (e) {
+      setError(e instanceof Error ? e.message : "error");
+      if (e instanceof MeError) { setMeIssue(e); setData(null); }
+    }
     finally { setLoading(false); }
   }, [hid]);
 
-  useEffect(() => { if (hydrated) { setLoading(true); refresh(); } }, [hydrated, refresh]);
+  // Switching household: drop the old one's numbers first, so nobody sees another family's data.
+  useEffect(() => { if (hydrated) { setData(null); setLoading(true); refresh(); } }, [hydrated, refresh]);
 
   const t = useCallback((v: L | undefined | null) => (v ? v[lang] || v.en : ""), [lang]);
   const sub = useCallback((v: L | undefined | null) => (v ? v[lang === "hi" ? "en" : "hi"] : ""), [lang]);
@@ -200,9 +221,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [hid, refresh]);
 
   const value = useMemo<Ctx>(() => ({
-    lang, setLang, t, sub, hid, setHid, data, error, loading, refresh, setData, onboarded, setOnboarded, mode, setMode,
+    lang, setLang, t, sub, hid, setHid, data, error, loading, refresh, setData, onboarded, setOnboarded, mode, setMode, meIssue, linked, showMyHousehold,
     celebration, celebrate, award, speak, speaking, voice, answerVoicePrompt, voiceLang, setVoiceLang, speakIn, consentHandle, setConsentHandle, doneIds, assisted, setAssisted, online,
-  }), [lang, t, sub, hid, data, error, loading, refresh, onboarded, mode, celebration, award, speak, speaking, voice, answerVoicePrompt, voiceLang, speakIn, consentHandle, doneIds, assisted, online]);
+  }), [lang, t, sub, hid, data, error, loading, refresh, onboarded, mode, meIssue, linked, showMyHousehold, celebration, award, speak, speaking, voice, answerVoicePrompt, voiceLang, speakIn, consentHandle, doneIds, assisted, online]);
 
   return <AppCtx.Provider value={value}>{hydrated ? <>{children}<VoiceLayer /></> : null}</AppCtx.Provider>;
 }

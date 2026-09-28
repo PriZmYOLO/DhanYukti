@@ -30,6 +30,13 @@ export default function TodayCards({ nba }: { nba: NBA[] }) {
   const [later, setLater] = useState<string[]>([]);
   const cards = nba.filter((n) => !later.includes(n.id)).slice(0, 3);
 
+  if (!nba.length) return (
+    <div className="mx-5 lg:mx-0 rounded-[28px] bg-white p-5 shadow-soft">
+      <p className="text-[21px] font-extrabold leading-snug">{t({ hi: "Aaj koi zaroori kaam nahi 🌿", en: "Nothing urgent today 🌿" })}</p>
+      <p className="mt-2 text-[15px] text-ink/80">{t({ hi: "Agle 30 din mein paisa kam padta nahi dikh raha. Gullak mein thoda daalte rahein.", en: "No shortfall in the next 30 days. Keep adding a little to the Gullak." })}</p>
+    </div>
+  );
+
   return (
     <div>
       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar px-5 lg:px-0"

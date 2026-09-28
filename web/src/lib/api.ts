@@ -2,15 +2,32 @@ import type {
   Capability, ConsentArtefact, Dashboard, DpdpGrant, GameEventResult, HouseholdSummary, L, SimResult,
 } from "./types";
 
+/** A "my household" (linked member) error: says what's wrong, never swaps in demo data. */
+export class MeError extends Error {
+  constructor(public code: string, public safe: string, public missing: L[] = [], public status = 0) {
+    super(safe);
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
   });
-  if (!res.ok) throw apiError(res, path);
+  if (!res.ok) {
+    if (isMePath(path)) {
+      const body = (await res.json().catch(() => null)) as { error?: { code?: string; safe_message?: string; missing?: L[] } } | null;
+      throw new MeError(body?.error?.code ?? "engine_error", body?.error?.safe_message ?? "Something went wrong.", body?.error?.missing ?? [], res.status);
+    }
+    throw apiError(res, path);
+  }
   return res.json() as Promise<T>;
 }
+
+/** The linked member's own household lives at id "me". */
+export const ME = "me";
+const isMePath = (path: string) => /\/me(\/|$)/.test(path);
 
 /**
  * FastAPI always answers with JSON. A non-JSON error (e.g. Next's own 404 page
@@ -44,7 +61,12 @@ const real = {
   aaFetch: (h: string) => post<{ ok: boolean; accounts: number; transactions: number; steps: { key: string; label: L; done: boolean }[]; mode: string }>(`/consent/aa/${h}/fetch`),
   aaRevoke: (h: string) => post<{ status: string; deleted: string[]; mode: string }>(`/consent/aa/${h}/revoke`),
   gameEvent: (hid: string, type: string, extra: { ref?: string; amount?: number } = {}) => post<GameEventResult>(`/game/${hid}/event`, { type, ...extra }),
-  ask: (household_id: string, question: string, lang: "hi" | "en") => post<{ answer: L; tools_used: string[]; tag: string }>("/ask", { household_id, question, lang }),
+  ask: (household_id: string, question: string, lang: "hi" | "en") =>
+    household_id === ME
+      ? post<{ answer: L; tools_used: string[]; tag: string }>("/ask/me", { question, lang })
+      : post<{ answer: L; tools_used: string[]; tag: string }>("/ask", { household_id, question, lang }),
+  /** Linked member: is a bank account linked in this browser, and is their picture built? */
+  meStatus: () => call<{ linked: boolean; ready: boolean }>("/households/me/status"),
   enrich: (hid: string, kind: "electricity" | "rc" | "ration" | "epf", input: Record<string, string> = {}) =>
     post<{ kind: string; mode: string; result: Record<string, unknown>; used_for: L }>(`/enrich/${hid}/${kind}`, { consent: true, input }),
   bsaUpload: async (file: File) => {
@@ -68,6 +90,8 @@ export const api = new Proxy(real, {
     const fn = target[key] as (...a: unknown[]) => Promise<unknown>;
     const fallback = (mock as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[key as string];
     return async (...args: unknown[]) => {
+      // A linked member's own household never falls back to demo data: errors are shown as errors.
+      if (args[0] === ME || key === "meStatus") return fn(...args);
       if (demoMode && fallback) return fallback(...args);
       try { return await fn(...args); }
       catch (e) {

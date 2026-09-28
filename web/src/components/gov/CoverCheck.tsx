@@ -40,7 +40,7 @@ function prefill(data: Dashboard | null, hints: CoverHints | null): { profile: C
     else if (m.avatar === "girl" || m.avatar === "boy" || (m.age != null && m.age < 18)) relation = "child";
     else if (!spouseTaken) { relation = "spouse"; spouseTaken = true; }
     // Income is only prefilled when one person earns it all; otherwise it's asked.
-    const income = m.earner && earners.length === 1 && data ? toPaise(data.household.monthly_income * 12) : null;
+    const income = m.earner && earners.length === 1 && data && data.household.monthly_income != null ? toPaise(data.household.monthly_income * 12) : null;
     members.push({ id, relation, age: m.age ?? null, earns: m.earner, annual_income: m.earner ? income : null });
     names[id] = m.name;
   });
