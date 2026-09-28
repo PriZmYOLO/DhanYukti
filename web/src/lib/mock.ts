@@ -18,8 +18,8 @@ type Demo = {
 const D = demo as unknown as Demo;
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 
-let dash: Record<string, Dashboard> = clone(D.dashboards);
-let pass = clone(D.passports);
+const dash: Record<string, Dashboard> = clone(D.dashboards);
+const pass = clone(D.passports);
 const consents: Record<string, { hid: string; status: string }> = {};
 
 const inr = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN")}`;
@@ -148,6 +148,5 @@ export const mock = {
   },
   enrich: async (hid: string, kind: string) => ({ ...clone(D.enrich[hid][kind]), mode: "demo" }),
   bsaUpload: async () => ({ mode: "demo", status: "COMPLETED", report_id: `bsa_demo_${Date.now().toString(36)}` }),
-  reset: async () => { dash = clone(D.dashboards); pass = clone(D.passports); return { ok: true }; },
   capabilities: async () => D.capabilities,
 };

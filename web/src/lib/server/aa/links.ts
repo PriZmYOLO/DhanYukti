@@ -41,8 +41,15 @@ import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
 
 const DAY = 24 * 60 * 60;
 const LINK_TTL = 90 * DAY;
-/** DhanYukti's own retention for fetched data (shorter than dataLife). */
-const DATA_TTL = 30 * DAY;
+/** Decrypted bank data is deleted 24 hours after it arrives. */
+export const RAW_DATA_TTL = 1 * DAY;
+/** The few derived facts (reveal summary): until revoke, at most 30 days. */
+export const SUMMARY_TTL = 30 * DAY;
+
+export const EXPIRED_MESSAGE =
+  "Bank data is deleted 24 hours after fetching. Link again to refresh.";
+const SUMMARY_EXPIRED_MESSAGE =
+  "The facts saved from this bank link are deleted 30 days after fetching. Link again to refresh.";
 
 interface PendingRetrieval {
   id: string;
@@ -93,6 +100,7 @@ const keys = {
   link: (id: string) => `aa:link:${id}`,
   ref: (moduleReference: string) => `aa:ref:${moduleReference}`,
   data: (id: string) => `aa:data:${id}`,
+  summary: (id: string) => `aa:summary:${id}`,
   raw: (id: string) => `aa:raw:${id}`,
   lock: (id: string) => `aa:lock:${id}`,
 };
@@ -153,7 +161,27 @@ async function saveLink(record: LinkRecord) {
 
 async function loadLink(linkId: string): Promise<LinkRecord | null> {
   if (!/^aa-[0-9a-f-]{36}$/.test(linkId)) return null;
-  return kvGet<LinkRecord>(keys.link(linkId));
+  const record = await kvGet<LinkRecord>(keys.link(linkId));
+  return record ? scrubOldFacts(record) : null;
+}
+
+/**
+ * The link record outlives the derived facts (it holds the consent trail),
+ * so the balances it carries are dropped once they are older than the
+ * 30-day limit, like the saved summary.
+ */
+async function scrubOldFacts(record: LinkRecord): Promise<LinkRecord> {
+  const cutoff = Date.now() - SUMMARY_TTL * 1000;
+  let changed = false;
+  record.accounts = record.accounts.map((a) => {
+    if (!a.balance || !a.fetched_at || Date.parse(a.fetched_at) > cutoff) {
+      return a;
+    }
+    changed = true;
+    return { ...a, balance: null, balance_as_of: null };
+  });
+  if (changed) await saveLink(record);
+  return record;
 }
 
 async function sessionLinkIds(sid: string): Promise<string[]> {
@@ -180,7 +208,41 @@ async function purgeData(record: LinkRecord) {
   record.pending = null;
   record.accounts = [];
   record.import_status = "not_started";
-  await kvDel(keys.data(record.link_id), keys.raw(record.link_id));
+  await kvDel(
+    keys.data(record.link_id),
+    keys.summary(record.link_id),
+    keys.raw(record.link_id),
+  );
+}
+
+type DataRead =
+  | { status: "ready"; data: StoredAccountData }
+  /** Data arrived but its 24 hours are over: deleted, not "nothing found". */
+  | { status: "expired" }
+  | { status: "none" };
+
+async function readData(record: LinkRecord): Promise<DataRead> {
+  const data = await kvGet<StoredAccountData>(keys.data(record.link_id));
+  if (data && data.accounts.length > 0) return { status: "ready", data };
+  const arrived =
+    record.import_status === "complete" || record.import_status === "partial";
+  return arrived ? { status: "expired" } : { status: "none" };
+}
+
+/**
+ * Stores decrypted data for 24 hours and, next to it, the derived summary
+ * for at most 30 days. Both are deleted on revoke.
+ */
+export async function storeAccountData(
+  record: Pick<LinkRecord, "link_id" | "grants">,
+  data: StoredAccountData,
+) {
+  await kvSet(keys.data(record.link_id), data, RAW_DATA_TTL);
+  const summary = summariseAccounts(data, {
+    alertsAllowed: record.grants.alerts_and_actions,
+    isSandbox: aaConfig.isSandbox,
+  });
+  await kvSet(keys.summary(record.link_id), summary, SUMMARY_TTL);
 }
 
 function isEnded(status: ConsentStatus) {
@@ -675,7 +737,7 @@ export async function collectIfPending(
         fetched_at: at,
         accounts: processed.stored,
       };
-      await kvSet(keys.data(fresh.link_id), data, DATA_TTL);
+      await storeAccountData(fresh, data);
     }
     if (processed.decryptFailures) {
       // Keep the still-encrypted payload briefly so it can be re-opened
@@ -718,6 +780,8 @@ export type AccountSummaryResult =
   | { status: "ready"; summary: AccountSummary }
   /** Active link in this session, but no fetched data (yet). */
   | { status: "no_data" }
+  /** Data arrived, but the saved facts are past their 30 days. */
+  | { status: "expired"; safe_message: string }
   | { status: "not_found" };
 
 /**
@@ -733,15 +797,23 @@ export async function accountSummary(
   const record = await loadLink(linkId);
   if (!record || record.session_id !== sid) return { status: "not_found" };
   if (record.consent_status !== "active") return { status: "not_found" };
+  // The derived copy outlives the decrypted data (30 days vs 24 hours).
+  const saved = await kvGet<AccountSummary>(keys.summary(linkId));
+  if (saved) return { status: "ready", summary: saved };
   const data = await readAccountData(sid, linkId);
-  if (!data || data.accounts.length === 0) return { status: "no_data" };
-  return {
-    status: "ready",
-    summary: summariseAccounts(data, {
-      alertsAllowed: record.grants.alerts_and_actions,
-      isSandbox: aaConfig.isSandbox,
-    }),
-  };
+  if (data && data.accounts.length > 0) {
+    return {
+      status: "ready",
+      summary: summariseAccounts(data, {
+        alertsAllowed: record.grants.alerts_and_actions,
+        isSandbox: aaConfig.isSandbox,
+      }),
+    };
+  }
+  const read = await readData(record);
+  return read.status === "expired"
+    ? { status: "expired", safe_message: SUMMARY_EXPIRED_MESSAGE }
+    : { status: "no_data" };
 }
 
 /**
@@ -756,8 +828,12 @@ export async function schemeCheck(
   if (!record || record.session_id !== sid) return null;
   if (!record.grants.alerts_and_actions) return { status: "not_allowed" };
   if (record.consent_status !== "active") return { status: "no_data" };
-  const data = await kvGet<StoredAccountData>(keys.data(linkId));
-  if (!data || data.accounts.length === 0) return { status: "no_data" };
+  const read = await readData(record);
+  if (read.status === "expired") {
+    return { status: "expired", safe_message: EXPIRED_MESSAGE };
+  }
+  if (read.status === "none") return { status: "no_data" };
+  const { data } = read;
   const taggingAllowed = await hasConsent(sid, "insurance_tags");
   const tags = taggingAllowed ? await readTags(sid) : {};
   const policies = detectPolicies(data.accounts, tags);
@@ -783,7 +859,10 @@ export async function tagPolicy(
   input: { covers?: unknown; kind?: unknown },
 ): Promise<
   | { ok: true }
-  | { ok: false; reason: "not_found" | "consent_required" | "invalid" }
+  | {
+      ok: false;
+      reason: "not_found" | "consent_required" | "invalid" | "expired";
+    }
 > {
   const record = await loadLink(linkId);
   if (!record || record.session_id !== sid)
@@ -793,7 +872,9 @@ export async function tagPolicy(
   if (!(await hasConsent(sid, "insurance_tags"))) {
     return { ok: false, reason: "consent_required" };
   }
-  const data = await kvGet<StoredAccountData>(keys.data(linkId));
+  const read = await readData(record);
+  if (read.status === "expired") return { ok: false, reason: "expired" };
+  const data = read.status === "ready" ? read.data : null;
   const policy = detectPolicies(data?.accounts ?? []).find(
     (p) => p.policy_key === policyKey,
   );
@@ -816,6 +897,7 @@ export async function coverHints(sid: string) {
   })[] = [];
   let pmjjby: "seen" | "not_seen" | "unknown" = "unknown";
   let pmsby: "seen" | "not_seen" | "unknown" = "unknown";
+  let bankData: "ready" | "expired" | "none" = "none";
   const tags = (await hasConsent(sid, "insurance_tags"))
     ? await readTags(sid)
     : {};
@@ -828,8 +910,15 @@ export async function coverHints(sid: string) {
     ) {
       continue;
     }
-    const data = await kvGet<StoredAccountData>(keys.data(id));
-    if (!data) continue;
+    const read = await readData(record);
+    if (read.status !== "ready") {
+      if (read.status === "expired" && bankData === "none") {
+        bankData = "expired";
+      }
+      continue;
+    }
+    bankData = "ready";
+    const { data } = read;
     for (const p of detectPolicies(data.accounts, tags)) {
       policies.push({ ...p, link_id: id });
     }
@@ -845,5 +934,43 @@ export async function coverHints(sid: string) {
       if (f.scheme === "pmsby" && pmsby !== "seen") pmsby = status;
     }
   }
-  return { policies, pmjjby, pmsby };
+  return {
+    policies,
+    pmjjby,
+    pmsby,
+    // Expired data is deleted data: the hints above stay "unknown".
+    bank_data: bankData,
+    expired_message: bankData === "expired" ? EXPIRED_MESSAGE : null,
+  };
+}
+
+/**
+ * "Delete everything" for this session: every link is revoked the same
+ * way as the revoke route (data and derived summary deleted), then the
+ * link, its module reference and the session index are removed, so late
+ * webhooks find nothing and are refused. Value Ledger receipts stay.
+ */
+export async function deleteSessionLinks(
+  sid: string,
+): Promise<{ ref: string; was: ConsentStatus }[]> {
+  const removed: { ref: string; was: ConsentStatus }[] = [];
+  for (const id of await sessionLinkIds(sid)) {
+    const record = await loadLink(id);
+    if (!record || record.session_id !== sid) continue;
+    const was = record.consent_status;
+    if (was === "active" || was === "paused") {
+      await revokeLink(sid, id);
+    } else if (!isEnded(was)) {
+      await ledger(sid, "aa_ended", record);
+    }
+    await purgeData(record);
+    await kvDel(
+      keys.link(id),
+      keys.lock(id),
+      ...(record.module_reference ? [keys.ref(record.module_reference)] : []),
+    );
+    removed.push({ ref: shortRef(id)!, was });
+  }
+  await kvDel(keys.session(sid));
+  return removed;
 }

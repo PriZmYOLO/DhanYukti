@@ -221,7 +221,9 @@ month; "unknown" under 2 months), up to 3 recurring debits (same payee,
 within ±15%, in 2+ months) and Jan Suraksha, which returns
 `not_checked_consent_off` when `alerts_and_actions` is off. No
 transactions or narrations beyond a payee label. The reveal step shows it,
-then says the rest of the demo uses the demo household's data: nothing yet
+then says the rest of the demo uses the demo household's data. The summary is
+stored at fetch time for at most 30 days (decrypted data: 24 hours) and served
+from that derived copy once the data has expired. Nothing yet
 turns a member's own data into the Home dashboard, which stays fixture data
 with a "Demo data" chip. When the engines (Amma) own income and obligations,
 replace these figures with engine output.

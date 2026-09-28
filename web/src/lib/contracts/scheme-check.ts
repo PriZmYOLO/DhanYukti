@@ -61,4 +61,6 @@ export type SchemeCheckResult =
   | { status: "not_allowed" }
   /** No usable data yet (still processing, failed, revoked…). */
   | { status: "no_data" }
+  /** Data arrived but was deleted after 24 hours. Never "not seen". */
+  | { status: "expired"; safe_message: string }
   | { status: "unavailable"; safe_message: string };

@@ -127,7 +127,7 @@ These terms are fixed. Use them exactly and don't translate them in Hinglish cop
 | | Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai | Consent handled by Anumati, an RBI-licensed Account Aggregator | Footnote (code) |
 | 6 connect | Aapka hisaab ban raha hai… | Preparing your account… | Title (code) |
 | | Anumati + Perfios · live sandbox / replay (recorded sandbox) | same | Mode line (code) |
-| | Sahmati jaanchi gayi → Khate jude → Data aaya (encrypted) → Data khola gaya → Perfios analytics → Household Twin bana → Kachcha data delete (hisaab ke baad) | Consent verified → Accounts linked → Data fetched (encrypted) → Decrypted → Perfios analytics → Household Twin built → Raw data deleted (compute-then-delete) | Step list (code, `routers/consent.py`). **Suggested:** "Household Twin bana" → "Aapke ghar ka hisaab bana" |
+| | Sahmati jaanchi gayi → Khate jude → Data aaya (encrypted) → Data khola gaya → Perfios analytics → Household Twin bana → Replay: kachcha data delete (sirf dikhawa, asli data nahi aaya) | Consent verified → Accounts linked → Data fetched (encrypted) → Decrypted → Perfios analytics → Household Twin built → Replay: raw data deleted (simulated, nothing real was fetched) | Step list (code, `routers/consent.py`). **Suggested:** "Household Twin bana" → "Aapke ghar ka hisaab bana" |
 | 7 reveal | Yeh raha aapka hisaab | Here's your picture | Title (code) |
 | | {name} ji, parivaar ki paisa sehat | {name}, your family's money health | Sub (code) |
 | | Pehla kaam | First task | Eyebrow on the first NBA (code) |
@@ -460,10 +460,13 @@ Generic fallback (code, E14): "Namaste, kya {bill} ({amt}) {day} tareekh tak jam
 | Hinglish | English | Element |
 |---|---|---|
 | Consent band karein? | Revoke consent? | Sheet title |
-| Anumati par consent turant band hoga. Aage koi data nahi aayega, aur humari banayi profile mita di jayegi. | Consent is revoked at Anumati right away. No future fetches, and your derived profile is deleted. | Body |
+| Recorded sandbox (replay) — Anumati ko kuch nahi bheja jaata | Recorded sandbox (replay) — nothing is sent to Anumati | Chip (demo/replay households only) |
+| DhanYukti ab yeh data istemaal nahi karega aur apni copy mita dega. Consent poori tarah band karne ke liye Anumati app mein bhi band karein. | DhanYukti stops using this data now and deletes its copy. To end the consent itself, close it in the Anumati app. | Body |
 | Parivaar ki permission ki zaroorat nahi — yeh aapka haq hai. | No household vote needed — this is your right. | Note |
 | Haan, band karo | Yes, revoke | Danger button |
-| ✓ Anumati par consent REVOKED · ✓ Aage ki fetch radd · ✓ Mita diya: {item} | ✓ Consent REVOKED at Anumati · ✓ Future fetches cancelled · ✓ Deleted: {item} | Receipt rows |
+| Anumati kholein (sandbox) | Open Anumati (sandbox) | Link button → https://uat-web.anumati.co.in (new tab) |
+| ✓ DhanYukti ne yeh data istemaal karna band kiya · ✓ DhanYukti dobara fetch nahi karega · ✓ Mita diya: {item} | ✓ DhanYukti stopped using this data · ✓ DhanYukti won't fetch it again · ✓ Deleted: {item} | Receipt rows |
+| Consent poori tarah band karne ke liye Anumati app mein bhi band karein. | To end the consent itself, close it in the Anumati app. | Reminder after revoke |
 | Theek hai | Done | Close |
 
 **Suggested:** add a secondary "Nahi, rehne do" (No, keep it) button so the sheet is not the only way out besides swipe-down.

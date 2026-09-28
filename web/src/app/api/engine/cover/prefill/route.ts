@@ -8,6 +8,12 @@ export async function GET() {
   const sid = await sessionId(false);
   const hints = sid
     ? await coverHints(sid)
-    : { policies: [], pmjjby: "unknown", pmsby: "unknown" };
+    : {
+        policies: [],
+        pmjjby: "unknown",
+        pmsby: "unknown",
+        bank_data: "none",
+        expired_message: null,
+      };
   return Response.json({ hints }, { headers: noStore });
 }

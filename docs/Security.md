@@ -7,9 +7,11 @@
 - Browser calls only `/api/*` on our own origin; Next proxies to FastAPI.
 
 ## Data handling
-- **Compute-then-delete:** raw AA/Perfios payloads deleted within 24 h; only ~20 derived features kept.
+- **Retention:** Decrypted bank data is deleted 24 hours after it arrives. Only a few derived facts are kept, until you revoke or for at most 30 days. (Live AA: `aa:data` 24 h, `aa:summary` 30 days, both deleted on revoke; a payload that couldn't be decrypted is kept as ciphertext for 24 h under `aa:raw` to re-open with Anumati's jar. After 24 h, readers answer "expired", never "not seen" or 0.)
 - **Minimisation:** FI types DEPOSIT, RD, INSURANCE only; 6 months; monthly fetch. Each non-financial field is tied to one decision and asked only when it changes an answer.
-- **Revoke:** cancels future fetches at Anumati, deletes derived profile, invalidates open action cards. No household vote.
+- **Revoke:** DhanYukti stops using the data now and deletes its copy (bank data and derived facts), refuses late results and invalidates open action cards. The FIU module has no revoke call, so the consent itself is closed in the Anumati app; the screen says so and links to it. No household vote.
+- **Delete everything** (`POST /api/me/delete`, this browser session only): revokes every bank link, withdraws every granted DPDP purpose (each purpose's data deletion runs) and deletes reports. Value Ledger receipts stay: they hold no financial data and prove the withdrawals.
+- **Admin reset** (`POST /api/admin/reset`, FastAPI) resets demo state for everyone, so it needs `X-Admin-Token` = `ADMIN_RESET_TOKEN` (403 if unset or wrong). The browser never calls it; the team uses `web/scripts/reset-demo.sh`.
 - **Privacy inside the family:** per-member sharing levels; private members' points are private too; kids' view shows the jar only.
 - **Assisted mode:** helper sees step status only.
 - Never infer health, caste, religion or worth.

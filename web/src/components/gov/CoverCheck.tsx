@@ -267,6 +267,9 @@ function ProfileForm({ profile, setProfile, names, setNames, nameOf, conditions,
         </div>
       </div>
 
+      {hints?.bank_data === "expired" && hints.policies.length === 0 && hints.expired_message && (
+        <p className="rounded-[18px] bg-haldi-soft p-3 text-[13px]"><Landmark size={15} className="inline mr-1.5" />{hints.expired_message}</p>
+      )}
       {hints && (hints.policies.length > 0 || hints.pmjjby !== "unknown" || hints.pmsby !== "unknown") && (
         <div className="rounded-[18px] bg-haldi-soft p-3">
           <p className="font-extrabold text-sm flex items-center gap-1.5"><Landmark size={15} />{t({ hi: "Aapke bank data mein mila (Anumati AA)", en: "Found in your bank data (Anumati AA)" })}</p>
