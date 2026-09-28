@@ -206,6 +206,26 @@ covered, no named debit), `outside_age`, or `unknown`. Never turn
 priorities (Amma), they can consume the same result; public schemes stay
 ahead of any private product.
 
+## 3a+. Reveal summary from a live link
+
+|          |                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Rule     | `lib/server/aa/summary.ts` → `summariseAccounts()` (pure), fed by `readAccountData(sid, linkId)`                                           |
+| Route    | `GET /api/aa/links/{id}/summary` → `{ summary: AccountSummary }`; 404 if not this session's active link, 409 `no_data` before data arrives |
+| Contract | `lib/contracts/aa-summary.ts`                                                                                                              |
+| Check    | `npm run test:aa-summary` (after `next build`; runs the local mock and `next start` on 3108/4010)                                          |
+
+Derived facts only: total and per-account balance, data window and
+transaction count, monthly inflow (median of credits per complete calendar
+month; "unknown" under 2 months), up to 3 recurring debits (same payee,
+within ±15%, in 2+ months) and Jan Suraksha, which returns
+`not_checked_consent_off` when `alerts_and_actions` is off. No
+transactions or narrations beyond a payee label. The reveal step shows it,
+then says the rest of the demo uses the demo household's data: nothing yet
+turns a member's own data into the Home dashboard, which stays fixture data
+with a "Demo data" chip. When the engines (Amma) own income and obligations,
+replace these figures with engine output.
+
 ## 3b. DPDP consent and Value Ledger (Job 2b)
 
 |          |                                                                                                                                                |

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:engine": "tsx scripts/cover-engine-fixtures.ts && tsx scripts/voice-fixtures.ts",
+    "test:aa-summary": "node scripts/aa-summary-check.mjs",
     "voice:record": "tsx --conditions=react-server scripts/bhashini-record.ts"
   },
   "dependencies": {

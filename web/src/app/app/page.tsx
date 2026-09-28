@@ -7,6 +7,7 @@ import HealthTiles from "@/components/home/HealthTiles";
 import RiverCard from "@/components/home/RiverCard";
 import JarsRow from "@/components/home/JarsRow";
 import AffordCheck from "@/components/AffordCheck";
+import DemoDataChip from "@/components/DemoDataChip";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
 
@@ -36,6 +37,7 @@ export default function Home() {
   return (
     <div>
       <TopBar />
+      <div className="px-5 lg:px-0"><DemoDataChip /></div>
       <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-6 lg:items-start mt-2">
         <div>
           <SectionTitle v={{ hi: "Aaj ka kaam", en: "Today's task" }} />
