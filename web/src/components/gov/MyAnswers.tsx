@@ -3,15 +3,10 @@ import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { gov } from "@/lib/gov";
-import { EMPTY_ANSWERS, type Answer, type GoalIntent, type OnboardingAnswers, type WorkKind } from "@/lib/onboarding/answers";
+import { withDefaults, type Answer, type OnboardingAnswers } from "@/lib/onboarding/answers";
+import { FREQUENCY_LABEL, GOAL_LABEL as GOAL, OWN_INCOME_LABEL, WORK_LABEL as WORK } from "@/lib/onboarding/labels";
+import { day, inr } from "@/lib/format";
 import type { L } from "@/lib/types";
-
-const WORK: Record<WorkKind, L> = { naukri: { hi: "Naukri", en: "Job" }, dukaan: { hi: "Dukaan", en: "Shop" }, gig: { hi: "Gig", en: "Gig" }, mazdoori: { hi: "Mazdoori", en: "Daily wage" }, other: { hi: "Aur", en: "Other" } };
-const GOAL: Record<GoalIntent, L> = {
-  education: { hi: "Bachchon ki padhai", en: "Children's education" }, emergency_cushion: { hi: "Mushkil waqt ki bachat", en: "Emergency cushion" },
-  repay_debt: { hi: "Karz utaarna", en: "Pay off loans" }, big_purchase: { hi: "Badi kharidari", en: "Big purchase" },
-  festival_wedding: { hi: "Tyohaar / shaadi", en: "Festival / wedding" }, other: { hi: "Kuch aur", en: "Something else" },
-};
 
 /** The onboarding answers as saved, with skipped ones shown as skipped. */
 export default function MyAnswers({ onEdit }: { onEdit: () => void }) {
@@ -20,8 +15,8 @@ export default function MyAnswers({ onEdit }: { onEdit: () => void }) {
   const [where, setWhere] = useState<"server" | "device">("device");
   useEffect(() => {
     gov.onboarding().then((r) => {
-      if (r.consent && r.answers) { setA(r.answers); setWhere("server"); return; }
-      try { const raw = localStorage.getItem("dy.onboarding"); setA(raw ? { ...EMPTY_ANSWERS, ...JSON.parse(raw) } : null); } catch { setA(null); }
+      if (r.consent && r.answers) { setA(withDefaults(r.answers)); setWhere("server"); return; }
+      try { const raw = localStorage.getItem("dy.onboarding"); setA(raw ? withDefaults(JSON.parse(raw)) : null); } catch { setA(null); }
     }).catch(() => {});
   }, []);
   const show = <T,>(x: Answer<T>, fmt: (v: T) => string) =>
@@ -38,8 +33,13 @@ export default function MyAnswers({ onEdit }: { onEdit: () => void }) {
     [{ hi: "Buzurg (60+)", en: "Elders (60+)" }, show(a.dependents.elders, String)],
     [{ hi: "Aur nirbhar", en: "Other dependents" }, show(a.dependents.other, String)],
     [{ hi: "Kaam", en: "Work" }, show(a.work, (v) => t(WORK[v]))],
+    [{ hi: "Apni aamdani", en: "Own income" }, show(a.own_income, (v) => t(OWN_INCOME_LABEL[v]))],
     [{ hi: "Loan", en: "Loans" }, show(a.loans, (v) => (v ? (lang === "hi" ? "Haan" : "Yes") : (lang === "hi" ? "Nahi" : "No")))],
     [{ hi: "Lakshya", en: "Goal" }, show(a.goal, (v) => t(GOAL[v]))],
+    [{ hi: "Ghar ka cash", en: "Cash in hand" }, show(a.money.cash, inr)],
+    [{ hi: "Aamdani", en: "Income" }, show(a.money.income_amount, (v) => `${inr(v)}${a.money.income_frequency.state === "answered" ? ` · ${t(FREQUENCY_LABEL[a.money.income_frequency.value])}` : ""}`)],
+    [{ hi: "Agli aamdani", en: "Next income" }, show(a.money.next_pay, day)],
+    [{ hi: "Zaroori bill", en: "Important bill" }, a.money.bill_name.state === "none" ? show(a.money.bill_name, String) : show(a.money.bill_amount, (v) => `${a.money.bill_name.state === "answered" ? a.money.bill_name.value + " · " : ""}${inr(v)}${a.money.bill_due.state === "answered" ? ` · ${day(a.money.bill_due.value)}` : ""}`)],
   ];
   return (
     <div className="rounded-[24px] bg-white p-4 shadow-soft">

@@ -130,12 +130,18 @@ export async function rebuildTwinQuietly(sid: string): Promise<void> {
   }
 }
 
-/** This member's twin + state; builds it if their data is here and it isn't built yet. */
-export async function loadTwin(sid: string): Promise<{ twin: Twin; state: TwinState }> {
+/**
+ * This member's twin + state + what they told us in onboarding; builds the
+ * twin if their data is here and it isn't built yet. The answers are read on
+ * every call (only with DPDP "profile" consent), so an edit or a withdrawal
+ * shows up at once. The engines use them only to fill gaps in the bank data.
+ */
+export async function loadTwin(sid: string): Promise<{ twin: Twin; state: TwinState; declared: unknown }> {
   let twin = await kvGet<Twin>(twinKeys.twin(sid));
   if (!twin) twin = await buildTwin(sid);
   const state = (await kvGet<TwinState>(twinKeys.state(sid))) ?? {};
-  return { twin, state };
+  const declared = (await hasConsent(sid, "member_profile")) ? await readAnswers(sid) : null;
+  return { twin, state, declared };
 }
 
 export async function saveState(sid: string, state: TwinState) {

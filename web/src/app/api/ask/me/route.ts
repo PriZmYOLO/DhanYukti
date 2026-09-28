@@ -7,7 +7,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { question?: unknown; lang?: unknown };
   return withTwinSession(async (sid) => {
-    const { twin, state } = await loadTwin(sid);
-    return callEngine("ask", { twin, state, question: String(body.question ?? "").slice(0, 500), lang: body.lang === "en" ? "en" : "hi" });
+    const { twin, state, declared } = await loadTwin(sid);
+    return callEngine("ask", { twin, state, declared, question: String(body.question ?? "").slice(0, 500), lang: body.lang === "en" ? "en" : "hi" });
   });
 }

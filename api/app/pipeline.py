@@ -145,10 +145,18 @@ def validate_correction(hid: str, field: str, value) -> None:
     apply_overlay(hh, {field: value})  # raises CorrectionError / ValueError
 
 
-def load_twin(twin: dict, state: dict | None) -> dict:
-    """A linked member's household: their twin (from their own bank data) + their own state."""
+def load_twin(twin: dict, state: dict | None, declared: dict | None = None) -> dict:
+    """A linked member's household: their twin (from their own bank data) + what they told us + their own state."""
+    from app.engines import e02_twin  # late import: e02 imports this module lazily too
     state = state or {}
-    hh = apply_overlay(copy.deepcopy(twin), state.get("overlays") or {})
+    overlays = state.get("overlays") or {}
+    # 1) the member's decisions on bank-found payments, 2) what they told us fills the gaps left,
+    # 3) their other corrections (they may target anything, including a "you told us" date).
+    bank = {k: v for k, v in overlays.items() if k.startswith("series:") or k == "essentials_per_day"}
+    rest = {k: v for k, v in overlays.items() if k not in bank}
+    hh = apply_overlay(copy.deepcopy(twin), bank)
+    hh = e02_twin.apply_declared(hh, declared)
+    hh = apply_overlay(hh, rest)
     for e in hh["upcoming"]:
         if e.get("_corrected"):
             e["certainty"], e["basis"] = e17.date_certainty(e, [])
@@ -200,17 +208,19 @@ def compute(hh: dict) -> dict:
     recent_loans = [ln for ln in norm["app_loans"] if ln["disbursal"]["date"] >= ninety]
     lenders = e04.lender_shield(recent_loans)
     per100 = e04.debt_load(norm["emi_monthly_p"], norm["monthly_income_p"])
+    if norm.get("emi_known") is False:
+        per100 = None  # a linked member with no complete month of data: unknown, not ₹0
 
     jars = hh["jars_live"]
     emergency_p = sum(P(j["saved"]) for j in jars if j["kind"] == "emergency")
     idle_p = sum(a["balance_p"] for a in norm["idle_accounts"])
-    liquid_p = P(hh["closing_balance"]) + idle_p + emergency_p
+    liquid_p = P(hh["closing_balance"]) + idle_p + emergency_p + P(hh.get("declared_cash") or 0)
     res_days = e05.resilience_days(liquid_p, P(hh["essentials_per_day"]), norm["fixed_monthly_p"])
 
     prot = e06.assess(hh["members"], norm["premiums"])
 
     income_conf = e16.grade(source="aa", months_seen=max(norm["salary_months"], 3 if norm["gig_rows"] else 0),
-                            estimated=hh["income_type"] == "gig")
+                            estimated=hh["income_type"] == "gig" or bool(norm.get("income_declared")))
     conf = {
         "deficit": e16.combine(income_conf, "pakka"),
         "lender": "pakka",
@@ -255,8 +265,10 @@ def metrics(ctx: dict) -> dict:
                           "label": L("Aaj kharch kar sakte hain", "Safe to spend today"), "sub": s_sub, "engine": "E03"},
         "resilience_days": {"value": rd, "unit": "days", "status": e05.status(rd), "confidence": ctx["conf"]["resilience"],
                             "label": L("Bina aamdani kitne din", "Days covered without income"),
-                            "sub": L(f"Bachat {inr(R(ctx['liquid_p']))} ÷ roz {inr(ess + fixed_day)}",
-                                     f"Savings {inr(R(ctx['liquid_p']))} ÷ {inr(ess + fixed_day)}/day"),
+                            "sub": L(f"Bachat {inr(R(ctx['liquid_p']))} ÷ roz {inr(ess + fixed_day)}"
+                                     + (f" (ghar ka cash {inr(hh['declared_cash'])} samet, aapne bataya)" if hh.get("declared_cash") else ""),
+                                     f"Savings {inr(R(ctx['liquid_p']))} ÷ {inr(ess + fixed_day)}/day"
+                                     + (f" (incl. {inr(hh['declared_cash'])} cash at home, you told us)" if hh.get("declared_cash") else "")),
                             "engine": "E05"},
         "debt_load": {"value": ctx["per100"], "unit": "per100", "status": e04.debt_status(ctx["per100"], lenders_risky),
                       "confidence": ctx["conf"]["debt"],
@@ -413,7 +425,7 @@ def simulate_for(hh: dict, moves=None, shock_amount: int = 0, salary_delay_days:
     emergency_p = sum(P(j["saved"]) for j in hh["jars_live"] if j["kind"] == "emergency")
     idle_p = sum(a["balance_p"] for a in base_ctx["norm"]["idle_accounts"])
     spend_now_p = P(abs(shock_amount or 0)) + sum(-P(x["amount"]) for x in extra if x["date"] == iso(add_days(d(hh["as_of"]), 1)))
-    liquid_p = P(hh["closing_balance"]) - spend_now_p + idle_p + emergency_p
+    liquid_p = P(hh["closing_balance"]) - spend_now_p + idle_p + emergency_p + P(hh.get("declared_cash") or 0)
     res = e05.resilience_days(liquid_p, ess_p, base_ctx["norm"]["fixed_monthly_p"])
     gap_before, gap_after = R(base["gap_p"]), R(scen["gap_p"])
 

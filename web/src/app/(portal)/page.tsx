@@ -24,10 +24,12 @@ import { gov } from "@/lib/gov";
 import { DpdpPurposes, useDpdp } from "@/components/gov/Dpdp";
 import InviteBox from "@/components/gov/InviteBox";
 import VoiceLanguages from "@/components/gov/VoiceLanguages";
-import { EMPTY_ANSWERS, GOALS, answered, unansweredCount, type Answer, type GoalIntent, type OnboardingAnswers, type WorkKind } from "@/lib/onboarding/answers";
+import { GOALS, OWN_INCOME, WORK_KINDS, answered, unansweredCount, withDefaults, type Answer, type GoalIntent, type OnboardingAnswers, type OwnIncome, type WorkKind } from "@/lib/onboarding/answers";
+import { OWN_INCOME_LABEL, WHY, WORK_LABEL } from "@/lib/onboarding/labels";
+import { MoneyStep, ReviewStep, Why } from "@/components/onboarding/MoneyReview";
 import type { ConsentChoices } from "@/lib/provisional/h03/types";
 
-const STEPS = ["splash", "language", "login", "family", "passport", "connect", "reveal", "invite", "gullak"] as const;
+const STEPS = ["splash", "language", "login", "family", "money", "review", "passport", "connect", "reveal", "invite", "gullak"] as const;
 type Step = (typeof STEPS)[number];
 
 const LANGS = [
@@ -285,6 +287,7 @@ export default function Onboarding() {
               <CountRow e="👨‍👩‍👧‍👦" l={{ hi: "Ghar mein kitne log?", en: "People at home" }} a={ans.members} set={(v) => setAns({ ...ans, members: v })} />
               <CountRow e="💼" l={{ hi: "Kitne kamaate hain?", en: "How many earn?" }} a={ans.earners} set={(v) => setAns({ ...ans, earners: v })} />
             </div>
+            <Why v={WHY.people} />
             <p className="mt-4 font-bold text-sm">{t({ hi: "Kaun kamaane walon par nirbhar hai?", en: "Who depends on the earners?" })}</p>
             <div className="mt-2 space-y-2">
               <CountRow e="🧒" l={{ hi: "Bachche", en: "Children" }} a={ans.dependents.children} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, children: v } })} />
@@ -292,13 +295,23 @@ export default function Onboarding() {
               <CountRow e="👵" l={{ hi: "Buzurg (60+)", en: "Elders (60+)" }} a={ans.dependents.elders} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, elders: v } })} />
               <CountRow e="🧑‍🦽" l={{ hi: "Aur koi nirbhar", en: "Other dependents" }} a={ans.dependents.other} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, other: v } })} />
             </div>
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Kaam kya hai?", en: "Type of work" })}</p>
+            <Why v={WHY.dependents} />
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Aap kya kaam karte hain?", en: "What work do you do?" })}</p>
             <div className="mt-2 grid grid-cols-4 gap-2">
-              {([["naukri", "🏭", "Naukri", "Job"], ["dukaan", "🏪", "Dukaan", "Shop"], ["gig", "🛵", "Gig", "Gig"], ["mazdoori", "🧱", "Mazdoori", "Daily"]] as const).map(([k, e, hi, en]) => {
+              {WORK_KINDS.map((k) => {
                 const on = ans.work.state === "answered" && ans.work.value === k;
-                return <button key={k} onClick={() => setAns({ ...ans, work: on ? { state: "unanswered" } : answered<WorkKind>(k) })} className={`rounded-[20px] py-3 ${on ? "bg-haldi" : "bg-white"}`}><p className="text-2xl">{e}</p><p className="text-xs font-bold">{lang === "hi" ? hi : en}</p></button>;
+                return <button key={k} aria-pressed={on} onClick={() => setAns({ ...ans, work: on ? { state: "unanswered" } : answered<WorkKind>(k) })} className={`rounded-[20px] py-2.5 px-1 ${on ? "bg-haldi" : "bg-white"}`}><p className="text-2xl">{WORK_LABEL[k].e}</p><p className="text-[11px] font-bold leading-tight">{t(WORK_LABEL[k])}</p></button>;
               })}
             </div>
+            <Why v={WHY.work} />
+            <p className="mt-4 font-bold text-sm">{t({ hi: "Aapki apni aamdani kaisi hai?", en: "How does your own income come?" })}</p>
+            <div className="mt-2 space-y-2">
+              {OWN_INCOME.map((k) => {
+                const on = ans.own_income.state === "answered" && ans.own_income.value === k;
+                return <button key={k} aria-pressed={on} onClick={() => setAns({ ...ans, own_income: on ? { state: "unanswered" } : answered<OwnIncome>(k) })} className={`w-full min-h-12 rounded-[18px] px-4 text-left text-[14px] font-bold ${on ? "bg-ink text-white" : "bg-white"}`}>{t(OWN_INCOME_LABEL[k])}</button>;
+              })}
+            </div>
+            <Why v={WHY.own_income} />
             <p className="mt-4 font-bold text-sm">{t({ hi: "Koi loan chal raha hai?", en: "Any running loans?" })}</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {([[answered(true), "Haan", "Yes"], [answered(false), "Nahi", "No"], [{ state: "dont_know" } as Answer<boolean>, "Pata nahi", "Not sure"]] as const).map(([v, hi, en]) => {
@@ -306,6 +319,7 @@ export default function Onboarding() {
                 return <button key={hi} onClick={() => setAns({ ...ans, loans: on ? { state: "unanswered" } : v })} className={`min-h-13 rounded-[20px] font-bold ${on ? "bg-ink text-white" : "bg-white"}`}>{lang === "hi" ? hi : en}</button>;
               })}
             </div>
+            <Why v={WHY.loans} />
             <p className="mt-4 font-bold text-sm">{t({ hi: "Sabse bada lakshya?", en: "Your biggest goal?" })}</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {GOALS.map((g) => {
@@ -313,14 +327,19 @@ export default function Onboarding() {
                 return <button key={g} onClick={() => setAns({ ...ans, goal: on ? { state: "unanswered" } : answered<GoalIntent>(g) })} className={`min-h-12 rounded-[18px] px-3 text-left text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-white"}`}>{GOAL_EMOJI[g]} {t(GOAL_LABEL[g])}</button>;
               })}
             </div>
+            <Why v={WHY.goal} />
             <p className="mt-4 rounded-[18px] bg-lav/70 p-3 text-[12px] leading-snug">
               {unansweredCount(ans) > 0
                 ? t({ hi: `${unansweredCount(ans)} sawaal chhode — koi baat nahi. Unhe "jawaab nahi diya" maana jaayega, zero nahi.`, en: `${unansweredCount(ans)} left blank — that's fine. They're saved as "not answered", never as zero.` })
                 : t({ hi: "Sab jawaab mil gaye. Shukriya!", en: "All answered. Thank you!" })}
             </p>
             <div className="flex-1" />
-            <Btn variant="ink" className="w-full mt-5" onClick={() => go("passport")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
+            <Btn variant="ink" className="w-full mt-5" onClick={() => go("money")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
           </>)}
+
+          {step === "money" && <MoneyStep ans={ans} setAns={setAns} onNext={() => go("review")} />}
+
+          {step === "review" && <ReviewStep ans={ans} saved={saved} profileOn={profileOn} onChange={(to) => go(to)} onNext={() => go("passport")} />}
 
           {step === "passport" && (<>
             <Title v={{ hi: "Consent Passport", en: "Consent Passport" }} sub={{ hi: "Alag alag permission — har ek kabhi bhi band kar sakte hain", en: "Separate permissions — stop any of them anytime" }} />
@@ -573,9 +592,9 @@ function LiveConnect({ link, url, err, onRetry, onNext }: {
 function readLocalAnswers(): OnboardingAnswers {
   try {
     const raw = localStorage.getItem("dy.onboarding");
-    if (raw) return { ...EMPTY_ANSWERS, ...(JSON.parse(raw) as OnboardingAnswers) };
+    if (raw) return withDefaults(JSON.parse(raw) as OnboardingAnswers);
   } catch { /* first run or private mode */ }
-  return EMPTY_ANSWERS;
+  return withDefaults(null);
 }
 
 const GOAL_LABEL: Record<GoalIntent, L> = {

@@ -180,3 +180,13 @@ average over the complete months the data covers (none → `monthly_income: null
 the build; the twin keeps E01's figures, the income/obligation rows that evidence them, and last month's spend
 buckets, for at most 30 days (deleted on revoke or "delete everything"). Family members come from the onboarding
 answers only with DPDP "profile" consent. Suggested tasks (NBA) are always shown.
+
+### What the member told us (v1.4 — additive)
+Onboarding answers v2 add `own_income` (fixed | varies | none), a fuller work list (homemaker, student, retired)
+and optional `money` (cash at home, income amount + frequency + next pay date, one bill). With DPDP "profile"
+consent, the Next.js server sends them as `declared` on every `/api/twin/*` call; E02 `apply_declared` layers
+them on at load time (edits and withdrawals show at once). Bank facts always win: declared income only when the
+bank shows none in the next 30 days (and fills monthly income only when no complete month is covered); a declared
+bill only when no bank-projected payment of about that amount is within 3 days; "income varies" makes pay dates
+estimates; "no income of my own" only when the bank shows none; cash at home counts toward days without income.
+Everything added is `certainty: "andaaza"` with basis "You told us".

@@ -12,7 +12,7 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-28.2";
+export const NOTICE_VERSION = "2026-09-28.4";
 
 export type PurposeId =
   | "cover_profile"
@@ -147,13 +147,13 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
     },
     purpose: {
       standard:
-        "To remember your onboarding answers (family size, dependents, work, loans, goal) and the members you invite, so you don't have to repeat them.",
-      simple: "To remember your family answers and who you invited.",
+        "To remember your onboarding answers (family size, dependents, work, income, loans, goal, and the money details you choose to give) and the members you invite, and to use them in your picture only where your bank data has a gap, marked as “you told us”.",
+      simple: "To remember your answers and invites, and fill gaps in your picture with them.",
     },
     data: {
       standard:
-        "Your onboarding answers, including which ones you skipped or didn't know, and invite codes you create. Never bank data.",
-      simple: "Your family answers and invites. Never bank data.",
+        "Your onboarding answers, including which ones you skipped or didn't know: family, work, how your income comes, and optional cash at home, usual income and next pay date, and one bill. Invite codes you create. Never bank data.",
+      simple: "Your answers (family, work, the money details you typed) and invites. Never bank data.",
     },
     retention: {
       standard:
