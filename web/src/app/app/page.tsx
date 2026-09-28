@@ -10,7 +10,6 @@ import AffordCheck from "@/components/AffordCheck";
 import DemoDataChip from "@/components/DemoDataChip";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
-import SuggestionsOff from "@/components/home/SuggestionsOff";
 
 export default function Home() {
   const { data, error, onboarded, lang, mode, refresh, speak, hid } = useApp();
@@ -47,7 +46,7 @@ export default function Home() {
       <div className="lg:grid lg:grid-cols-[1.15fr_1fr] lg:gap-6 lg:items-start mt-2">
         <div>
           <SectionTitle v={{ hi: "Aaj ka kaam", en: "Today's task" }} />
-          {data.suggestions_off ? <SuggestionsOff /> : <TodayCards nba={data.nba} />}
+          <TodayCards nba={data.nba} />
         </div>
         <div>
           <SectionTitle v={{ hi: "Parivaar ki sehat", en: "Family health" }} />

@@ -70,8 +70,6 @@ export type Dashboard = {
   lender_shield: LenderCheck[];
   crosscheck: { field: L; ours: string; perfios: string; agree: boolean }[];
   game: Game;
-  /** Linked member who hasn't allowed "Alerts & suggestions" on their bank link: no tasks are suggested. */
-  suggestions_off?: boolean;
 };
 
 export type HouseholdSummary = { id: string; family_name: L; city: L; income: number; members: number; problem: L; hero: L };
