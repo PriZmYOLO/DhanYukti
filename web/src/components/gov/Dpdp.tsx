@@ -94,6 +94,10 @@ const KIND: Record<LedgerEntry["kind"], L> = {
   aa_ended: { hi: "AA khatam", en: "AA ended" },
   engine_run: { hi: "Engine chala", en: "Engine run" },
   report_filed: { hi: "Report darj", en: "Report filed" },
+  bill_confirmed: { hi: "Bill pakka kiya", en: "Bill confirmed" },
+  bill_changed: { hi: "Bill theek kiya", en: "Bill corrected" },
+  bill_ignored: { hi: "Bill hataya", en: "Bill ignored" },
+  bill_undone: { hi: "Faisla wapas", en: "Decision undone" },
 };
 
 export function purposeTitle(id: PurposeId, lang: "hi" | "en") {

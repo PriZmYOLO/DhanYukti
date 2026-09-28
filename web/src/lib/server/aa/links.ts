@@ -9,6 +9,11 @@ import {
   type FiType,
 } from "@/lib/aa/fi-types";
 import { LIVE_TERMS, liveTerms } from "@/lib/aa/live-terms";
+import type {
+  BillDecisionInput,
+  BillsView,
+  DetectedBills,
+} from "@/lib/contracts/aa-bills";
 import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import type { ErrorEnvelope, IsoTimestamp } from "@/lib/contracts/common";
 import type { SchemeCheckResult } from "@/lib/contracts/scheme-check";
@@ -39,6 +44,12 @@ import {
   type ParsedDepositAccount,
   type ParsedFI,
 } from "@/lib/server/aa/rebit";
+import {
+  buildBillsView,
+  checkDecision,
+  type BillDecisions,
+} from "@/lib/server/aa/bills";
+import { detectBills } from "@/lib/server/aa/recurrence";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
 import { summariseAccounts } from "@/lib/server/aa/summary";
 import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
@@ -141,6 +152,8 @@ const keys = {
   ref: (moduleReference: string) => `aa:ref:${moduleReference}`,
   data: (id: string) => `aa:data:${id}`,
   summary: (id: string) => `aa:summary:${id}`,
+  /** The member's own decisions on suggested bills (Confirm your bills). */
+  bills: (id: string) => `aa:bills:${id}`,
   raw: (id: string) => `aa:raw:${id}`,
   lock: (id: string) => `aa:lock:${id}`,
 };
@@ -251,6 +264,7 @@ async function purgeData(record: LinkRecord) {
   await kvDel(
     keys.data(record.link_id),
     keys.summary(record.link_id),
+    keys.bills(record.link_id),
     keys.raw(record.link_id),
   );
 }
@@ -278,11 +292,15 @@ export async function storeAccountData(
   data: StoredAccountData,
 ) {
   await kvSet(keys.data(record.link_id), data, RAW_DATA_TTL);
-  const summary = summariseAccounts(data, {
-    alertsAllowed: record.grants.alerts_and_actions,
-    isSandbox: aaConfig.isSandbox,
-    requestedFiTypes: linkFiTypes(record),
-  });
+  const summary: AccountSummary = {
+    ...summariseAccounts(data, {
+      alertsAllowed: record.grants.alerts_and_actions,
+      isSandbox: aaConfig.isSandbox,
+      requestedFiTypes: linkFiTypes(record),
+    }),
+    // E02 suggestions (payee labels and rhythms only), kept with the summary.
+    bills: detectBills(data),
+  };
   await kvSet(keys.summary(record.link_id), summary, SUMMARY_TTL);
 }
 
@@ -930,7 +948,12 @@ export async function accountSummary(
   if (record.consent_status !== "active") return { status: "not_found" };
   // The derived copy outlives the decrypted data (30 days vs 24 hours).
   const saved = await kvGet<AccountSummary>(keys.summary(linkId));
-  if (saved) return { status: "ready", summary: saved };
+  if (saved) {
+    // E02 suggestions have their own route (bills), with the member's say.
+    const { bills: _bills, ...summary } = saved;
+    void _bills;
+    return { status: "ready", summary };
+  }
   const data = await readAccountData(sid, linkId);
   if (data && data.accounts.length > 0) {
     return {
@@ -946,6 +969,155 @@ export async function accountSummary(
   return read.status === "expired"
     ? { status: "expired", safe_message: SUMMARY_EXPIRED_MESSAGE }
     : { status: "no_data" };
+}
+
+/* --------------------------- Confirm your bills --------------------------- */
+
+export type BillsViewResult =
+  | { status: "ready"; view: BillsView }
+  /** Active link in this session, but no fetched data (yet). */
+  | { status: "no_data" }
+  /** The data (and the suggestions made from it) are past their time. */
+  | { status: "expired"; safe_message: string }
+  | { status: "not_found" };
+
+export type BillDecisionResult =
+  | { ok: true; view: BillsView }
+  | {
+      ok: false;
+      reason: "not_found" | "no_data" | "expired" | "unknown_item" | "invalid";
+    };
+
+const BILLS_EXPIRED_MESSAGE =
+  "The suggestions came from bank data that has now been deleted. Connect again to see them.";
+
+/**
+ * E02 suggestions for an active link: saved with the summary at arrival,
+ * or (for data stored before E02 existed) worked out from the data while
+ * its 24 hours last.
+ */
+async function billInputs(record: LinkRecord): Promise<
+  | { status: "ready"; detected: DetectedBills; summary: AccountSummary }
+  | { status: "no_data" }
+  | { status: "expired" }
+> {
+  const saved = await kvGet<AccountSummary>(keys.summary(record.link_id));
+  if (saved?.bills) {
+    return { status: "ready", detected: saved.bills, summary: saved };
+  }
+  const read = await readData(record);
+  if (read.status === "ready") {
+    const summary =
+      saved ??
+      summariseAccounts(read.data, {
+        alertsAllowed: record.grants.alerts_and_actions,
+        isSandbox: aaConfig.isSandbox,
+        requestedFiTypes: linkFiTypes(record),
+      });
+    return { status: "ready", detected: detectBills(read.data), summary };
+  }
+  return read.status === "expired" || saved
+    ? { status: "expired" }
+    : { status: "no_data" };
+}
+
+function viewFor(
+  record: LinkRecord,
+  detected: DetectedBills,
+  summary: AccountSummary,
+  decisions: BillDecisions,
+): BillsView {
+  const balanceTimes = summary.balance.accounts
+    .map((a) => a.balance_at)
+    .filter((t): t is string => t !== null)
+    .sort();
+  return buildBillsView({
+    link_id: record.link_id,
+    is_sandbox: aaConfig.isSandbox,
+    today: istDate(),
+    detected,
+    decisions,
+    opening_paise: summary.balance.total?.amount_paise ?? null,
+    opening_as_of: balanceTimes.length
+      ? balanceTimes[balanceTimes.length - 1]
+      : null,
+    household_computation_allowed: record.grants.household_computation,
+  });
+}
+
+/**
+ * "Confirm your bills": what E02 suggests from this link's own data, the
+ * member's decisions so far, and (only from confirmed items, and only if
+ * the member allowed "Use in household calculations") their 30 days.
+ */
+export async function billsView(
+  sid: string,
+  linkId: string,
+): Promise<BillsViewResult> {
+  const record = await loadLink(linkId);
+  if (!record || record.session_id !== sid) return { status: "not_found" };
+  if (record.consent_status !== "active") return { status: "not_found" };
+  const inputs = await billInputs(record);
+  if (inputs.status === "expired") {
+    return { status: "expired", safe_message: BILLS_EXPIRED_MESSAGE };
+  }
+  if (inputs.status === "no_data") return { status: "no_data" };
+  const decisions = (await kvGet<BillDecisions>(keys.bills(linkId))) ?? {};
+  return {
+    status: "ready",
+    view: viewFor(record, inputs.detected, inputs.summary, decisions),
+  };
+}
+
+/**
+ * Saves the member's decision on one suggestion (confirm, fix, ignore or
+ * undo) and writes it to the Value Ledger. The ledger subject names the
+ * item only by its id: no amounts, no payee.
+ */
+export async function decideBill(
+  sid: string,
+  linkId: string,
+  input: BillDecisionInput,
+): Promise<BillDecisionResult> {
+  const record = await loadLink(linkId);
+  if (!record || record.session_id !== sid) {
+    return { ok: false, reason: "not_found" };
+  }
+  if (record.consent_status !== "active") {
+    return { ok: false, reason: "not_found" };
+  }
+  const inputs = await billInputs(record);
+  if (inputs.status !== "ready") return { ok: false, reason: inputs.status };
+  const checked = checkDecision(inputs.detected, input, now());
+  if (!checked.ok) return { ok: false, reason: checked.reason };
+
+  const decisions = (await kvGet<BillDecisions>(keys.bills(linkId))) ?? {};
+  let receipt: string | null = null;
+  try {
+    const entry = await appendLedger(
+      sid,
+      `bill_${checked.kind}`,
+      `bill:${record.link_id.slice(-4)}:${input.id}`,
+    );
+    receipt = entry.receipt_id;
+  } catch (error) {
+    log("ledger_failed", {
+      kind: `bill_${checked.kind}`,
+      reason: error instanceof Error ? error.message : "?",
+    });
+  }
+  if (checked.decision) {
+    decisions[input.id] = { ...checked.decision, receipt_id: receipt };
+  } else {
+    delete decisions[input.id];
+  }
+  // Same limit as the derived summary; deleted with it on revoke.
+  await kvSet(keys.bills(linkId), decisions, SUMMARY_TTL);
+  log("bill_decided", { link: shortRef(linkId), action: input.action });
+  return {
+    ok: true,
+    view: viewFor(record, inputs.detected, inputs.summary, decisions),
+  };
 }
 
 /**

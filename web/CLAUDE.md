@@ -17,6 +17,15 @@ Server code lives in `src/lib/server/`. Live consent terms: `src/lib/aa/live-ter
 Everything else under `/api` goes to FastAPI at `API_ORIGIN`; when that is
 unreachable the screens fall back to demo data.
 
+Confirm your bills (E02 with a consent step): `src/lib/server/aa/recurrence.ts`
+(E02 detection, saved with the summary), `bills.ts` (member decisions) and
+`outlook.ts` (light E03/E05/E14 over confirmed items only), served by
+`/api/aa/links/[linkId]/bills` and shown on the reveal step
+(`src/components/ConfirmBills.tsx`). Only items the member confirmed are
+projected, only when the link allows "Use in household calculations", and
+every decision is a Value Ledger entry. Checks: `scripts/aa-bills-check.ts`
+(in `test:engine`) and the bills journey in `scripts/aa-summary-check.mjs`.
+
 Onboarding's "connect bank" step uses the live flow when `/api/aa/status`
 reports credentials, storage and `NEXT_PUBLIC_AA_LIVE=true`
 (client: `src/lib/aa-live.ts`); otherwise it keeps the FastAPI replay

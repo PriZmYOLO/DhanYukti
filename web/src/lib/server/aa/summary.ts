@@ -39,7 +39,7 @@ export interface SummaryAccountInput extends CheckAccount {
   holdings?: Holdings | null;
 }
 
-const isDeposit = (a: SummaryAccountInput) =>
+export const isDeposit = (a: SummaryAccountInput) =>
   (a.fi_type ?? "DEPOSIT") === "DEPOSIT";
 
 function sumKnown(values: (number | null)[]) {
@@ -183,9 +183,9 @@ function savingsInvestments(
   };
 }
 
-const TOLERANCE = 0.15;
+export const TOLERANCE = 0.15;
 /** Share of a payee's debits that must fall in the ±15% band. */
-const CONSISTENT = 0.8;
+export const CONSISTENT = 0.8;
 const MIN_MONTHS = 2;
 const TOP = 3;
 
@@ -194,12 +194,12 @@ const money = (amount_paise: number): MoneyPaise => ({
   currency: "INR",
 });
 
-function txnDate(t: CheckTransaction): string | null {
+export function txnDate(t: CheckTransaction): string | null {
   const date = t.value_date ?? t.timestamp?.slice(0, 10) ?? null;
   return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 
-function median(values: number[]): number {
+export function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2
@@ -208,7 +208,7 @@ function median(values: number[]): number {
 }
 
 /** Dates the account covers: as the bank declared, else its transactions. */
-function accountWindow(a: CheckAccount): { from: string; to: string } | null {
+export function accountWindow(a: CheckAccount): { from: string; to: string } | null {
   if (a.data_from && a.data_to) return { from: a.data_from, to: a.data_to };
   const dates = a.transactions
     .map(txnDate)
@@ -229,7 +229,7 @@ function nextMonth(month: string): string {
 }
 
 /** Calendar months ("YYYY-MM") that lie wholly inside from..to. */
-function completeMonths(from: string, to: string): string[] {
+export function completeMonths(from: string, to: string): string[] {
   const months: string[] = [];
   for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = nextMonth(m)) {
     if (`${m}-01` >= from && lastDayOfMonth(m) <= to) months.push(m);
@@ -336,7 +336,7 @@ export function payeeKey(narration: string | null): string | null {
   return words.length ? words.slice(0, 4).join(" ") : null;
 }
 
-function payeeLabel(key: string): string {
+export function payeeLabel(key: string): string {
   return key.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 

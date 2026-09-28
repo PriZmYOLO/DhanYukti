@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { aaLive, liveSee, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
 import { DEFAULT_FI_TYPES, FI_TYPE_TEXT, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import BankSummaryCard from "@/components/BankSummaryCard";
+import ConfirmBills from "@/components/ConfirmBills";
 import DemoDataChip from "@/components/DemoDataChip";
 import { demoHouseholdName } from "@/lib/demo-data";
 import { inr, primaryMember } from "@/lib/format";
@@ -390,6 +391,8 @@ export default function Onboarding() {
           {step === "reveal" && data && (<>
             {liveActive && liveLink ? (<>
               <BankSummaryCard link={liveLink} summary={summary} err={summaryErr} />
+              {/* E02: the member confirms what repeats; only that is projected. */}
+              <ConfirmBills link={liveLink} />
               {demoHouseholdName(data) && <p className="mt-3 text-[14px] font-semibold leading-snug">{t(liveLink.is_sandbox
                 ? { hi: `Sandbox test bank mein ek asli parivaar ka poora saal nahi hota, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Sandbox test banks don't carry a real family's year, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` }
                 : { hi: `Aapka poora hisaab abhi aapke bank data se nahi banta, isliye aage ka demo ${demoHouseholdName(data)} ke parivaar ke data par chalta hai.`, en: `Your full picture isn't built from your bank data yet, so the rest of the demo uses ${demoHouseholdName(data)}'s household.` })}</p>}

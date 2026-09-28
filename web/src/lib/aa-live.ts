@@ -9,13 +9,14 @@
  * src/lib/server/aa/fiu-client.ts): savings account (DEPOSIT) transactions,
  * 12 months of history, fetched once on approval, consent valid 12 months.
  */
+import type { BillDecisionInput, BillsView } from "@/lib/contracts/aa-bills";
 import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import { DEFAULT_FI_TYPES, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import type { ConsentChoices, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 import { ensureSession } from "@/lib/session";
 
-export type { AccountSummary, SourceLink };
+export type { AccountSummary, BillsView, SourceLink };
 
 export type AaStatus = {
   credentials_configured: boolean;
@@ -119,6 +120,22 @@ export const aaLive = {
   async summary(linkId: string): Promise<AccountSummary> {
     const r = await json<{ summary: AccountSummary }>(await fetch(`/api/aa/links/${linkId}/summary`, opts("GET")));
     return r.summary;
+  },
+
+  /**
+   * Confirm your bills: what repeats in this link's own data, the member's
+   * decisions, and (from confirmed items only) their 30 days.
+   */
+  async bills(linkId: string): Promise<BillsView> {
+    const r = await json<{ bills: BillsView }>(await fetch(`/api/aa/links/${linkId}/bills`, opts("GET")));
+    return r.bills;
+  },
+
+  /** One decision (confirm, fix, ignore or undo); written to the Value Ledger. */
+  async decideBill(linkId: string, input: BillDecisionInput): Promise<BillsView> {
+    await ensureSession();
+    const r = await json<{ bills: BillsView }>(await fetch(`/api/aa/links/${linkId}/bills`, opts("POST", input)));
+    return r.bills;
   },
 
   async revoke(linkId: string): Promise<SourceLink> {

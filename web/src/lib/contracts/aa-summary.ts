@@ -7,6 +7,7 @@
 import type { IsoDate, IsoTimestamp, MoneyPaise } from "./common";
 import type { SchemeId, SchemeStatus } from "./scheme-check";
 import type { FiType } from "../aa/fi-types";
+import type { DetectedBills } from "./aa-bills";
 
 export interface SummaryAccount {
   /** Masked label, e.g. "Savings account · SBI-FIP-UAT ··9648". */
@@ -73,6 +74,11 @@ export interface AccountSummary {
   jan_suraksha: SummaryJanSuraksha;
   /** FD/RD, mutual funds, shares and SIPs (only the types requested). */
   savings_investments: SavingsInvestments;
+  /**
+   * E02 suggestions (repeating income and bills, everyday spend). Absent on
+   * summaries saved before E02; see /api/aa/links/[linkId]/bills.
+   */
+  bills?: DetectedBills;
 }
 
 /**

@@ -284,8 +284,16 @@ export interface LedgerEntry {
     | "aa_revoked"
     | "aa_ended"
     | "engine_run"
-    | "report_filed";
-  /** DPDP purpose id, "aa:<short link ref>", "engine:cover:<input hash>" or "report:<id>". */
+    | "report_filed"
+    /** Confirm your bills: the member's own decision on a suggested item. */
+    | "bill_confirmed"
+    | "bill_changed"
+    | "bill_ignored"
+    | "bill_undone";
+  /**
+   * DPDP purpose id, "aa:<short link ref>", "engine:cover:<input hash>",
+   * "report:<id>" or "bill:<short link ref>:<item id>" (no amounts or payees).
+   */
   subject: string;
   receipt_id: string;
   notice_version: string | null;
