@@ -5,6 +5,7 @@ import { useApp } from "@/lib/store";
 import { inr } from "@/lib/format";
 import type { Dashboard, Metric } from "@/lib/types";
 import MetricSheet, { type MetricKey } from "./MetricSheet";
+import SurakshaPlanSheet from "@/components/gov/SurakshaPlanSheet";
 
 const TILES = [
   { key: "safe_to_spend", tint: "bg-haldi-soft", Icon: Wallet, short: { hi: "Aaj kharch", en: "Spend today" } },
@@ -43,13 +44,15 @@ export function metricValue(m: Metric, lang: "hi" | "en") {
 export default function HealthTiles({ d }: { d: Dashboard }) {
   const { t, lang } = useApp();
   const [open, setOpen] = useState<MetricKey | null>(null);
+  // The Cover tile opens the Suraksha plan (Jan Suraksha + cover engine), not just the metric.
+  const [suraksha, setSuraksha] = useState(false);
   return (
     <div className="grid grid-cols-2 gap-3 px-5 lg:px-0">
       {TILES.map(({ key, tint, Icon, short }) => {
         const m = d.metrics[key];
         const st = STATUS[m.status];
         return (
-          <button key={key} onClick={() => setOpen(key)} className="min-w-0 rounded-[24px] bg-white p-4 text-left shadow-soft active:scale-[.98] transition">
+          <button key={key} onClick={() => (key === "protection" ? setSuraksha(true) : setOpen(key))} className="min-w-0 rounded-[24px] bg-white p-4 text-left shadow-soft active:scale-[.98] transition">
             <div className="flex items-center gap-2">
               <span className={`grid place-items-center h-10 w-10 shrink-0 rounded-full ${tint}`}><Icon size={18} /></span>
               <span className="min-w-0 flex items-center gap-1.5 text-[12px] font-bold text-muted whitespace-nowrap overflow-hidden">
@@ -62,6 +65,7 @@ export default function HealthTiles({ d }: { d: Dashboard }) {
         );
       })}
       <MetricSheet k={open} onClose={() => setOpen(null)} />
+      <SurakshaPlanSheet open={suraksha} onClose={() => setSuraksha(false)} onTileDetails={() => { setSuraksha(false); setOpen("protection"); }} />
     </div>
   );
 }

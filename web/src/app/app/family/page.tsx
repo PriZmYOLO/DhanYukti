@@ -20,7 +20,7 @@ import { demoHouseholdName } from "@/lib/demo-data";
 import { api } from "@/lib/api";
 import { day, inr } from "@/lib/format";
 import type { Capability, ConsentArtefact, HouseholdSummary, Member } from "@/lib/types";
-import { DpdpPurposes, ValueLedger, useDpdp } from "@/components/gov/Dpdp";
+import { DpdpPurposes, LedgerSummary, ValueLedger, useDpdp } from "@/components/gov/Dpdp";
 import LiveLinkCard from "@/components/gov/LiveLink";
 import InviteBox from "@/components/gov/InviteBox";
 import VoiceLanguages from "@/components/gov/VoiceLanguages";
@@ -31,7 +31,7 @@ import type { SourceLink } from "@/lib/provisional/h03/types";
 
 const TABS = [
   { k: "family", hi: "Parivaar", en: "Family" }, { k: "consent", hi: "Consent", en: "Consent" },
-  { k: "data", hi: "Data", en: "Data" }, { k: "settings", hi: "Settings", en: "Settings" },
+  { k: "ledger", hi: "Ledger", en: "Ledger" }, { k: "data", hi: "Data", en: "Data" }, { k: "settings", hi: "Settings", en: "Settings" },
 ] as const;
 
 const SHARE: { k: Member["sharing"]; hi: string; en: string }[] = [
@@ -56,7 +56,7 @@ export default function Family() {
   useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); }, [hid, consentHandle]);
   useEffect(() => { if (tab === "consent") gov.links().then(setLiveLinks).catch(() => {}); }, [tab]);
   const reloadDpdp = dpdp.reload;
-  useEffect(() => { if (tab === "consent") reloadDpdp(); }, [tab, reloadDpdp]);
+  useEffect(() => { if (tab === "consent" || tab === "ledger" || tab === "family") reloadDpdp(); }, [tab, reloadDpdp]);
 
   if (!data) return <div className="p-5 space-y-4"><Skeleton h={200} /><Skeleton h={300} /></div>;
   // Demo households on replay/fixture data: the revoke never reaches Anumati.
@@ -83,12 +83,14 @@ export default function Family() {
     <div>
       <TopBar title={lang === "hi" ? "Parivaar" : "Family"} speakText={{ hi: "Yahan parivaar ke sadasya, consent aur privacy hai. Consent kabhi bhi band kar sakte hain.", en: "Family members, consents and privacy. You can revoke consent anytime." }} />
 
-      <div className="mx-5 lg:mx-0 mt-3 grid grid-cols-4 rounded-full bg-white p-1 shadow-soft">
+      <div className="mx-5 lg:mx-0 mt-3 grid grid-cols-5 rounded-full bg-white p-1 shadow-soft">
         {TABS.map((x) => (
-          <button key={x.k} onClick={() => setTab(x.k)} className={`min-h-11 rounded-full text-[13px] font-bold ${tab === x.k ? "bg-ink text-white" : "text-muted"}`}>{lang === "hi" ? x.hi : x.en}</button>
+          <button key={x.k} onClick={() => setTab(x.k)} className={`min-h-11 rounded-full text-[12px] font-bold ${tab === x.k ? "bg-ink text-white" : "text-muted"}`}>{lang === "hi" ? x.hi : x.en}</button>
         ))}
       </div>
       {tab === "family" && (<>
+      {/* Trust Ledger up front: how many receipts, and whether the chain holds. */}
+      <div className="mx-5 lg:mx-0 mt-4"><LedgerSummary dpdp={dpdp} onOpen={() => setTab("ledger")} /></div>
       <SectionTitle v={linked ? { hi: "Kiska hisaab dekhein", en: "Whose picture" } : { hi: "Demo parivaar badlein", en: "Switch demo household" }} />
       <div className="flex gap-3 overflow-x-auto no-scrollbar px-5">
         {linked && (
@@ -173,7 +175,7 @@ export default function Family() {
           <div className="flex items-center gap-2 mb-3"><span className="rounded-full bg-white text-rose-deep text-[11px] font-extrabold px-2.5 py-1">DPDP</span><span className="text-xs font-semibold">{lang === "hi" ? "DhanYukti khud kya rakhta hai — har maksad alag" : "What DhanYukti itself keeps — one purpose at a time"}</span></div>
           <DpdpPurposes dpdp={dpdp} tone="rose" />
         </div>
-        <ValueLedger dpdp={dpdp} />
+        <LedgerSummary dpdp={dpdp} onOpen={() => setTab("ledger")} />
         <MyReports />
         {pass && data.household.members.filter((m) => m.earner && !pass.aa.some((c) => c.member_id === m.id && c.status === "ACTIVE")).map((m) => (
           <div key={m.id} className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
@@ -185,6 +187,11 @@ export default function Family() {
       </div>
 
       </>)}
+      {tab === "ledger" && (<>
+      <SectionTitle v={{ hi: "Trust Ledger", en: "Trust Ledger" }} />
+      <div className="mx-5 lg:mx-0"><ValueLedger dpdp={dpdp} limit={20} /></div>
+      </>)}
+
       {tab === "data" && (<>
       <SectionTitle v={{ hi: "Aur jaankari jodein", en: "Add more context" }} right={<span className="text-[11px] font-bold text-muted">Perfios Hub</span>} />
       <Enrich />

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Hourglass, MoveHorizontal, RotateCcw } from "lucide-react";
 import CashRiver from "@/components/ui/CashRiver";
+import CashNudgeVoice from "@/components/home/CashNudgeVoice";
 import PlanDates from "@/components/whatif/PlanDates";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
@@ -16,6 +17,8 @@ export default function RiverCard() {
   const river = sim?.river ?? data.river;
   const movable = data.river.days.flatMap((d) => d.events.filter((e) => e.movable).map((e) => ({ e, date: d.date })));
   const salaryDay = data.river.days.find((d) => d.events.some((e) => e.type === "salary"))?.date;
+  // The gap is measured on the FIRST day the balance goes below zero (E03), so that's the date to name.
+  const shortDay = river.days.find((d) => d.balance < 0)?.date ?? river.min_date;
 
   const move = async (ev: RiverEvent, newDate: string) => {
     setBusy(true);
@@ -24,11 +27,12 @@ export default function RiverCard() {
 
   return (
     <section className="mx-5 lg:mx-0 rounded-[32px] bg-white p-4 shadow-soft">
-      <div className="flex items-start justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!sim && river.gap > 0 && <CashNudgeVoice amount={river.gap} date={shortDay} />}
         {sim ? (
           <button onClick={() => setSim(null)} className="flex items-center gap-1 rounded-full bg-lav px-3 min-h-9 text-xs font-bold"><RotateCcw size={14} />{lang === "hi" ? "Asli plan" : "Real plan"}</button>
         ) : river.gap > 0 ? (
-          <span className="rounded-full bg-danger-soft text-danger px-3 py-1 text-xs font-extrabold num">−{inr(river.gap)} · {day(river.min_date)}</span>
+          <span className="rounded-full bg-danger-soft text-danger px-3 py-1 text-xs font-extrabold num">−{inr(river.gap)} · {day(shortDay)}</span>
         ) : <span className="rounded-full bg-mint text-leaf px-3 py-1 text-xs font-extrabold">{lang === "hi" ? "Kami nahi" : "No shortfall"}</span>}
       </div>
       {sim && <p className="mt-2 inline-block rounded-full bg-haldi px-3 py-1 text-[11px] font-extrabold">🔮 {lang === "hi" ? "SIRF ANDAAZA — asli plan nahi badla" : "SCENARIO ONLY — real plan unchanged"}</p>}
