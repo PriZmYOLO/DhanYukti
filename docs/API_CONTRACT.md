@@ -179,5 +179,4 @@ day; essentials per day = the middle month of everyday spend; safety floor = 7 d
 average over the complete months the data covers (none → `monthly_income: null`). Everyday rows are dropped after
 the build; the twin keeps E01's figures, the income/obligation rows that evidence them, and last month's spend
 buckets, for at most 30 days (deleted on revoke or "delete everything"). Family members come from the onboarding
-answers only with DPDP "profile" consent. Suggested tasks follow the link's "Alerts & suggestions" grant
-(off → `nba: []`, `suggestions_off: true`).
+answers only with DPDP "profile" consent. Suggested tasks (NBA) are always shown.
