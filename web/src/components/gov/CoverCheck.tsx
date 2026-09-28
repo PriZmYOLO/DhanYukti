@@ -424,7 +424,12 @@ function PlanView({ plan, nameOf }: { plan: CoverPlan; nameOf: (id: string) => s
         </>) : (
           <p className="text-[28px] font-extrabold leading-tight mt-1">{t({ hi: "Jo bataya uske hisaab se koi kami nahi", en: "No gaps from what you told us" })}</p>
         )}
-        <p className="mt-3 text-[10px] font-mono text-white/50">{plan.ruleset_version} · {plan.input_hash.slice(0, 12)}{plan.receipt_id ? ` · ${plan.receipt_id}` : ""}</p>
+        {/* Audit trail: anyone can re-run these rules on these inputs and get this answer. */}
+        <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-[16px] bg-white/10 px-3 py-2 text-[11px]">
+          <dt className="text-white/60">{t({ hi: "Niyam", en: "Rules" })}</dt><dd className="font-mono break-all">{plan.ruleset_version}</dd>
+          <dt className="text-white/60">{t({ hi: "Input hash", en: "Input hash" })}</dt><dd className="font-mono break-all" title={plan.input_hash}>{plan.input_hash.slice(0, 16)}…</dd>
+          {plan.receipt_id && <><dt className="text-white/60">{t({ hi: "Ledger raseed", en: "Ledger receipt" })}</dt><dd className="font-mono break-all">{plan.receipt_id}</dd></>}
+        </dl>
       </div>
 
       {plan.missing.length > 0 && (
@@ -461,7 +466,7 @@ function PlanView({ plan, nameOf }: { plan: CoverPlan; nameOf: (id: string) => s
             </div>
             {u.have_items.length > 0 && <p className="mt-1 text-[11px] text-muted">{u.have_items.map((h) => `${h.source_id.startsWith("c") ? (lang === "hi" ? "Policy" : "Policy") : h.source_id.toUpperCase()} ${inr(paise(h.amount))} (${t(HAVE_NOTE[h.note])})`).join(" · ")}</p>}
             {u.missing.length > 0 && <p className="mt-1 text-[11px] text-[#9a5f00]">{t({ hi: "Chahiye:", en: "Needs:" })} {u.missing.map((m) => t(MISSING[m] ?? { hi: m, en: m })).join(", ")}</p>}
-            <button onClick={() => setWhy(why === u.unit_id ? null : u.unit_id)} className="mt-1 text-[12px] font-bold text-clay">Kyon? {why === u.unit_id ? "▴" : "▾"}</button>
+            <button onClick={() => setWhy(why === u.unit_id ? null : u.unit_id)} className="mt-1 text-[12px] font-bold text-clay">{t({ hi: "Kyon? (niyam)", en: "Why this? (rules)" })} {why === u.unit_id ? "▴" : "▾"}</button>
             {why === u.unit_id && <ul className="mt-1 space-y-1 text-[12px] leading-snug">{u.rule_ids.map((r) => <li key={r}><span className="font-mono text-[10px] rounded bg-lav px-1">{r}</span> {t(RULE[r] ?? { hi: r, en: r })}</li>)}</ul>}
           </div>
         ))}

@@ -110,6 +110,7 @@ export function subjectLabel(subject: string, lang: "hi" | "en") {
   if (subject.startsWith("aa:")) return `Anumati AA · ${subject.slice(3)}`;
   if (subject.startsWith("engine:cover:")) return `${lang === "hi" ? "Bima engine" : "Cover engine"} · ${subject.slice(13, 19)}`;
   if (subject.startsWith("report:")) return `${lang === "hi" ? "Report" : "Report"} · ${subject.slice(7, 15)}`;
+  if (subject.startsWith("bill:")) return `${lang === "hi" ? "Baar-baar ka len-den" : "Repeating payment"} · ${subject.slice(5, 11)}`;
   return subject;
 }
 
@@ -208,34 +209,92 @@ function PurposeRow({ id, dpdp, compact, tone }: { id: PurposeId; dpdp: Dpdp; co
   );
 }
 
-/** The Value Ledger: every consent event, newest first, with its hash link. */
+type LedgerGroup = "all" | "consent" | "bank" | "engine" | "bills" | "reports";
+const GROUP_OF = (k: LedgerEntry["kind"]): Exclude<LedgerGroup, "all"> =>
+  k.startsWith("dpdp_") ? "consent" : k.startsWith("aa_") ? "bank" : k === "engine_run" ? "engine" : k.startsWith("bill_") ? "bills" : "reports";
+const GROUPS: { k: LedgerGroup; hi: string; en: string }[] = [
+  { k: "all", hi: "Sab", en: "All" }, { k: "consent", hi: "Consent", en: "Consent" }, { k: "bank", hi: "Bank (AA)", en: "Bank (AA)" },
+  { k: "engine", hi: "Engine", en: "Engine" }, { k: "bills", hi: "Bills", en: "Bills" }, { k: "reports", hi: "Report", en: "Reports" },
+];
+const TONE: Record<Exclude<LedgerGroup, "all">, string> = {
+  consent: "bg-rose/70", bank: "bg-lav", engine: "bg-haldi-soft", bills: "bg-mint", reports: "bg-amber-soft",
+};
+
+/**
+ * Trust Ledger (the Value Ledger): every consent grant and withdrawal, bank
+ * link event, engine run and decision, newest first. Each entry carries the
+ * hash of the one before it, so an edit or deletion anywhere breaks the
+ * chain and the badge says so. Holds no financial data.
+ */
 export function ValueLedger({ dpdp, limit = 8 }: { dpdp: Dpdp; limit?: number }) {
   const { lang } = useApp();
   const [all, setAll] = useState(false);
-  const entries = [...(dpdp.state?.ledger ?? [])].reverse();
-  if (!dpdp.state) return null;
-  if (entries.length === 0) return <p className="text-sm text-muted px-1">{lang === "hi" ? "Abhi koi raseed nahi." : "No receipts yet."}</p>;
+  const [group, setGroup] = useState<LedgerGroup>("all");
+  if (!dpdp.state) return dpdp.error ? <p className="text-sm text-danger font-semibold px-1">{dpdp.error}</p> : <div className="skeleton rounded-[24px] h-32" />;
+  const ledger = dpdp.state.ledger;
+  const entries = [...ledger].reverse().filter((e) => group === "all" || GROUP_OF(e.kind) === group);
+  const count = (g: LedgerGroup) => (g === "all" ? ledger.length : ledger.filter((e) => GROUP_OF(e.kind) === g).length);
+  const ok = dpdp.state.ledger_verified;
   return (
     <div className="rounded-[24px] bg-white p-3 shadow-soft">
-      <div className="flex items-center gap-2 px-1 pb-2">
-        <Link2 size={15} />
-        <p className="font-bold text-sm flex-1">{lang === "hi" ? "Value Ledger (hash-chain)" : "Value Ledger (hash-chained)"}</p>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${dpdp.state.ledger_verified ? "bg-mint text-leaf" : "bg-danger-soft text-danger"}`}>
-          {dpdp.state.ledger_verified ? (lang === "hi" ? "Sahi" : "Verified") : (lang === "hi" ? "Toota" : "Broken")}
-        </span>
+      <div className="flex items-center gap-2 px-1">
+        <Link2 size={16} />
+        <p className="font-extrabold text-[15px] flex-1">{lang === "hi" ? "Trust Ledger" : "Trust Ledger"}</p>
       </div>
-      <div className="divide-y divide-lav">
-        {entries.slice(0, all ? entries.length : limit).map((e) => (
-          <div key={e.seq} className="flex items-center gap-2 py-2 text-[12px]">
-            <span className="w-7 text-muted num">#{e.seq}</span>
-            <span className="flex-1 min-w-0">
-              <span className="block font-semibold truncate">{KIND[e.kind][lang]} · {subjectLabel(e.subject, lang)}</span>
-              <span className="block font-mono text-[10px] text-muted truncate">{new Date(e.at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })} · {e.hash.slice(0, 10)}← {e.prev_hash.slice(0, 8)}</span>
-            </span>
-          </div>
-        ))}
+      <p className="px-1 mt-1 text-[12px] text-muted leading-snug">
+        {lang === "hi"
+          ? "Har consent, bank link, engine run aur aapka har faisla — har entry pichhli se judi (hash). Beech mein kuch badla to chain toot jaati hai. Isme koi paisa ya khaata nahi."
+          : "Every consent, bank link, engine run and decision of yours — each entry sealed to the one before (hash). Change anything in the middle and the chain breaks. No money or account details are kept here."}
+      </p>
+      <div role="status" className={`mt-2 rounded-[16px] px-3 py-2 text-[13px] font-extrabold flex items-center gap-2 ${ok ? "bg-mint text-leaf" : "bg-danger-soft text-danger"}`}>
+        <span aria-hidden>{ok ? "✓" : "!"}</span>
+        <span className="flex-1">{ok ? (lang === "hi" ? "Chain sahi hai (verified)" : "Chain verified") : (lang === "hi" ? "Chain tooti hai — koi entry badli gayi" : "Chain broken — an entry was changed")}</span>
+        <span className="font-semibold num">{ledger.length} {lang === "hi" ? "entry" : ledger.length === 1 ? "entry" : "entries"}</span>
       </div>
+      {ledger.length > 0 && (
+        <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar">
+          {GROUPS.filter((g) => g.k === "all" || count(g.k) > 0).map((g) => (
+            <button key={g.k} type="button" onClick={() => { setGroup(g.k); setAll(false); }}
+              className={`shrink-0 rounded-full px-3 min-h-9 text-[12px] font-bold ${group === g.k ? "bg-ink text-white" : "bg-lav text-ink"}`}>
+              {lang === "hi" ? g.hi : g.en} · {count(g.k)}
+            </button>
+          ))}
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <p className="text-sm text-muted px-1 py-3">{lang === "hi" ? "Abhi koi raseed nahi." : "No receipts yet."}</p>
+      ) : (
+        <div className="mt-1 divide-y divide-lav">
+          {entries.slice(0, all ? entries.length : limit).map((e) => (
+            <div key={e.seq} className="flex items-start gap-2 py-2 text-[12px]">
+              <span className={`mt-0.5 w-9 shrink-0 rounded-md text-center text-[11px] font-extrabold num ${TONE[GROUP_OF(e.kind)]}`}>#{e.seq}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-semibold">{KIND[e.kind][lang]} · {subjectLabel(e.subject, lang)}</span>
+                <span className="block text-[11px] text-muted">{new Date(e.at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })} · {lang === "hi" ? "raseed" : "receipt"} <span className="font-mono">{e.receipt_id}</span></span>
+                <span className="block font-mono text-[10px] text-muted truncate" title={`${e.hash} ← ${e.prev_hash}`}>{e.hash.slice(0, 12)} ← {e.prev_hash.slice(0, 12)}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       {entries.length > limit && <button onClick={() => setAll(!all)} className="w-full min-h-10 text-xs font-bold text-muted">{all ? (lang === "hi" ? "Kam dikhao" : "Show less") : (lang === "hi" ? `Sab ${entries.length} dikhao` : `Show all ${entries.length}`)}</button>}
     </div>
+  );
+}
+
+/** One line for the Family tab: how many entries, and whether the chain holds. */
+export function LedgerSummary({ dpdp, onOpen }: { dpdp: Dpdp; onOpen: () => void }) {
+  const { lang } = useApp();
+  if (!dpdp.state) return null;
+  const ok = dpdp.state.ledger_verified;
+  return (
+    <button type="button" onClick={onOpen} className="w-full rounded-[24px] bg-white p-4 shadow-soft flex items-center gap-3 text-left">
+      <span className={`grid place-items-center h-10 w-10 rounded-full shrink-0 ${ok ? "bg-mint text-leaf" : "bg-danger-soft text-danger"}`}><Link2 size={18} /></span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-extrabold">{lang === "hi" ? "Trust Ledger" : "Trust Ledger"}</span>
+        <span className="block text-[12px] text-muted">{dpdp.state.ledger.length} {lang === "hi" ? "raseed" : "receipts"} · {ok ? (lang === "hi" ? "✓ chain sahi" : "✓ chain verified") : (lang === "hi" ? "chain tooti" : "chain broken")}</span>
+      </span>
+      <span className="text-[13px] font-bold">{lang === "hi" ? "Dekhein →" : "Open →"}</span>
+    </button>
   );
 }
