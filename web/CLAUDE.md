@@ -22,6 +22,16 @@ FastAPI proxy (`fallback` rewrite in `next.config.ts`):
   Demo households A/B/C appear only when someone picks one (splash chips,
   Family tab, `?demo=`).
 
+Confirm your bills (E02 with a consent step) runs on the twin: each projected
+date carries its `series` (same payee, kind and account) and rhythm (`every`);
+the member's decisions are overlays `series:<id>.status|amount|day` (and
+`series:everyday.status` + `essentials_per_day`) applied in
+`api/app/pipeline.py`, so they cover every date and survive a rebuild.
+`/api/households/me/bills` (`src/lib/server/twin/bills.ts`) lists and records
+them, each as a Value Ledger entry (`bill:<hash>`, no payee or amount); the
+reveal step shows `ConfirmBills`. Checks: `api/tests/test_twin.py` and
+`npm run test:my-bills` (mock bank + Next.js + FastAPI).
+
 Server code lives in `src/lib/server/`. Live consent terms: `src/lib/aa/live-terms.ts`
 (keep in step with `ONBOARDING_CONSENT` in `src/lib/server/aa/fiu-client.ts`).
 Everything else under `/api` goes to FastAPI at `API_ORIGIN`; when that is

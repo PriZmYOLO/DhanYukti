@@ -124,3 +124,106 @@ def test_payee_key():
     assert e02_twin.payee_key("UPI/RENT/ANIL KUMAR") == "RENT ANIL KUMAR"
     assert e02_twin.payee_key("ACH/NACH BAJAJ FIN EMI") == "BAJAJ FIN EMI"
     assert e02_twin.payee_key("NEFT CR SHREE KRISHNA TEXTILE MILLS SALARY") == "SHREE KRISHNA TEXTILE MILLS"
+
+
+# ----------------------------------------------------------------------------------------------
+# Confirm your bills: the member's own word on each repeating payment (series overlays)
+# ----------------------------------------------------------------------------------------------
+def _correct(twin, state, field, value, status=200):
+    r = client.post("/api/twin/correct", json={"twin": twin, "state": state, "field": field, "value": value})
+    assert r.status_code == status, r.text
+    return r.json()
+
+
+def _river_events(db):
+    return [(day["date"], e) for day in db["river"]["days"] for e in day["events"]]
+
+
+def test_every_projected_date_names_its_series_and_rhythm():
+    twin, _ = _built()
+    rent = [e for e in twin["upcoming"] if e["type"] == "rent"]
+    assert rent and all(e["series"] == rent[0]["series"] and e["every"] == {"months": 1} for e in rent)
+    fee = next(e for e in twin["upcoming"] if e["type"] == "fee")
+    assert fee["every"] == {"months": 3}
+    assert all(not e["id"].endswith(e["series"]) and e["id"].startswith(e["series"] + "_") for e in twin["upcoming"])
+
+
+def test_confirm_marks_every_date_checked_and_keeps_bank_certainty():
+    twin, state = _built()
+    sid = next(e["series"] for e in twin["upcoming"] if e["type"] == "rent")
+    c = _correct(twin, state, f"series:{sid}.status", "confirmed")
+    rent = [e for _, e in _river_events(c["dashboard"]) if e.get("series") == sid]
+    assert rent and all(e["checked"] == "confirmed" and e["certainty"] == "pakka" for e in rent)
+    others = [e for _, e in _river_events(c["dashboard"]) if e.get("series") != sid]
+    assert all("checked" not in e for e in others)
+
+
+def test_ignore_takes_the_payment_out_of_every_engine():
+    twin, state = _built()
+    sid = next(e["series"] for e in twin["upcoming"] if e["type"] == "rent")
+    before = client.post("/api/twin/dashboard", json={"twin": twin, "state": state}).json()
+    c = _correct(twin, state, f"series:{sid}.status", "ignored")
+    after = c["dashboard"]
+    assert not any(e.get("series") == sid for _, e in _river_events(after))
+    # ₹9,000 rent no longer leaves on 5 Oct: the balance after it is ₹9,000 higher
+    b5 = next(x["balance"] for x in before["river"]["days"] if x["date"] == "2026-10-05")
+    a5 = next(x["balance"] for x in after["river"]["days"] if x["date"] == "2026-10-05")
+    assert a5 - b5 == 9000
+
+
+def test_fix_amount_and_day_apply_to_every_date_and_say_you_told_us():
+    twin, state = _built()
+    sid = next(e["series"] for e in twin["upcoming"] if e["type"] == "rent")
+    c = _correct(twin, state, f"series:{sid}.amount", 9500)
+    c = _correct(twin, c["state"], f"series:{sid}.day", 3)
+    c = _correct(twin, c["state"], f"series:{sid}.status", "confirmed")
+    rent = [(dt, e) for dt, e in _river_events(c["dashboard"]) if e.get("series") == sid]
+    assert rent and all(dt.endswith("-03") and e["amount"] == -9500 and e["checked"] == "corrected"
+                        and e["certainty"] == "andaaza" for dt, e in rent)
+
+
+def test_day_on_or_before_today_moves_to_the_next_rhythm_date():
+    from app import pipeline
+    twin, state = _built()
+    rent = next(e for e in twin["upcoming"] if e["type"] == "rent")
+    rent["date"] = "2026-09-30"           # due in two days; the member says "it's the 2nd"
+    hh = pipeline.load_twin(twin, {**state, "overlays": {f"series:{rent['series']}.day": 2}})
+    moved = next(e for e in hh["upcoming"] if e["id"] == rent["id"])
+    assert moved["date"] == "2026-10-02"   # not 2 Sep, which is already past
+
+
+def test_everyday_can_be_confirmed_but_not_ignored():
+    twin, state = _built()
+    _correct(twin, state, "series:everyday.status", "confirmed")
+    _correct(twin, state, "series:everyday.status", "ignored", status=422)
+
+
+def test_series_corrections_refuse_what_we_never_suggested_and_bad_values():
+    twin, state = _built()
+    sid = next(e["series"] for e in twin["upcoming"] if e["type"] == "rent")
+    _correct(twin, state, "series:rent_nobody_0000.status", "confirmed", status=422)
+    for field, value in [(f"series:{sid}.status", "maybe"), (f"series:{sid}.amount", 0), (f"series:{sid}.amount", -5),
+                         (f"series:{sid}.amount", True), (f"series:{sid}.day", 32), (f"series:{sid}.day", 2.5),
+                         (f"series:{sid}.colour", "red")]:
+        _correct(twin, state, field, value, status=422)
+
+
+def test_undo_is_no_decision_and_a_vanished_series_never_breaks_the_dashboard():
+    twin, state = _built()
+    sid = next(e["series"] for e in twin["upcoming"] if e["type"] == "rent")
+    c = _correct(twin, state, f"series:{sid}.status", None)
+    assert all("checked" not in e for _, e in _river_events(c["dashboard"]))
+    # a decision kept from an older twin whose series is gone now
+    st = {**state, "overlays": {"series:rent_old_payee_0000.status": "ignored"}}
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": st})
+    assert db.status_code == 200
+
+
+def test_older_twin_without_series_field_still_takes_decisions():
+    twin, state = _built()
+    for e in twin["upcoming"]:
+        e.pop("series", None)
+    rent_id = next(e["id"] for e in twin["upcoming"] if e["type"] == "rent")
+    sid = rent_id.rsplit("_", 1)[0]
+    c = _correct(twin, state, f"series:{sid}.status", "ignored")
+    assert not any(e["type"] == "rent" for _, e in _river_events(c["dashboard"]))

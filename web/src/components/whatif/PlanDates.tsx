@@ -40,6 +40,11 @@ export default function PlanDates({ river, open: initial = false }: { river: Riv
               </div>
               <div className="mt-0.5 ml-16 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {e.certainty && <ConfTag c={e.certainty} />}
+                {e.checked && (
+                  <span className="text-[11px] font-extrabold text-leaf">
+                    ✓ {e.checked === "corrected" ? (hi ? "aapne theek kiya" : "corrected by you") : (hi ? "aapne pakka kiya" : "confirmed by you")}
+                  </span>
+                )}
                 {e.basis && <span className="text-[11px] text-muted leading-snug">{t(e.basis)}</span>}
               </div>
               {e.moved && (

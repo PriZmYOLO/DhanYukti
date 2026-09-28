@@ -118,6 +118,11 @@ def event_out(e: dict) -> dict:
         out["certainty"] = e["certainty"]
         if e.get("basis"):
             out["basis"] = e["basis"]
+    if e.get("series"):
+        out["series"] = e["series"]
+    if e.get("checked"):
+        # the member's own word on this payment: "confirmed" as seen, or "corrected" by them
+        out["checked"] = e["checked"]
     if e.get("moved"):
         # Moving a bill is only a request: the payee has not agreed, so the original date still stands.
         out["moved"] = True

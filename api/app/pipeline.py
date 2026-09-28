@@ -1,7 +1,10 @@
 """Household Twin pipeline: fixture (+ user overlays) -> engines -> Dashboard JSON."""
 from __future__ import annotations
 
+import calendar
 import copy
+import re
+from datetime import date
 
 from app import connectors, store
 from app.engines import e03_cashflow as e03
@@ -19,18 +22,96 @@ from app.game import service as game
 
 SUPPORTED_CORRECTIONS = (
     "monthly_income, essentials_per_day, safety_floor, closing_balance, salary_date (YYYY-MM-DD), "
-    "event:<event_id>.date, event:<event_id>.amount, member:<member_id>.life, member:<member_id>.health"
+    "event:<event_id>.date, event:<event_id>.amount, member:<member_id>.life, member:<member_id>.health, "
+    "series:<series_id>.status (confirmed|ignored), series:<series_id>.amount, series:<series_id>.day (1-31), "
+    "series:everyday.status (confirmed)"
 )
+SERIES_ATTRS = ("status", "amount", "day")
+MAX_AMOUNT = 10_000_000
+_DATED_ID = re.compile(r"_\d{4}-\d{2}-\d{2}$")
 
 
 class CorrectionError(ValueError):
     pass
 
 
+def series_of(e: dict) -> str:
+    """The repeating payment an upcoming event belongs to (older twins: its id without the date)."""
+    return e.get("series") or _DATED_ID.sub("", e["id"])
+
+
+def _series_value(attr: str, value):
+    """Validated overlay value for series:<id>.<attr>; None means no decision (undo)."""
+    if value is None:
+        return None
+    if attr == "status":
+        if value not in ("confirmed", "ignored"):
+            raise CorrectionError(attr)
+        return value
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != int(value):
+        raise CorrectionError(attr)
+    v = int(value)
+    if attr == "amount" and not 0 < v <= MAX_AMOUNT:
+        raise CorrectionError(attr)
+    if attr == "day" and not 1 <= v <= 31:
+        raise CorrectionError(attr)
+    return v
+
+
+def _apply_series(hh: dict, overlays: list[tuple[str, str, object]]) -> None:
+    """The member's own decisions on repeating payments. Fixes first, then confirm/ignore.
+
+    confirmed: every date of it is marked "checked by you" (bank certainty is kept as it is).
+    ignored:   the member says it won't happen: it leaves the river, what-if and every engine.
+    amount/day: the member's figure replaces ours on every date (then it is "you told us").
+    A series that no longer exists (the twin was rebuilt from newer data) is skipped here.
+    """
+    as_of = d(hh["as_of"])
+    fixes = [o for o in overlays if o[1] != "status"]
+    statuses = [o for o in overlays if o[1] == "status"]
+    for sid, attr, value in fixes + statuses:
+        v = _series_value(attr, value)
+        if v is None:
+            continue
+        if sid == "everyday":
+            if attr != "status" or v != "confirmed":
+                raise CorrectionError(f"series:everyday.{attr}")
+            hh["essentials_checked"] = True
+            continue
+        evs = [e for e in hh["upcoming"] if series_of(e) == sid]
+        if attr == "status" and v == "ignored":
+            hh["upcoming"] = [e for e in hh["upcoming"] if series_of(e) != sid]
+            hh.setdefault("ignored_series", []).append(sid)
+            continue
+        for e in evs:
+            if attr == "status":
+                e.setdefault("checked", "confirmed")
+            elif attr == "amount":
+                e["amount"] = v if e["amount"] > 0 else -v
+                e["_corrected"], e["checked"] = True, "corrected"
+            else:  # day of the month, clamped; a date that falls on/before today moves on by its rhythm
+                x = d(e["date"])
+                step = int((e.get("every") or {}).get("months") or 1)
+                nx = date(x.year, x.month, min(v, calendar.monthrange(x.year, x.month)[1]))
+                while nx <= as_of:
+                    y, m = divmod(nx.month - 1 + step, 12)
+                    y, m = nx.year + y, m + 1
+                    nx = date(y, m, min(v, calendar.monthrange(y, m)[1]))
+                e["date"] = iso(nx)
+                e["_corrected"], e["checked"] = True, "corrected"
+    hh["upcoming"].sort(key=lambda e: (e["date"], e["amount"] < 0))
+
+
 def apply_overlay(hh: dict, overlay: dict) -> dict:
     """Overlay corrections onto a COPY of the fixture. The source is never rewritten."""
+    series: list[tuple[str, str, object]] = []
     for field, value in overlay.items():
-        if field in ("essentials_per_day", "safety_floor", "closing_balance"):
+        if field.startswith("series:"):
+            sid, _, attr = field[7:].partition(".")
+            if not sid or attr not in SERIES_ATTRS:
+                raise CorrectionError(field)
+            series.append((sid, attr, value))
+        elif field in ("essentials_per_day", "safety_floor", "closing_balance"):
             hh[field] = int(value)
         elif field == "monthly_income":
             hh["_monthly_income_override"] = int(value)
@@ -54,6 +135,8 @@ def apply_overlay(hh: dict, overlay: dict) -> dict:
             m.setdefault("cover", {})[attr] = bool(value) if value is not None else None
         else:
             raise CorrectionError(field)
+    if series:
+        _apply_series(hh, series)
     return hh
 
 
@@ -74,6 +157,10 @@ def load_twin(twin: dict, state: dict | None) -> dict:
 
 
 def validate_twin_correction(twin: dict, field: str, value) -> None:
+    if field.startswith("series:"):
+        sid = field[7:].partition(".")[0]
+        if sid != "everyday" and not any(series_of(e) == sid for e in twin.get("upcoming", [])):
+            raise CorrectionError(field)  # only a payment we actually suggested
     apply_overlay(copy.deepcopy(twin), {field: value})  # raises CorrectionError / ValueError
 
 
