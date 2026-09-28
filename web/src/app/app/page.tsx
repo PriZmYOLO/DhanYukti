@@ -7,6 +7,7 @@ import HealthTiles from "@/components/home/HealthTiles";
 import RiverCard from "@/components/home/RiverCard";
 import JarsRow from "@/components/home/JarsRow";
 import AffordCheck from "@/components/AffordCheck";
+import ConfirmBills from "@/components/ConfirmBills";
 import DemoDataChip from "@/components/DemoDataChip";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
@@ -57,6 +58,8 @@ export default function Home() {
         <div>
           <SectionTitle v={{ hi: "Agle 30 din", en: "Next 30 days" }} />
           <RiverCard />
+          {/* The member's own repeating payments: confirm, fix or ignore any time, not only at the reveal. */}
+          {data.household.id === "me" && <div className="px-5 lg:px-0"><ConfirmBills /></div>}
         </div>
         <div>
           <SectionTitle v={{ hi: "Gullak", en: "Savings jars" }} />
