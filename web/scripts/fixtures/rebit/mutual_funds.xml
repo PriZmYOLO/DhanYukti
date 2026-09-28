@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Account xmlns="http://api.rebit.org.in/FISchema/mutual_funds" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" linkedAccRef="test-ref-4" version="1.0.0" type="mutualfunds" maskedDematID="XXXXXXXXXXXX0987" maskedFolioNo="XXXXX4567">
+  <Profile>
+    <Holders>
+      <Holder name="TEST HOLDER" dob="1994-03-15" mobile="9999999999" nominee="REGISTERED" dematId="XXXXXXXXXXXX0987" folioNo="XXXXX4567" email="test@example.invalid" pan="AAAAA0000A" kycCompliance="Completed"/>
+    </Holders>
+  </Profile>
+  <Summary costValue="150000.00" currentValue="171234.56">
+    <Investment>
+      <Holdings>
+        <Holding amc="TEST AMC ONE" registrar="TEST RTA" schemeCode="TST001" schemeOption="GROWTH_TYPE" schemeTypes="EQUITY_SCHEMES" schemeCategory="LARGE_CAP_FUND" isin="INF000T01010" isinDescription="TEST LARGE CAP FUND - DIRECT GROWTH" ucc="" amfiCode="100001" folioNo="XXXXX4567" FatcaStatus="Compliant" closingUnits="1234.567" lienUnits="0" nav="85.4321" navDate="2026-09-25" lockinUnits="0"/>
+        <Holding amc="TEST AMC TWO" registrar="TEST RTA" schemeCode="TST002" schemeOption="IDCW" schemeTypes="DEBT_SCHEMES" schemeCategory="SHORT_DURATION_FUND" isin="INF000T02026" isinDescription="TEST SHORT DURATION FUND" ucc="" amfiCode="100002" folioNo="XXXXX4567" FatcaStatus="Compliant" closingUnits="512.1" lienUnits="0" nav="" navDate="" lockinUnits="0"/>
+      </Holdings>
+    </Investment>
+  </Summary>
+  <Transactions startDate="2025-09-25" endDate="2026-09-25">
+    <Transaction txnId="M1" amc="TEST AMC ONE" registrar="TEST RTA" schemeCode="TST001" schemePlan="DIRECT" isin="INF000T01010" amfiCode="100001" ucc="" amount="5000.00" nav="84.10" navDate="2026-09-05" type="BUY" mode="DEMAT" narration="SIP PURCHASE" isinDescription="TEST LARGE CAP FUND - DIRECT GROWTH" units="59.453" transactionDate="2026-09-05T00:00:00.0"/>
+  </Transactions>
+</Account>

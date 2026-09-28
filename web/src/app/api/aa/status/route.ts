@@ -1,6 +1,10 @@
 import { connection } from "next/server";
 
-import { aaConfig, aaConfigured } from "@/lib/server/aa/config";
+import {
+  aaConfig,
+  aaConfigured,
+  allowedFiTypes,
+} from "@/lib/server/aa/config";
 import { noStore } from "@/lib/server/aa/http";
 import { storeKind, storeUsable } from "@/lib/server/aa/store";
 
@@ -19,6 +23,8 @@ export async function GET() {
       storage: storeKind,
       storage_ready: storeUsable(),
       live_ui_enabled: process.env.NEXT_PUBLIC_AA_LIVE === "true",
+      /** FI types this server may request (AA_FI_TYPES; default DEPOSIT). */
+      fi_types_allowed: allowedFiTypes(),
       webhooks: {
         data_ready: "/api/aa/webhooks/data-ready",
         consent_lifecycle: "/api/aa/webhooks/consent",

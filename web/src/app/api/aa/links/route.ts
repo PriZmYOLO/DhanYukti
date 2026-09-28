@@ -1,5 +1,9 @@
 import type { ConsentChoices } from "@/lib/provisional/h03/types";
-import { createLink, listLinks } from "@/lib/server/aa/links";
+import {
+  createLink,
+  listLinks,
+  resolveFiTypes,
+} from "@/lib/server/aa/links";
 import {
   errorResponse,
   noStore,
@@ -29,6 +33,13 @@ export async function POST(request: Request) {
   if (choices.source_access !== true) {
     return Response.json(
       { ok: false, reason: "source_access_required" },
+      { headers: noStore },
+    );
+  }
+  // Choice ∩ allow-list (AA_FI_TYPES). Nothing left → nothing to ask for.
+  if (resolveFiTypes(choices.fi_types).length === 0) {
+    return Response.json(
+      { ok: false, reason: "no_fi_types" },
       { headers: noStore },
     );
   }

@@ -2,7 +2,13 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { LIVE_TERMS } from "@/lib/aa/live-terms";
+import {
+  DEFAULT_FI_TYPES,
+  isFiType,
+  normaliseFiTypes,
+  type FiType,
+} from "@/lib/aa/fi-types";
+import { LIVE_TERMS, liveTerms } from "@/lib/aa/live-terms";
 import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import type { ErrorEnvelope, IsoTimestamp } from "@/lib/contracts/common";
 import type { SchemeCheckResult } from "@/lib/contracts/scheme-check";
@@ -14,7 +20,11 @@ import type {
   LinkActivity,
   SourceLink,
 } from "@/lib/provisional/h03/types";
-import { aaConfig, aaConfigured } from "@/lib/server/aa/config";
+import {
+  aaConfig,
+  aaConfigured,
+  allowedFiTypes,
+} from "@/lib/server/aa/config";
 import { decryptFI } from "@/lib/server/aa/crypto";
 import {
   getData,
@@ -23,8 +33,11 @@ import {
   type GetDataResponse,
 } from "@/lib/server/aa/fiu-client";
 import {
-  parseDepositFI,
+  parseFI,
+  type DepositTerms,
+  type Holdings,
   type ParsedDepositAccount,
+  type ParsedFI,
 } from "@/lib/server/aa/rebit";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
 import { summariseAccounts } from "@/lib/server/aa/summary";
@@ -77,6 +90,23 @@ interface LinkRecord {
   consent_id: string | null;
   redirect_url: string | null;
   pending: PendingRetrieval | null;
+  /** FI types requested; absent on older records = DEPOSIT. */
+  fi_types?: FiType[];
+}
+
+const linkFiTypes = (record: Pick<LinkRecord, "fi_types">): FiType[] =>
+  record.fi_types?.length ? record.fi_types : DEFAULT_FI_TYPES;
+
+/**
+ * What this link may request: the member's choice ∩ the server allow-list
+ * (AA_FI_TYPES). No choice → savings only. Empty → nothing to request.
+ */
+export function resolveFiTypes(choice: unknown): FiType[] {
+  const chosen = Array.isArray(choice)
+    ? normaliseFiTypes(choice)
+    : DEFAULT_FI_TYPES;
+  const allowed = allowedFiTypes();
+  return chosen.filter((t) => allowed.includes(t));
 }
 
 /**
@@ -87,7 +117,17 @@ export type StoredAccount = Omit<ParsedDepositAccount, "holder_dob"> & {
   fip_id: string | null;
   account_label: string;
   holder_age: number | null;
+  /** ReBIT FI type; absent on data stored before FI types = DEPOSIT. */
+  fi_type?: FiType;
+  /** TERM_DEPOSIT / RECURRING_DEPOSIT only. */
+  deposit_terms?: DepositTerms | null;
+  /** MUTUAL_FUNDS / EQUITIES / SIP only. */
+  holdings?: Holdings | null;
 };
+
+/** Savings/current accounts: the only ones the transaction rules read. */
+export const isDepositAccount = (a: Pick<StoredAccount, "fi_type">) =>
+  (a.fi_type ?? "DEPOSIT") === "DEPOSIT";
 
 export interface StoredAccountData {
   link_id: string;
@@ -234,13 +274,14 @@ async function readData(record: LinkRecord): Promise<DataRead> {
  * for at most 30 days. Both are deleted on revoke.
  */
 export async function storeAccountData(
-  record: Pick<LinkRecord, "link_id" | "grants">,
+  record: Pick<LinkRecord, "link_id" | "grants" | "fi_types">,
   data: StoredAccountData,
 ) {
   await kvSet(keys.data(record.link_id), data, RAW_DATA_TTL);
   const summary = summariseAccounts(data, {
     alertsAllowed: record.grants.alerts_and_actions,
     isSandbox: aaConfig.isSandbox,
+    requestedFiTypes: linkFiTypes(record),
   });
   await kvSet(keys.summary(record.link_id), summary, SUMMARY_TTL);
 }
@@ -252,12 +293,15 @@ function isEnded(status: ConsentStatus) {
 export function toSourceLink(record: LinkRecord): SourceLink {
   return {
     link_id: record.link_id,
-    source_label: aaConfig.isSandbox
-      ? "Savings accounts via Anumati (sandbox test bank)"
-      : "Savings accounts via Anumati",
+    source_label: `${
+      linkFiTypes(record).every((t) => t === "DEPOSIT")
+        ? "Savings accounts"
+        : "Savings and investments"
+    } via Anumati${aaConfig.isSandbox ? " (sandbox test bank)" : ""}`,
     is_demo: false,
     is_sandbox: aaConfig.isSandbox,
-    terms: LIVE_TERMS,
+    fi_types: linkFiTypes(record),
+    terms: liveTerms(linkFiTypes(record)),
     grants: record.grants,
     consent: {
       status: record.consent_status,
@@ -300,8 +344,11 @@ export async function createLink(
   sid: string,
   choices: ConsentChoices,
 ): Promise<SourceLink> {
+  const fiTypes = resolveFiTypes(choices.fi_types);
+  if (fiTypes.length === 0) throw new Error("no_fi_types");
   const at = now();
   const record: LinkRecord = {
+    fi_types: fiTypes,
     link_id: `aa-${randomUUID()}`,
     session_id: sid,
     grants: {
@@ -372,8 +419,19 @@ export async function startApproval(
     return { mode: "needs_details", link: toSourceLink(record) };
   }
 
+  // The allow-list may have been narrowed (rollback) since the link was made.
+  const allowed = allowedFiTypes();
+  const fiTypes = linkFiTypes(record).filter((t) => allowed.includes(t));
+  if (fiTypes.length === 0) {
+    return {
+      mode: "unavailable",
+      reason:
+        "The accounts you chose to share can't be requested on this server right now. Nothing has been sent.",
+    };
+  }
+
   // X-Idempotency-Key = link id: a retry returns the same journey.
-  const result = await startConsent(mobile, record.link_id);
+  const result = await startConsent(mobile, record.link_id, fiTypes);
   if (!result.ok || !result.body?.redirectUrl) {
     log("consent_start_failed", {
       link: shortRef(record.link_id),
@@ -569,17 +627,78 @@ function ageOn(dob: string | null, on: Date): number | null {
   return age >= 0 && age < 130 ? age : null;
 }
 
-function accountLabel(session: FiSession, parsed: ParsedDepositAccount | null) {
-  const masked = parsed?.masked_acc_number ?? session.maskedAccNumber ?? "";
-  const last4 = masked.replace(/[^0-9]/g, "").slice(-4);
-  const kind =
-    parsed?.account_type?.toUpperCase() === "CURRENT" ? "Current" : "Savings";
-  const bank = session.fipId ?? "bank";
-  const sandbox = aaConfig.isSandbox ? " (sandbox test data)" : "";
-  return `${kind} account · ${bank}${last4 ? ` ··${last4}` : ""}${sandbox}`;
+const KIND_LABEL: Record<Exclude<FiType, "DEPOSIT">, string> = {
+  TERM_DEPOSIT: "Fixed deposit",
+  RECURRING_DEPOSIT: "Recurring deposit",
+  MUTUAL_FUNDS: "Mutual funds",
+  EQUITIES: "Shares (demat)",
+  SIP: "SIPs",
+};
+
+function maskedOf(parsed: ParsedFI | null): string | null {
+  if (!parsed) return null;
+  return parsed.fi_type === "DEPOSIT"
+    ? parsed.masked_acc_number
+    : parsed.masked_ref;
 }
 
-function processSessions(response: GetDataResponse, fetchedAt: string) {
+function accountLabel(session: FiSession, parsed: ParsedFI | null) {
+  const masked = maskedOf(parsed) ?? session.maskedAccNumber ?? "";
+  const last4 = masked.replace(/[^0-9]/g, "").slice(-4);
+  const kind =
+    parsed && parsed.fi_type !== "DEPOSIT"
+      ? KIND_LABEL[parsed.fi_type]
+      : `${
+          parsed?.account_type?.toUpperCase() === "CURRENT"
+            ? "Current"
+            : "Savings"
+        } account`;
+  const bank = session.fipId ?? "bank";
+  const sandbox = aaConfig.isSandbox ? " (sandbox test data)" : "";
+  return `${kind} · ${bank}${last4 ? ` ··${last4}` : ""}${sandbox}`;
+}
+
+/** What DhanYukti keeps from one parsed document (nothing more). */
+function toStored(
+  parsed: ParsedFI,
+  session: FiSession,
+): Omit<StoredAccount, "holder_age"> {
+  const base = {
+    fip_id: session.fipId ?? null,
+    account_label: accountLabel(session, parsed),
+    fi_type: parsed.fi_type,
+  };
+  if (parsed.fi_type === "DEPOSIT") {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { holder_dob, fi_type, ...facts } = parsed;
+    return { ...facts, ...base };
+  }
+  // Investment accounts: only the typed block, no transactions.
+  return {
+    ...base,
+    masked_acc_number: parsed.masked_ref,
+    account_type: null,
+    balance_paise: null,
+    balance_at: null,
+    data_from: parsed.data_from,
+    data_to: parsed.data_to,
+    transactions: [],
+    deposit_terms: "deposit_terms" in parsed ? parsed.deposit_terms : null,
+    holdings: "holdings" in parsed ? parsed.holdings : null,
+  };
+}
+
+function sessionFiType(session: FiSession): FiType | null {
+  const raw = session.fiType ?? session.FIType ?? session.fitype;
+  const name = typeof raw === "string" ? raw.trim().toUpperCase() : null;
+  return isFiType(name) ? name : null;
+}
+
+function processSessions(
+  response: GetDataResponse,
+  fetchedAt: string,
+  requested: FiType[] = DEFAULT_FI_TYPES,
+) {
   const sessions = Array.isArray(response.sessions) ? response.sessions : [];
   const accounts: ImportedAccount[] = [];
   const stored: StoredAccountData["accounts"] = [];
@@ -629,29 +748,41 @@ function processSessions(response: GetDataResponse, fetchedAt: string) {
         fipNonce: session.fipKeyMaterial.Nonce,
         encryptedFI: session.encryptedFI,
       });
-      const parsed = parseDepositFI(plaintext);
-      const { holder_dob, ...facts } = parsed;
+      const parsed = parseFI(plaintext, sessionFiType(session));
+      if (!requested.includes(parsed.fi_type)) {
+        // Not part of this consent: not kept (data minimisation).
+        accounts.push({
+          ...base,
+          account_label: accountLabel(session, parsed),
+          fi_type: parsed.fi_type,
+          error: envelope(
+            "not_requested",
+            "This account type wasn't part of your consent, so it wasn't kept.",
+            false,
+          ),
+        });
+        return;
+      }
       stored.push({
-        ...facts,
-        fip_id: session.fipId ?? null,
-        account_label: accountLabel(session, parsed),
-        holder_age: ageOn(holder_dob, new Date()),
+        ...toStored(parsed, session),
+        holder_age: ageOn(parsed.holder_dob, new Date()),
       });
-      const balanceDate = parsed.balance_at
-        ? istDate(new Date(parsed.balance_at))
+      const deposit = parsed.fi_type === "DEPOSIT" ? parsed : null;
+      const balanceDate = deposit?.balance_at
+        ? istDate(new Date(deposit.balance_at))
         : null;
+      const balance = deposit?.balance_paise ?? null;
       accounts.push({
         ...base,
         account_label: accountLabel(session, parsed),
+        fi_type: parsed.fi_type,
         status: "received",
         data_from: parsed.data_from,
         data_to: parsed.data_to,
         fetched_at: fetchedAt,
         balance:
-          parsed.balance_paise === null
-            ? null
-            : { amount_paise: parsed.balance_paise, currency: "INR" },
-        balance_as_of: parsed.balance_paise === null ? null : balanceDate,
+          balance === null ? null : { amount_paise: balance, currency: "INR" },
+        balance_as_of: balance === null ? null : balanceDate,
       });
     } catch (error) {
       decryptFailures++;
@@ -728,7 +859,7 @@ export async function collectIfPending(
     }
 
     fresh.pending = null; // single-use: the module has purged it
-    const processed = processSessions(result.body, at);
+    const processed = processSessions(result.body, at, linkFiTypes(fresh));
     fresh.accounts = processed.accounts;
     fresh.import_status = processed.status;
     if (processed.stored.length) {
@@ -807,6 +938,7 @@ export async function accountSummary(
       summary: summariseAccounts(data, {
         alertsAllowed: record.grants.alerts_and_actions,
         isSandbox: aaConfig.isSandbox,
+        requestedFiTypes: linkFiTypes(record),
       }),
     };
   }
@@ -833,12 +965,13 @@ export async function schemeCheck(
     return { status: "expired", safe_message: EXPIRED_MESSAGE };
   }
   if (read.status === "none") return { status: "no_data" };
-  const { data } = read;
+  const accounts = read.data.accounts.filter(isDepositAccount);
+  if (accounts.length === 0) return { status: "no_data" };
   const taggingAllowed = await hasConsent(sid, "insurance_tags");
   const tags = taggingAllowed ? await readTags(sid) : {};
-  const policies = detectPolicies(data.accounts, tags);
+  const policies = detectPolicies(accounts, tags);
   return {
-    ...checkJanSuraksha(data.accounts, { isSandbox: aaConfig.isSandbox }),
+    ...checkJanSuraksha(accounts, { isSandbox: aaConfig.isSandbox }),
     existing_cover: {
       policies,
       summary: summariseCover(policies),
@@ -875,7 +1008,9 @@ export async function tagPolicy(
   const read = await readData(record);
   if (read.status === "expired") return { ok: false, reason: "expired" };
   const data = read.status === "ready" ? read.data : null;
-  const policy = detectPolicies(data?.accounts ?? []).find(
+  const policy = detectPolicies(
+    (data?.accounts ?? []).filter(isDepositAccount),
+  ).find(
     (p) => p.policy_key === policyKey,
   );
   if (!policy) return { ok: false, reason: "not_found" };
@@ -918,11 +1053,11 @@ export async function coverHints(sid: string) {
       continue;
     }
     bankData = "ready";
-    const { data } = read;
-    for (const p of detectPolicies(data.accounts, tags)) {
+    const accounts = read.data.accounts.filter(isDepositAccount);
+    for (const p of detectPolicies(accounts, tags)) {
       policies.push({ ...p, link_id: id });
     }
-    const check = checkJanSuraksha(data.accounts);
+    const check = checkJanSuraksha(accounts);
     for (const f of check.findings) {
       const status =
         f.status === "premium_seen"

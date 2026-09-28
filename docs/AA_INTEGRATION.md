@@ -18,9 +18,9 @@ Anumati UAT sandbox, shown inside DhanYukti. This page is the runbook.
 - **UAT test journey:** any mobile number → Anumati's default UAT OTP (in
   the team chat) → pick **ACME Bank** → OTP again → approve.
 - **UAT facts from Anumati:** no return URL in UAT (the consent opens in a
-  new tab); ACME supports DEPOSIT, TERM-DEPOSIT, RECURRING_DEPOSIT,
+  new tab); ACME supports DEPOSIT, TERM_DEPOSIT, RECURRING_DEPOSIT,
   EQUITIES, MUTUAL_FUNDS, SIP; 12 months of data; XML format; schema at
-  https://api.rebit.org.in/schema.
+  https://api.rebit.org.in/schema. See "FI types" below.
 - **Demo note:** run the demo in Chrome, not an embedded browser pane, so
   the Anumati tab opens separately and the DhanYukti tab keeps its session.
 - **Storage:** Upstash Redis `dhanyukti-aa` (Free plan, Mumbai `bom1`).
@@ -78,7 +78,8 @@ Browser (DhanYukti)          DhanYukti server (Vercel)            Anumati FIU mo
 | `lib/server/aa/fiu-client.ts`         | Calls to the FIU module; the consent body we send       |
 | `lib/server/aa/links.ts`              | Link records, webhooks, collect + decrypt, revoke       |
 | `lib/server/aa/crypto.ts`             | curve25519 ECDH → HKDF-SHA256 → AES-256-GCM             |
-| `lib/server/aa/rebit.ts`              | ReBIT DEPOSIT (JSON or XML) → balances, transactions    |
+| `lib/server/aa/rebit.ts`              | ReBIT parsers per FI type (XML first, JSON too)         |
+| `lib/aa/fi-types.ts`                  | FI type names, labels, why lines, allow-list parsing    |
 | `lib/server/aa/store.ts`              | Upstash Redis (Vercel) or in-memory (local)             |
 | `app/api/aa/*`                        | Routes, incl. `webhooks/data-ready`, `webhooks/consent` |
 | `lib/provisional/h03/live-adapter.ts` | `ConsentPort` for the screens                           |
@@ -113,6 +114,59 @@ If something fails, the Vercel function logs show `[aa] …` lines with
 shortened references and the provider's HTTP status (never secrets or data).
 If data arrived but couldn't be decrypted, the encrypted payload is kept for
 24 hours under `aa:raw:<link id>` so it can be re-opened with the jar.
+
+## FI types
+
+DhanYukti can request six ReBIT FI types (exact enum names): `DEPOSIT`,
+`TERM_DEPOSIT`, `RECURRING_DEPOSIT`, `MUTUAL_FUNDS`, `SIP`, `EQUITIES`.
+
+- **What is requested** = the member's choice ∩ the server allow-list
+  `AA_FI_TYPES` (comma-separated, server env). **Unset → `DEPOSIT` only**, the
+  flow verified on 28 Sep. `/api/aa/status` shows `fi_types_allowed`.
+- **Member choice:** onboarding's Consent Passport shows "Which accounts to
+  share" with only the allow-listed types (only when more than one is
+  allowed). Savings is on; FD, RD, mutual funds, SIP and shares start off,
+  each with one line on why it helps. The choice is stored on the link
+  (`fi_types`); the connect step, the link card and the consent receipt list
+  exactly those types.
+- **Unchanged:** purpose 103, ONETIME, 12-month `dataRange`, `dataLife` and
+  `frequency` (verified with Anumati). Only `fiTypes` changes. Our 24 h
+  deletion stays stricter than `dataLife`.
+- **Parsing** (`lib/server/aa/rebit.ts`, fast-xml-parser): one parser per
+  type, field names from the ReBIT XSDs (v1.x and v2.0.0). DEPOSIT output is
+  identical to the verified parser (snapshot test). Extracted only:
+  FD/RD masked account, current value, principal, maturity amount and date,
+  rate, RD instalment and due day; mutual funds per scheme AMC, name, units,
+  NAV, as-of, plus the account's current and cost value; equities per holding
+  issuer, ISIN, units, last price, plus the account's current value; SIPs
+  scheme, amount, frequency, next/last date, status. ReBIT has no per-scheme
+  or per-holding value, so those stay null. Investment accounts keep no
+  transactions. A type that arrives but wasn't requested is not kept.
+- **Storage:** the same `aa:data` (24 h) and `aa:summary` (30 days) keys, and
+  the same revoke and "Delete everything" behaviour, for every type. The
+  savings facts (balance, inflow, recurring debits, Jan Suraksha, insurance)
+  read DEPOSIT accounts only.
+- **Reveal card:** "Savings & investments" (only when a non-DEPOSIT type was
+  requested): FD/RD total and next maturity, mutual funds and shares as
+  "market value, can go down", active SIPs with amount and next date. Each
+  row names its FI type; "not shared", "none found" and "not known" never
+  show as ₹0.
+- **Mock:** `scripts/mock-fiu-module.mjs` serves ReBIT XML for all six types
+  (builders in `scripts/mock-rebit-xml.mjs`) and only the requested ones.
+- **Tests:** `scripts/aa-fi-types-check.ts` (in `npm run test:engine`) and
+  the all-types journey in `npm run test:aa-summary`. Fixtures:
+  `scripts/fixtures/rebit/` (schema-shaped; see its README).
+
+**Turn on:** set `AA_FI_TYPES=DEPOSIT,TERM_DEPOSIT,RECURRING_DEPOSIT,MUTUAL_FUNDS,SIP,EQUITIES`
+in Vercel (Production) and redeploy.
+
+**Rollback:** set `AA_FI_TYPES=DEPOSIT` (or remove it) and redeploy. Links
+created but not yet sent to Anumati are narrowed to the allow-list at
+approval time.
+
+**Still to do after the first live multi-type run:** save ONE redacted
+sample per FI type (masked numbers, fake names) over the schema-shaped
+fixtures and re-run `npm run test:engine`. Never commit real data.
 
 ## Reveal summary
 

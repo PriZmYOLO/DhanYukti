@@ -18,8 +18,11 @@ import type {
   AccountSummary,
   MonthlyInflow,
   RecurringDebit,
+  SavingsInvestments,
   SummaryJanSuraksha,
 } from "../../contracts/aa-summary";
+import type { FiType } from "../../aa/fi-types";
+import type { DepositTerms, Holdings } from "./rebit";
 import type { MoneyPaise } from "../../contracts/common";
 import {
   checkJanSuraksha,
@@ -30,6 +33,154 @@ import {
 export interface SummaryAccountInput extends CheckAccount {
   balance_paise: number | null;
   balance_at: string | null;
+  /** Absent = DEPOSIT (data stored before FI types). */
+  fi_type?: FiType;
+  deposit_terms?: DepositTerms | null;
+  holdings?: Holdings | null;
+}
+
+const isDeposit = (a: SummaryAccountInput) =>
+  (a.fi_type ?? "DEPOSIT") === "DEPOSIT";
+
+function sumKnown(values: (number | null)[]) {
+  const known = values.filter((v): v is number => v !== null);
+  return {
+    total: known.length ? money(known.reduce((s, v) => s + v, 0)) : null,
+    missing: values.length - known.length,
+  };
+}
+
+/**
+ * FD/RD, mutual funds, shares and SIPs, each labelled by its FI type.
+ * "not_requested" and "none_found" are different from a value of 0.
+ */
+function savingsInvestments(
+  accounts: SummaryAccountInput[],
+  requested: FiType[],
+  today: string,
+): SavingsInvestments {
+  const of = (...types: FiType[]) =>
+    accounts.filter((a) => types.includes(a.fi_type ?? "DEPOSIT"));
+  const wanted = (...types: FiType[]) =>
+    types.some((t) => requested.includes(t));
+
+  const tdRd = of("TERM_DEPOSIT", "RECURRING_DEPOSIT");
+  const maturities = tdRd
+    .filter(
+      (a) =>
+        a.deposit_terms?.maturity_date &&
+        a.deposit_terms.maturity_date >= today,
+    )
+    .sort((a, b) =>
+      a.deposit_terms!.maturity_date!.localeCompare(
+        b.deposit_terms!.maturity_date!,
+      ),
+    );
+  const next = maturities[0];
+  const tdValues = sumKnown(
+    tdRd.map((a) => a.deposit_terms?.current_value_paise ?? null),
+  );
+
+  const mf = of("MUTUAL_FUNDS");
+  const mfHoldings = mf.map((a) =>
+    a.holdings?.kind === "mutual_funds" ? a.holdings : null,
+  );
+  const mfValue = sumKnown(
+    mfHoldings.map((h) => h?.current_value_paise ?? null),
+  );
+  const mfCost = sumKnown(mfHoldings.map((h) => h?.cost_value_paise ?? null));
+  const navDates = mfHoldings
+    .flatMap((h) => h?.schemes.map((s) => s.as_of) ?? [])
+    .filter((d): d is string => d !== null)
+    .sort();
+
+  const eq = of("EQUITIES");
+  const eqHoldings = eq.map((a) =>
+    a.holdings?.kind === "equities" ? a.holdings : null,
+  );
+  const eqValue = sumKnown(
+    eqHoldings.map((h) => h?.current_value_paise ?? null),
+  );
+
+  const sipRows = of("SIP").flatMap((a) =>
+    a.holdings?.kind === "sip" ? a.holdings.sips : [],
+  );
+  const active = sipRows
+    .filter((s) => s.status === "active")
+    .sort((a, b) =>
+      (a.next_date ?? "9999").localeCompare(b.next_date ?? "9999"),
+    );
+
+  return {
+    requested,
+    deposits: !wanted("TERM_DEPOSIT", "RECURRING_DEPOSIT")
+      ? { status: "not_requested" }
+      : tdRd.length === 0
+        ? { status: "none_found" }
+        : {
+            status: "ready",
+            source_fi_types: (
+              ["TERM_DEPOSIT", "RECURRING_DEPOSIT"] as const
+            ).filter((t) => tdRd.some((a) => a.fi_type === t)),
+            accounts: tdRd.length,
+            total_current_value: tdValues.total,
+            accounts_without_value: tdValues.missing,
+            next_maturity: next
+              ? {
+                  date: next.deposit_terms!.maturity_date!,
+                  amount:
+                    next.deposit_terms!.maturity_amount_paise === null
+                      ? null
+                      : money(next.deposit_terms!.maturity_amount_paise),
+                  fi_type: next.fi_type as "TERM_DEPOSIT" | "RECURRING_DEPOSIT",
+                  account_label: next.account_label,
+                }
+              : null,
+          },
+    mutual_funds: !wanted("MUTUAL_FUNDS")
+      ? { status: "not_requested" }
+      : mf.length === 0
+        ? { status: "none_found" }
+        : {
+            status: "ready",
+            current_value: mfValue.total,
+            cost_value: mfCost.total,
+            schemes: mfHoldings.reduce(
+              (n, h) => n + (h?.schemes.length ?? 0),
+              0,
+            ),
+            accounts_without_value: mfValue.missing,
+            as_of: navDates.length ? navDates[navDates.length - 1] : null,
+          },
+    equities: !wanted("EQUITIES")
+      ? { status: "not_requested" }
+      : eq.length === 0
+        ? { status: "none_found" }
+        : {
+            status: "ready",
+            current_value: eqValue.total,
+            holdings: eqHoldings.reduce(
+              (n, h) => n + (h?.holdings.length ?? 0),
+              0,
+            ),
+            accounts_without_value: eqValue.missing,
+          },
+    sips: !wanted("SIP")
+      ? { status: "not_requested" }
+      : of("SIP").length === 0
+        ? { status: "none_found" }
+        : {
+            status: "ready",
+            active: active.map((s) => ({
+              scheme: s.scheme,
+              amc: s.amc,
+              amount: s.amount_paise === null ? null : money(s.amount_paise),
+              frequency: s.frequency,
+              next_date: s.next_date,
+            })),
+            ceased: sipRows.filter((s) => s.status === "ceased").length,
+          },
+  };
 }
 
 const TOLERANCE = 0.15;
@@ -87,6 +238,13 @@ function completeMonths(from: string, to: string): string[] {
 }
 
 function monthlyInflow(accounts: CheckAccount[]): MonthlyInflow {
+  if (accounts.length === 0) {
+    return {
+      status: "unknown",
+      months_counted: 0,
+      reason: "No savings account was shared.",
+    };
+  }
   const windows = accounts
     .filter((a) => a.transactions.length > 0 || (a.data_from && a.data_to))
     .map(accountWindow);
@@ -137,8 +295,26 @@ function monthlyInflow(accounts: CheckAccount[]): MonthlyInflow {
 }
 
 const CHANNEL_WORDS = new Set([
-  "UPI", "ACH", "NACH", "NEFT", "IMPS", "RTGS", "ECS", "POS", "ATM", "DR",
-  "CR", "TO", "BY", "TRF", "TRANSFER", "PAYMENT", "P2A", "P2M", "MB", "IB",
+  "UPI",
+  "ACH",
+  "NACH",
+  "NEFT",
+  "IMPS",
+  "RTGS",
+  "ECS",
+  "POS",
+  "ATM",
+  "DR",
+  "CR",
+  "TO",
+  "BY",
+  "TRF",
+  "TRANSFER",
+  "PAYMENT",
+  "P2A",
+  "P2M",
+  "MB",
+  "IB",
 ]);
 
 /**
@@ -161,9 +337,7 @@ export function payeeKey(narration: string | null): string | null {
 }
 
 function payeeLabel(key: string): string {
-  return key
-    .toLowerCase()
-    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  return key.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
 function recurringDebits(accounts: SummaryAccountInput[]): {
@@ -221,7 +395,7 @@ function recurringDebits(accounts: SummaryAccountInput[]): {
       ? `The data covers fewer than ${MIN_MONTHS} complete months, too short to see repeats.`
       : byPayee.size === 0
         ? "No debits with a readable payee and amount in the data."
-      : `No payee was paid a similar amount (within ${TOLERANCE * 100}%) in ${MIN_MONTHS} or more different months.`;
+        : `No payee was paid a similar amount (within ${TOLERANCE * 100}%) in ${MIN_MONTHS} or more different months.`;
   return { items: items.slice(0, TOP), reason };
 }
 
@@ -253,9 +427,20 @@ export function summariseAccounts(
     fetched_at: string;
     accounts: SummaryAccountInput[];
   },
-  options: { alertsAllowed: boolean; isSandbox: boolean; now?: Date },
+  options: {
+    alertsAllowed: boolean;
+    isSandbox: boolean;
+    now?: Date;
+    /** FI types the link asked for; absent = DEPOSIT only. */
+    requestedFiTypes?: FiType[];
+  },
 ): AccountSummary {
-  const { accounts } = input;
+  // Balance, window, inflow, recurring debits and Jan Suraksha read savings
+  // accounts only: FD interest or MF redemptions are not income.
+  const accounts = input.accounts.filter(isDeposit);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(options.now ?? new Date());
   const known = accounts.filter((a) => a.balance_paise !== null);
   const windows = accounts
     .map(accountWindow)
@@ -288,5 +473,10 @@ export function summariseAccounts(
     monthly_inflow: monthlyInflow(accounts),
     recurring_debits: recurringDebits(accounts),
     jan_suraksha: janSuraksha(accounts, options),
+    savings_investments: savingsInvestments(
+      input.accounts,
+      options.requestedFiTypes ?? ["DEPOSIT"],
+      today,
+    ),
   };
 }

@@ -28,11 +28,17 @@
  * (to rehearse the partial state).
  * Mobile number ending in 3 → only the last 40 days of history (fewer than
  * 2 complete months, so monthly inflow must come back "unknown").
+ *
+ * FI types: the data is ReBIT XML for every type, and only the types in the
+ * consent's fiTypes are delivered. DEPOSIT → the two savings accounts
+ * below; TERM_DEPOSIT, RECURRING_DEPOSIT, MUTUAL_FUNDS, EQUITIES, SIP → one
+ * ACME test account each (values in scripts/mock-rebit-xml.mjs).
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
 import { encryptFI, generateKeyMaterial } from "../src/lib/server/aa/crypto.ts";
+import { depositXml, investmentXml } from "./mock-rebit-xml.mjs";
 
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
 const APP = (process.env.MOCK_APP_URL ?? "http://localhost:3000").replace(
@@ -165,31 +171,12 @@ function rebitDeposit(
       push(d(28), "DEBIT", "ACH", 20, "PMSBY PREMIUM RENEWAL");
     }
   }
-  return JSON.stringify({
-    Account: {
-      type: "deposit",
-      maskedAccNumber: masked,
-      linkedAccRef: randomUUID(),
-      version: "1.1",
-      Profile: {
-        Holders: {
-          type: "SINGLE",
-          Holder: { name: "TEST USER", dob: "1994-03-15" },
-        },
-      },
-      Summary: {
-        currentBalance: balance.toFixed(2),
-        currency: "INR",
-        balanceDateTime: today.toISOString(),
-        type: "SAVINGS",
-        status: "ACTIVE",
-      },
-      Transactions: {
-        startDate: start.toISOString().slice(0, 10),
-        endDate: today.toISOString().slice(0, 10),
-        Transaction: txns,
-      },
-    },
+  return depositXml({
+    masked,
+    balance: balance.toFixed(2),
+    start,
+    today,
+    txns,
   });
 }
 
@@ -203,10 +190,42 @@ async function deliver(journey) {
   });
   // UAT key escrow: the FIU key pair is made here and returned with the data.
   const fiu = generateKeyMaterial("weierstrass");
-  const accounts = [
-    { fipId: "SBI-FIP-UAT", masked: "XXXXXXXX9648" },
-    { fipId: "HDFC-FIP-UAT", masked: "XXXXXXXX2231" },
-  ];
+  const wanted = journey.fiTypes;
+  const accounts = wanted.includes("DEPOSIT")
+    ? [
+        { fipId: "SBI-FIP-UAT", masked: "XXXXXXXX9648" },
+        { fipId: "HDFC-FIP-UAT", masked: "XXXXXXXX2231" },
+      ]
+    : [];
+  const encrypt = (plaintext) => {
+    const fip = generateKeyMaterial("weierstrass");
+    return {
+      encryptedFI: encryptFI({
+        fipPrivateKey: fip.privateKeyPem,
+        fipNonce: fip.nonce,
+        ourPublicKey: fiu.publicKeyPem,
+        ourNonce: fiu.nonce,
+        plaintext,
+      }),
+      fipKeyMaterial: {
+        cryptoAlg: "ECDH",
+        curve: "Curve25519",
+        Nonce: fip.nonce,
+        DHPublicKey: {
+          KeyValue: fip.publicKeyPem,
+          expiry: new Date(Date.now() + 864e5).toISOString(),
+        },
+      },
+    };
+  };
+  // One ACME test account per requested investment type (ReBIT XML).
+  const investments = wanted
+    .filter((t) => t !== "DEPOSIT")
+    .map((t, j) => ({
+      fipId: "ACME-FIP-UAT",
+      linkRefNumber: `lrn-inv-${j + 1}`,
+      ...encrypt(investmentXml(t)),
+    }));
   const sessions = accounts.map((a, i) => {
     if (i === 1 && journey.mobile.endsWith("0")) {
       return {
@@ -245,6 +264,7 @@ async function deliver(journey) {
       },
     };
   });
+  sessions.push(...investments);
   const id = `dr_${randomBytes(6).toString("hex")}`;
   const secret = `s_${randomBytes(8).toString("hex")}`;
   const expires = new Date(Date.now() + 30 * 60 * 1000);
@@ -311,6 +331,7 @@ createServer(async (req, res) => {
       consentHandle: randomUUID(),
       mobile,
       state: "PENDING",
+      fiTypes: Array.isArray(c.fiTypes) ? c.fiTypes : ["DEPOSIT"],
     };
     journeys.set(moduleReference, journey);
     const response = {
@@ -341,7 +362,7 @@ createServer(async (req, res) => {
       page(
         "Approve consent",
         `<h1>DhanYukti requests your bank data</h1>
-<p>Purpose: aggregated statement · Savings accounts · 12 months · once.</p>
+<p>Purpose: aggregated statement · ${j.fiTypes.join(", ")} · 12 months · once.</p>
 <p>Accounts found for ${j.mobile.replace(/^(\d{2})\d{6}/, "$1******")}: SBI ••9648, HDFC ••2231</p>
 <form method="post" action="/web-redirect/decide?ref=${j.moduleReference}&d=approve"><button style="font-size:1.1rem;padding:.6rem 1rem">Approve</button></form>
 <form method="post" action="/web-redirect/decide?ref=${j.moduleReference}&d=reject" style="margin-top:.5rem"><button>Decline</button></form>`,

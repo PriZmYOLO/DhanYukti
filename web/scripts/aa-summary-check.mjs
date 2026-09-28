@@ -18,6 +18,11 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { connect } from "node:net";
 
+import { MOCK_INVESTMENTS } from "./mock-rebit-xml.mjs";
+
+const ALL_FI = ["DEPOSIT", "TERM_DEPOSIT", "RECURRING_DEPOSIT", "MUTUAL_FUNDS", "SIP", "EQUITIES"];
+const paise = (rupees) => Math.round(Number(rupees) * 100);
+
 const APP_PORT = Number(process.env.CHECK_APP_PORT ?? 3108);
 const MOCK_PORT = Number(process.env.CHECK_MOCK_PORT ?? 4010);
 const APP = `http://localhost:${APP_PORT}`;
@@ -97,13 +102,14 @@ async function call(cookie, method, path, body) {
 }
 
 /** Link → approve at the mock → wait for the data → read the summary. */
-async function journey(mobile, alerts) {
+async function journey(mobile, alerts, fiTypes) {
   const cookie = await newSession();
   const created = await call(cookie, "POST", "/api/aa/links", {
     source_access: true,
     household_computation: false,
     viewer_scope: "only_me",
     alerts_and_actions: alerts,
+    ...(fiTypes ? { fi_types: fiTypes } : {}),
   });
   const id = created.body.link.link_id;
   const handoff = await call(cookie, "POST", `/api/aa/links/${id}/approval`, {
@@ -150,6 +156,8 @@ async function main() {
     UPSTASH_REDIS_REST_URL: "",
     UPSTASH_REDIS_REST_TOKEN: "",
     VERCEL: "",
+    // Every type allowed: journeys that send no choice must stay DEPOSIT-only.
+    AA_FI_TYPES: ALL_FI.join(","),
   });
   await waitFor(async () => (await fetch(MOCK)).status === 404, 20_000, "mock");
   await waitFor(
@@ -247,6 +255,27 @@ async function main() {
     off.summary.body?.summary?.jan_suraksha.status === "not_checked_consent_off",
     JSON.stringify(off.summary.body?.summary?.jan_suraksha),
   );
+
+  // 3b. All six FI types shared (XML for each from the mock).
+  check("no choice sent: link is DEPOSIT only, even with every type allowed", JSON.stringify(full.link.fi_types) === '["DEPOSIT"]', full.link.fi_types);
+  check("no choice sent: no investment block shown", s.savings_investments.requested.length === 1 && s.savings_investments.deposits.status === "not_requested");
+  const all = await journey("9876543215", true, ALL_FI);
+  const a = all.summary.body?.summary;
+  const si = a?.savings_investments;
+  const m = MOCK_INVESTMENTS;
+  check("all types: link and terms list exactly the six requested", JSON.stringify(all.link.fi_types) === JSON.stringify(ALL_FI) && JSON.stringify(all.link.terms.fi_types) === JSON.stringify(ALL_FI), all.link.fi_types);
+  check("all types: savings facts unchanged by investments (₹65,000 inflow, 298 txns)", a?.monthly_inflow.median?.amount_paise === 65_000_00 && a.window.transaction_count === 298, { inflow: a?.monthly_inflow, n: a?.window.transaction_count });
+  check("all types: FD+RD ₹1,35,390.95, next maturity = FD ₹1,12,550",
+    si?.deposits.status === "ready" && si.deposits.total_current_value?.amount_paise === paise(m.TERM_DEPOSIT.current) + paise(m.RECURRING_DEPOSIT.current) &&
+      si.deposits.next_maturity?.fi_type === "TERM_DEPOSIT" && si.deposits.next_maturity.amount?.amount_paise === paise(m.TERM_DEPOSIT.maturityAmount), si?.deposits);
+  check("all types: MF ₹1,71,234.56 (cost ₹1,50,000), shares ₹84,500",
+    si?.mutual_funds.current_value?.amount_paise === paise(m.MUTUAL_FUNDS.current) && si.mutual_funds.cost_value?.amount_paise === paise(m.MUTUAL_FUNDS.cost) && si.equities.current_value?.amount_paise === paise(m.EQUITIES.current), { mf: si?.mutual_funds, eq: si?.equities });
+  check("all types: one active SIP ₹5,000 with a next date", si?.sips.status === "ready" && si.sips.active.length === 1 && si.sips.active[0].amount.amount_paise === paise(m.SIP.active.amount) && !!si.sips.active[0].next_date, si?.sips);
+  check("all types: summary still carries no holdings detail beyond counts", !/isin|INF000|INE000|closingUnits|SIP-1/i.test(JSON.stringify(all.summary.body)));
+  const status = await call(null, "GET", "/api/aa/status");
+  check("status lists the allow-list (names only)", JSON.stringify(status.body?.fi_types_allowed) === JSON.stringify(ALL_FI));
+  await call(all.cookie, "POST", `/api/aa/links/${all.id}/revoke`, {});
+  check("all types: after revoke, 404", (await call(all.cookie, "GET", `/api/aa/links/${all.id}/summary`)).status === 404);
 
   // 4. Another session, no session, unknown link.
   const other = await newSession();

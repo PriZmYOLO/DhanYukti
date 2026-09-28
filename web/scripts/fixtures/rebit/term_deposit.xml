@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Account xmlns="http://api.rebit.org.in/FISchema/term_deposit" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" linkedAccRef="test-ref-2" maskedAccNumber="XXXXXXXX7001" version="1.1" type="term_deposit">
+  <Profile>
+    <Holders type="SINGLE">
+      <Holder name="TEST HOLDER" dob="1994-03-15" mobile="9999999999" nominee="REGISTERED" email="test@example.invalid" pan="AAAAA0000A" ckycCompliance="true"/>
+    </Holders>
+  </Profile>
+  <Summary openingDate="2025-03-15" accountType="FIXED" branch="TEST BRANCH" ifsc="TEST0000001" maturityAmount="112550.00" description="FD" interestPayout="ON_MATURITY" interestRate="7.10" maturityDate="2027-03-15" principalAmount="100000.00" tenureDays="0" tenureMonths="0" tenureYears="2" interestComputation="COMPOUND" compoundingFrequency="QUARTERLY" interestPeriodicPayoutAmount="" interestOnMaturity="12550.00" currentValue="104250.75"/>
+  <Transactions startDate="2025-09-25" endDate="2026-09-25">
+    <Transaction txnId="F1" amount="1780.25" narration="INTEREST CREDIT" type="INTEREST" mode="OTHERS" balance="104250.75" transactionDateTime="2026-06-30T00:00:00+05:30" valueDate="2026-06-30" reference=""/>
+  </Transactions>
+</Account>

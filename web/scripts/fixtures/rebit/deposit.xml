@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Account xmlns="http://api.rebit.org.in/FISchema/deposit" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" linkedAccRef="test-ref-1" maskedAccNumber="XXXXXXXX9648" version="1.1" type="deposit">
+  <Profile>
+    <Holders type="SINGLE">
+      <Holder name="TEST HOLDER" dob="1994-03-15" mobile="9999999999" nominee="NOT-REGISTERED" email="test@example.invalid" pan="AAAAA0000A" ckycCompliance="true"/>
+    </Holders>
+  </Profile>
+  <Summary currentBalance="12345.50" currency="INR" exchgeRate="" balanceDateTime="2026-09-25T10:00:00+05:30" type="SAVINGS" branch="TEST BRANCH" facility="OD" ifscCode="TEST0000001" micrCode="" openingDate="2018-06-01" currentODLimit="0" drawingLimit="0" status="ACTIVE">
+    <Pending amount="0"/>
+  </Summary>
+  <Transactions startDate="2025-09-25" endDate="2026-09-25">
+    <Transaction txnId="T0001" type="CREDIT" mode="NEFT" amount="30000.00" currentBalance="31250.00" transactionTimestamp="2026-09-01T09:00:00+05:30" valueDate="2026-09-01" narration="SALARY TEST EMPLOYER" reference="R1"/>
+    <Transaction txnId="T0002" type="DEBIT" mode="UPI" amount="9,000.00" currentBalance="22250.00" transactionTimestamp="2026-09-05T09:00:00+05:30" valueDate="2026-09-05" narration="UPI/RENT/TEST LANDLORD" reference="R2"/>
+    <Transaction txnId="T0003" type="DEBIT" mode="ACH" amount="436" currentBalance="" transactionTimestamp="2026-05-28T09:00:00+05:30" valueDate="2026-05-28" narration="PMJJBY PREMIUM RENEWAL" reference="R3"/>
+    <Transaction txnId="T0004" type="OPENING" mode="OTHERS" amount="abc" currentBalance="1250.00" transactionTimestamp="" valueDate="" narration="" reference=""/>
+  </Transactions>
+</Account>

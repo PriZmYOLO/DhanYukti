@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Account xmlns="http://api.rebit.org.in/FISchema/recurring_deposit" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" linkedAccRef="test-ref-3" maskedAccNumber="XXXXXXXX7002" version="1.1" type="recurring_deposit">
+  <Profile>
+    <Holders type="SINGLE">
+      <Holder name="TEST HOLDER" dob="1994-03-15" mobile="9999999999" nominee="REGISTERED" email="test@example.invalid" pan="AAAAA0000A" ckycCompliance="true"/>
+    </Holders>
+  </Profile>
+  <Summary accountType="RECURRING" openingDate="2025-09-10" branch="TEST BRANCH" ifsc="TEST0000001" maturityAmount="63210.00" maturityDate="2027-09-10" description="RD" interestPayout="ON_MATURITY" interestRate="6.75" principalAmount="30000.00" tenureDays="0" tenureMonths="24" tenureYears="0" recurringAmount="2500.00" recurringDepositDay="10" interestComputation="COMPOUND" compoundingFrequency="QUARTERLY" interestPeriodicPayoutAmount="" interestOnMaturity="" currentValue="31140.20"/>
+  <Transactions startDate="2025-09-25" endDate="2026-09-25">
+    <Transaction txnId="R1" amount="2500.00" narration="RD INSTALMENT" type="INSTALLMENT" mode="OTHERS" balance="31140.20" transactionDateTime="2026-09-10T00:00:00+05:30" valueDate="2026-09-10" reference=""/>
+  </Transactions>
+</Account>

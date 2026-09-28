@@ -1,0 +1,45 @@
+{
+  "Account": {
+    "type": "deposit",
+    "maskedAccNumber": "XXXXXXXX2231",
+    "version": "1.1",
+    "Profile": {
+      "Holders": {
+        "type": "SINGLE",
+        "Holder": { "name": "TEST HOLDER", "dob": "1990-01-20" }
+      }
+    },
+    "Summary": {
+      "currentBalance": "5000.00",
+      "currency": "INR",
+      "balanceDateTime": "2026-09-25T10:00:00+05:30",
+      "type": "SAVINGS"
+    },
+    "Transactions": {
+      "startDate": "2025-09-25",
+      "endDate": "2026-09-25",
+      "Transaction": [
+        {
+          "txnId": "J1",
+          "type": "CREDIT",
+          "mode": "NEFT",
+          "amount": "35000.00",
+          "currentBalance": "36000.00",
+          "transactionTimestamp": "2026-09-01T09:00:00+05:30",
+          "valueDate": "2026-09-01",
+          "narration": "SALARY TEST EMPLOYER"
+        },
+        {
+          "txnId": "J2",
+          "type": "DEBIT",
+          "mode": "UPI",
+          "amount": "31000.00",
+          "currentBalance": "5000.00",
+          "transactionTimestamp": "2026-09-10T09:00:00+05:30",
+          "valueDate": "2026-09-10",
+          "narration": "UPI/TEST SHOP"
+        }
+      ]
+    }
+  }
+}

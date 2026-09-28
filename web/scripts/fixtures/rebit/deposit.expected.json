@@ -1,0 +1,135 @@
+{
+  "deposit.xml": {
+    "masked_acc_number": "XXXXXXXX9648",
+    "account_type": "SAVINGS",
+    "balance_paise": 1234550,
+    "balance_at": "2026-09-25T10:00:00+05:30",
+    "data_from": "2025-09-25",
+    "data_to": "2026-09-25",
+    "holder_dob": "1994-03-15",
+    "transactions": [
+      {
+        "txn_id": "T0001",
+        "type": "CREDIT",
+        "mode": "NEFT",
+        "amount_paise": 3000000,
+        "balance_paise": 3125000,
+        "value_date": "2026-09-01",
+        "timestamp": "2026-09-01T09:00:00+05:30",
+        "narration": "SALARY TEST EMPLOYER"
+      },
+      {
+        "txn_id": "T0002",
+        "type": "DEBIT",
+        "mode": "UPI",
+        "amount_paise": 900000,
+        "balance_paise": 2225000,
+        "value_date": "2026-09-05",
+        "timestamp": "2026-09-05T09:00:00+05:30",
+        "narration": "UPI/RENT/TEST LANDLORD"
+      },
+      {
+        "txn_id": "T0003",
+        "type": "DEBIT",
+        "mode": "ACH",
+        "amount_paise": 43600,
+        "balance_paise": null,
+        "value_date": "2026-05-28",
+        "timestamp": "2026-05-28T09:00:00+05:30",
+        "narration": "PMJJBY PREMIUM RENEWAL"
+      },
+      {
+        "txn_id": "T0004",
+        "type": null,
+        "mode": "OTHERS",
+        "amount_paise": null,
+        "balance_paise": 125000,
+        "value_date": null,
+        "timestamp": null,
+        "narration": null
+      }
+    ]
+  },
+  "deposit-prefixed.xml": {
+    "masked_acc_number": "XXXXXXXX9648",
+    "account_type": "SAVINGS",
+    "balance_paise": 1234550,
+    "balance_at": "2026-09-25T10:00:00+05:30",
+    "data_from": "2025-09-25",
+    "data_to": "2026-09-25",
+    "holder_dob": "1994-03-15",
+    "transactions": [
+      {
+        "txn_id": "T0001",
+        "type": "CREDIT",
+        "mode": "NEFT",
+        "amount_paise": 3000000,
+        "balance_paise": 3125000,
+        "value_date": "2026-09-01",
+        "timestamp": "2026-09-01T09:00:00+05:30",
+        "narration": "SALARY TEST EMPLOYER"
+      },
+      {
+        "txn_id": "T0002",
+        "type": "DEBIT",
+        "mode": "UPI",
+        "amount_paise": 900000,
+        "balance_paise": 2225000,
+        "value_date": "2026-09-05",
+        "timestamp": "2026-09-05T09:00:00+05:30",
+        "narration": "UPI/RENT/TEST LANDLORD"
+      },
+      {
+        "txn_id": "T0003",
+        "type": "DEBIT",
+        "mode": "ACH",
+        "amount_paise": 43600,
+        "balance_paise": null,
+        "value_date": "2026-05-28",
+        "timestamp": "2026-05-28T09:00:00+05:30",
+        "narration": "PMJJBY PREMIUM RENEWAL"
+      },
+      {
+        "txn_id": "T0004",
+        "type": null,
+        "mode": "OTHERS",
+        "amount_paise": null,
+        "balance_paise": 125000,
+        "value_date": null,
+        "timestamp": null,
+        "narration": null
+      }
+    ]
+  },
+  "deposit.json": {
+    "masked_acc_number": "XXXXXXXX2231",
+    "account_type": "SAVINGS",
+    "balance_paise": 500000,
+    "balance_at": "2026-09-25T10:00:00+05:30",
+    "data_from": "2025-09-25",
+    "data_to": "2026-09-25",
+    "holder_dob": "1990-01-20",
+    "transactions": [
+      {
+        "txn_id": "J1",
+        "type": "CREDIT",
+        "mode": "NEFT",
+        "amount_paise": 3500000,
+        "balance_paise": 3600000,
+        "value_date": "2026-09-01",
+        "timestamp": "2026-09-01T09:00:00+05:30",
+        "narration": "SALARY TEST EMPLOYER"
+      },
+      {
+        "txn_id": "J2",
+        "type": "DEBIT",
+        "mode": "UPI",
+        "amount_paise": 3100000,
+        "balance_paise": 500000,
+        "value_date": "2026-09-10",
+        "timestamp": "2026-09-10T09:00:00+05:30",
+        "narration": "UPI/TEST SHOP"
+      }
+    ]
+  }
+}

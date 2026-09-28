@@ -9,6 +9,7 @@
  *
  * Fact corrections moved to the H07 port in L05 (lib/provisional/h07).
  */
+import type { FiType } from "@/lib/aa/fi-types";
 import type {
   ErrorEnvelope,
   IsoDate,
@@ -51,6 +52,11 @@ export interface ConsentChoices {
   viewer_scope: ViewerScope;
   /** ActionGrant: alerts and suggested actions based on it. */
   alerts_and_actions: boolean;
+  /**
+   * "Which accounts to share" (ReBIT FI types). The server requests the
+   * choice ∩ its allow-list (AA_FI_TYPES); absent → savings only.
+   */
+  fi_types?: FiType[];
 }
 
 export const DEFAULT_CHOICES: ConsentChoices = {
@@ -68,6 +74,8 @@ export interface ConsentRequestTerms {
   /** The regulated Account Aggregator partner; null = not yet named. */
   partner_name: string | null;
   data_kind: "savings_account_transactions";
+  /** Exactly the FI types this request asks for (ReBIT enum names). */
+  fi_types: FiType[];
   /** How far back transactions are requested. */
   history_months: number;
   purposes: ("budgeting" | "bill_protection" | "aggregated_statement")[];
@@ -83,6 +91,8 @@ export interface ImportedAccount {
   account_id: string;
   /** e.g. "Savings account · Demo Bank A (fixture)". Never a full number. */
   account_label: string;
+  /** ReBIT FI type of this account; absent = DEPOSIT. */
+  fi_type?: FiType;
   status: "received" | "processing" | "failed";
   /** Period the received transactions cover; null until known. */
   data_from: IsoDate | null;
@@ -122,6 +132,8 @@ export interface LinkActivity {
 /** One member's link to one source: its consent plus what was imported. */
 export interface SourceLink {
   link_id: string;
+  /** The FI types requested for this link (choice ∩ server allow-list). */
+  fi_types: FiType[];
   source_label: string;
   is_demo: boolean;
   terms: ConsentRequestTerms;
