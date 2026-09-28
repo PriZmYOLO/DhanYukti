@@ -9,6 +9,7 @@ from app.engines import e06_protection as e06
 from app.engines import e13_priority as e13
 from app.engines import e14_nba as e14
 from app.engines import e16_confidence as e16
+from app.engines import e17_whatif as e17
 from app.engines.common import EN_MONTHS, L, P, R, add_days, d, inr, iso
 from app.engines.e01_normalise import normalise, spend_last_month, txn_out
 from app.fixtures.households import get_household
@@ -42,6 +43,7 @@ def apply_overlay(hh: dict, overlay: dict) -> dict:
             if not ev or attr not in ("date", "amount"):
                 raise CorrectionError(field)
             ev[attr] = int(value) if attr == "amount" else str(value)
+            ev["_corrected"] = True
         elif field.startswith("member:"):
             mid, _, attr = field[7:].partition(".")
             m = next((m for m in hh["members"] if m["id"] == mid), None)
@@ -63,6 +65,7 @@ def load(hid: str) -> dict | None:
     if not hh:
         return None
     hh = apply_overlay(hh, store.STATE["overlays"].get(hh["id"], {}))
+    e17.annotate_certainty(hh["upcoming"], hh["transactions"])
     hh["jars_live"] = game.jars_with_suggest(hh["id"], hh["as_of"])
     return hh
 
@@ -258,24 +261,75 @@ def household_list() -> list[dict]:
 # --------------------------------------------------------------------------------------------
 # Simulate (scenario branch on a copy)
 # --------------------------------------------------------------------------------------------
-def simulate(hid: str, moves=None, shock_amount: int = 0, salary_delay_days: int = 0, cut_per_day: int = 0) -> dict | None:
+def simulate(hid: str, moves=None, shock_amount: int = 0, salary_delay_days: int = 0, cut_per_day: int = 0,
+             purchase: dict | None = None) -> dict | None:
+    """Scenario branch. Returns the after-river plus the before figures on the same baseline and horizon,
+    the responses that would (or would not) close a shortfall, loan terms, and goal impact."""
     hh = load(hid)
     if not hh:
         return None
     base_ctx = compute(hh)
     base = base_ctx["cash"]
-    scen = e03.run(hh, moves=moves, shock_amount=shock_amount or 0, salary_delay_days=salary_delay_days or 0,
-                   cut_per_day=cut_per_day or 0)
+
+    extra: list[dict] = []
+    loan = None
+    purchase_out = None
+    if purchase:
+        amount, pay = int(purchase["amount"]), purchase.get("pay", "cash")
+        if pay == "loan":
+            loan = e17.loan_terms(amount, purchase.get("loan"))
+        extra = e17.purchase_events(hh["as_of"], amount, pay, loan)
+        purchase_out = {"amount": amount, "pay": pay}
+
+    kwargs = dict(moves=moves, shock_amount=shock_amount or 0, salary_delay_days=salary_delay_days or 0,
+                  cut_per_day=cut_per_day or 0, extra=extra)
+    scen = e03.run(hh, **kwargs)
     ess_p = max(0, P(hh["essentials_per_day"]) - P(cut_per_day or 0))
     emergency_p = sum(P(j["saved"]) for j in hh["jars_live"] if j["kind"] == "emergency")
     idle_p = sum(a["balance_p"] for a in base_ctx["norm"]["idle_accounts"])
-    liquid_p = P(hh["closing_balance"]) - P(abs(shock_amount or 0)) + idle_p + emergency_p
+    spend_now_p = P(abs(shock_amount or 0)) + sum(-P(x["amount"]) for x in extra if x["date"] == iso(add_days(d(hh["as_of"]), 1)))
+    liquid_p = P(hh["closing_balance"]) - spend_now_p + idle_p + emergency_p
     res = e05.resilience_days(liquid_p, ess_p, base_ctx["norm"]["fixed_monthly_p"])
     gap_before, gap_after = R(base["gap_p"]), R(scen["gap_p"])
-    return {"river": scen["river"], "resilience_days": res, "gap_before": gap_before, "gap_after": gap_after,
-            "message": scenario_message(hh, base, scen, moves or [], shock_amount or 0, salary_delay_days or 0,
-                                        cut_per_day or 0, res),
-            "scenario": True}
+
+    out = {"river": scen["river"], "resilience_days": res, "gap_before": gap_before, "gap_after": gap_after,
+           "message": scenario_message(hh, base, scen, moves or [], shock_amount or 0, salary_delay_days or 0,
+                                       cut_per_day or 0, res),
+           "scenario": True,
+           # before, on the same baseline and horizon
+           "resilience_before": base_ctx["resilience_days"],
+           "min_balance_before": base["river"]["min_balance"], "min_date_before": base["river"]["min_date"],
+           "first_deficit_date_before": base["first_deficit"]["date"] if base["first_deficit"] else None,
+           "first_deficit_date": scen["first_deficit"]["date"] if scen["first_deficit"] else None,
+           "conditional": [e03.event_out(e) for e in scen["events"] if e.get("moved")]}
+
+    if loan is not None:
+        out["loan"] = loan
+        if loan["complete"]:
+            before, after = e17.debt_load_after(base_ctx["norm"]["emi_monthly_p"], base_ctx["norm"]["monthly_income_p"], loan["emi"])
+            loan.update(debt_per100_before=before, debt_per100_after=after, first_emi=e17.first_emi_date(hh["as_of"]),
+                        debt_status_after=e04.debt_status(after, False) if after is not None else None)
+            out["message"] = L(
+                f"EMI {inr(loan['emi'])} har mahine, {loan['months']} mahine. Kul {inr(loan['total_cost'])} denge — "
+                f"daam se {inr(loan['extra_over_price'])} zyada (har ₹100 par ₹{loan['extra_per_100']}).",
+                f"EMI of {inr(loan['emi'])} a month for {loan['months']} months. You pay {inr(loan['total_cost'])} in all — "
+                f"{inr(loan['extra_over_price'])} more than the price (₹{loan['extra_per_100']} on every ₹100).")
+        else:
+            out["message"] = L("Kul kharcha batane ke liye loan ki poori sharten chahiye.",
+                               "Total cost needs full loan terms.")
+    if purchase_out:
+        out["purchase"] = purchase_out
+
+    if scen["gap_p"] > 0 and not (loan is not None and not loan["complete"]):
+        r = e17.responses(hh, kwargs, scen)
+        out["responses"], out["feasible"] = r["responses"], r["feasible"]
+        g = next((x for x in r["responses"] if x["kind"] == "gullak"), None)
+        if g:
+            needed = R(max(0, -scen["low_before_income"]["balance_p"]))
+            gi = e17.goal_impact(hh, g["jar_id"], needed)
+            if gi:
+                out["goal_impact"] = gi
+    return out
 
 
 def scenario_message(hh, base, scen, moves, shock, delay, cut, res) -> dict:

@@ -18,14 +18,20 @@ INCOME_TYPES = ("salary", "gig")
 
 
 def build_events(upcoming: list[dict], as_of: str, *, moves: list[dict] | None = None, shock_amount: int = 0,
-                 salary_delay_days: int = 0) -> list[dict]:
-    """Scenario branch of the event list (never mutates input). Amounts in rupees in, paise out."""
+                 salary_delay_days: int = 0, extra: list[dict] | None = None) -> list[dict]:
+    """Scenario branch of the event list (never mutates input). Amounts in rupees in, paise out.
+
+    `extra` adds scenario-only events (a purchase, a loan's processing fee or EMIs), same shape as
+    `upcoming`. A moved event keeps its `original_date`: moving a bill is a request to the payee,
+    so the scenario never treats the new date as agreed.
+    """
     evs = []
     move_map = {m["event_id"]: m["new_date"] for m in (moves or [])}
     for e in copy.deepcopy(upcoming):
         e["paise"] = P(e["amount"])
         e["moved"] = False
-        if e["id"] in move_map:
+        if e["id"] in move_map and move_map[e["id"]] != e["date"]:
+            e["original_date"] = e["date"]
             e["date"] = move_map[e["id"]]
             e["moved"] = True
         if salary_delay_days and e["type"] == "salary":
@@ -34,7 +40,13 @@ def build_events(upcoming: list[dict], as_of: str, *, moves: list[dict] | None =
     if shock_amount:
         evs.append({"id": "shock", "date": iso(add_days(d(as_of), 1)), "type": "bill",
                     "label": L("Achanak kharch", "Unexpected expense"), "amount": -abs(int(shock_amount)),
-                    "paise": -P(abs(int(shock_amount))), "movable": False, "moved": False})
+                    "paise": -P(abs(int(shock_amount))), "movable": False, "moved": False, "scenario": True})
+    for x in copy.deepcopy(extra or []):
+        x["paise"] = P(x["amount"])
+        x.setdefault("moved", False)
+        x.setdefault("movable", False)
+        x["scenario"] = True
+        evs.append(x)
     return evs
 
 
@@ -98,8 +110,21 @@ def gap_p(series: list[dict]) -> int:
 
 
 def event_out(e: dict) -> dict:
-    return {"id": e["id"], "type": e["type"], "label": e["label"], "amount": R(e["paise"]),
-            "movable": bool(e.get("movable", False))}
+    out = {"id": e["id"], "type": e["type"], "label": e["label"], "amount": R(e["paise"]),
+           "movable": bool(e.get("movable", False))}
+    if e.get("scenario"):
+        out["scenario"] = True
+    elif e.get("certainty"):
+        out["certainty"] = e["certainty"]
+        if e.get("basis"):
+            out["basis"] = e["basis"]
+    if e.get("moved"):
+        # Moving a bill is only a request: the payee has not agreed, so the original date still stands.
+        out["moved"] = True
+        out["original_date"] = e["original_date"]
+        out["needs"] = L(f"{e['contact']} ki haan", f"{e['contact']} to agree") if e.get("contact") \
+            else L("Jisko paisa dena hai unki haan", "The payee to agree")
+    return out
 
 
 def river_out(series: list[dict], floor_p: int) -> dict:
@@ -115,12 +140,15 @@ def river_out(series: list[dict], floor_p: int) -> dict:
 
 
 def run(hh: dict, *, moves=None, shock_amount: int = 0, salary_delay_days: int = 0, cut_per_day: int = 0,
-        days: int = 30) -> dict:
-    """Convenience wrapper over a household dict. Returns series + helpers (paise)."""
+        extra: list[dict] | None = None, opening_extra: int = 0, days: int = 30) -> dict:
+    """Convenience wrapper over a household dict. Returns series + helpers (paise).
+
+    `opening_extra` (rupees) adds money to today's balance, e.g. breaking a Gullak.
+    """
     as_of = hh["as_of"]
     events = build_events(hh["upcoming"], as_of, moves=moves, shock_amount=shock_amount,
-                          salary_delay_days=salary_delay_days)
-    series = simulate(P(hh["closing_balance"]), as_of, events, P(hh["essentials_per_day"]),
+                          salary_delay_days=salary_delay_days, extra=extra)
+    series = simulate(P(hh["closing_balance"]) + P(opening_extra), as_of, events, P(hh["essentials_per_day"]),
                       cut_per_day_p=P(cut_per_day or 0), days=days)
     nid = next_income_date(events, as_of, hh.get("income_type", "salary"))
     low_before = lowest_before(series, nid)

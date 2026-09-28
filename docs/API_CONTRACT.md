@@ -118,3 +118,39 @@ type DpdpGrant = { key: "profile"|"device_signals"|"ration"|"electricity"|"rc"|"
 - `/api/bsa/upload`: non-PDF → **415**. The PDF is never stored (compute-then-delete). Live BSA is `blocked` until Perfios approves a non-lending configuration, so it currently serves replay.
 - On any live sponsor failure the backend falls back to replay and returns `mode: "replay"`.
 - `/api/capabilities` lists every sponsor API individually (Anumati: consent create/status/artefact, FI request, FI fetch, revoke, notification+signature; Perfios: analytics categorisation, salary/EMI/bounce, BSA initiate/upload/status/report, Hub electricity/RC Advanced/ration/EPF/DigiLocker).
+
+## What-if (v1.2 — additive; nothing above changes)
+
+Engine: E17 (`api/app/engines/e17_whatif.py`) on top of E03. All fields below are optional for clients; an
+older backend that omits them still renders (screens fall back to "after only").
+
+`POST /api/households/{id}/simulate` also accepts
+`purchase?: {amount:number, pay:"cash"|"loan", loan?:{annual_rate_pct?:number, months?:number, processing_fee?:number}}`
+and returns, in addition to the fields above:
+
+```ts
+{
+  // before, on the same baseline and 30-day horizon
+  resilience_before: number; min_balance_before: number; min_date_before: string;
+  first_deficit_date_before: string | null; first_deficit_date: string | null;
+  conditional: RiverEvent[];          // bills the scenario moved: payee has NOT agreed (moved, original_date, needs)
+  responses?: {id, kind:"move"|"cut"|"gullak"|"all", label:L, gap_after, fixes:boolean, conditional:boolean, needs?:L, jar_id?}[];
+  feasible?: boolean;                 // present when there is a shortfall; false = nothing permitted closes it
+  goal_impact?: {jar_id, name:L, goal, target_date, used, saved_before, saved_after, gap_before, gap_after, daily_before, daily_after};
+  loan?: {principal, complete:boolean, missing:string[], missing_labels:L[],
+          // only when complete:
+          annual_rate_pct, months, processing_fee, emi, total_repay, total_cost, extra_over_price, extra_per_100,
+          debt_per100_before, debt_per100_after, debt_status_after, first_emi};
+  purchase?: {amount, pay};
+}
+```
+
+Rules:
+- `gap` is the shortfall on the FIRST deficit day. A shock can make it arrive earlier but smaller
+  (A + ₹4,000 → ₹1,500 on 27 Sep vs ₹3,000 on 28 Sep), so screens always show the lowest point too.
+- A loan with any term missing returns `complete:false` and no EMI, total or cash-flow change. Never guess a total.
+- Responses never include new credit. Moving a bill is always `conditional` until the payee agrees.
+- `RiverEvent.certainty`: `pakka` when bank data shows the payment on the same day (±1), amount within 10%,
+  in 3+ months; otherwise `andaaza` (with `basis:L`). A date the user corrected is `andaaza`.
+- `Jar` gains `remaining` and `target_date`.
+- Demo fallback (`web/src/lib/mock.ts`) mirrors these; refresh its data with `python api/scripts/refresh_demo_whatif.py`.

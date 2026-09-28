@@ -160,5 +160,5 @@ def jars_with_suggest(hid: str, as_of: str = "2026-09-23") -> list[dict]:
         per_day = -(-remaining // days)  # ceil
         per_day = -(-per_day // 10) * 10 if per_day else 0  # round up to ₹10
         out.append({"id": j["id"], "name": j["name"], "goal": j["goal"], "saved": j["saved"], "kind": j["kind"],
-                    "daily_suggest": per_day})
+                    "daily_suggest": per_day, "remaining": remaining, "target_date": j["target_date"]})
     return out

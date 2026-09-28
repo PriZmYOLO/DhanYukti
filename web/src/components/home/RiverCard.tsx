@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import { MoveHorizontal, RotateCcw } from "lucide-react";
+import { Hourglass, MoveHorizontal, RotateCcw } from "lucide-react";
 import CashRiver from "@/components/ui/CashRiver";
+import PlanDates from "@/components/whatif/PlanDates";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { day, inr } from "@/lib/format";
@@ -48,11 +49,22 @@ export default function RiverCard() {
         <div className="mt-3 rounded-[20px] bg-lav p-3">
           <div className="flex items-center gap-3 text-sm font-bold num">
             <span className="text-danger line-through decoration-2">−{inr(sim.gap_before)}</span><span>→</span>
-            <span className={sim.gap_after > 0 ? "text-danger" : "text-leaf"}>{sim.gap_after > 0 ? `−${inr(sim.gap_after)}` : lang === "hi" ? "Kami khatam" : "Gap closed"}</span>
+            <span className={sim.gap_after > 0 ? "text-danger" : "text-leaf"}>{sim.gap_after > 0 ? `−${inr(sim.gap_after)}` : sim.conditional?.length ? (lang === "hi" ? "Kami khatam*" : "Gap closed*") : lang === "hi" ? "Kami khatam" : "Gap closed"}</span>
           </div>
           <p className="text-[13px] mt-1 leading-snug">{t(sim.message)}</p>
+          {sim.conditional?.map((c) => (
+            <p key={c.id} className="mt-2 flex items-start gap-1.5 rounded-2xl bg-haldi px-3 py-2 text-[12px] font-bold leading-snug">
+              <Hourglass size={14} className="mt-0.5 shrink-0" />
+              <span>
+                {lang === "hi"
+                  ? `Shart par, abhi maana nahi: ${t(c.label)} ab bhi ${day(c.original_date!)} ko hai. Nayi tareekh ke liye ${c.needs ? t(c.needs) : "unki haan"} chahiye.`
+                  : `Conditional, not accepted: ${t(c.label)} is still due on ${day(c.original_date!)}. The new date needs ${c.needs ? t(c.needs) : "the payee to agree"}.`}
+              </span>
+            </p>
+          ))}
         </div>
       )}
+      <PlanDates river={river} />
     </section>
   );
 }

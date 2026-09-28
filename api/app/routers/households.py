@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -15,11 +15,24 @@ class Move(BaseModel):
     new_date: str
 
 
+class LoanTerms(BaseModel):
+    annual_rate_pct: float | None = Field(default=None, ge=0, le=200)
+    months: int | None = Field(default=None, ge=1, le=120)
+    processing_fee: int | None = Field(default=None, ge=0)
+
+
+class Purchase(BaseModel):
+    amount: int = Field(gt=0, le=10_000_000)
+    pay: Literal["cash", "loan"] = "cash"
+    loan: LoanTerms | None = None
+
+
 class SimulateIn(BaseModel):
     moves: list[Move] | None = None
     shock_amount: int | None = Field(default=None, ge=0)
     salary_delay_days: int | None = Field(default=None, ge=0, le=60)
     cut_per_day: int | None = Field(default=None, ge=0)
+    purchase: Purchase | None = None
 
 
 class CorrectIn(BaseModel):
@@ -48,7 +61,8 @@ def get_dashboard(hid: str):
 def simulate(hid: str, body: SimulateIn):
     return pipeline.simulate(_hid(hid), moves=[m.model_dump() for m in (body.moves or [])],
                              shock_amount=body.shock_amount or 0, salary_delay_days=body.salary_delay_days or 0,
-                             cut_per_day=body.cut_per_day or 0)
+                             cut_per_day=body.cut_per_day or 0,
+                             purchase=body.purchase.model_dump() if body.purchase else None)
 
 
 @router.post("/{hid}/correct")
