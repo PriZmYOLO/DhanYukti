@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Wallet, CalendarHeart, Landmark, ShieldCheck } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { inr } from "@/lib/format";
+import { inr, figure } from "@/lib/format";
 import type { Dashboard, Metric } from "@/lib/types";
 import MetricSheet, { type MetricKey } from "./MetricSheet";
 
@@ -26,7 +26,7 @@ function Value({ m, lang }: { m: Metric; lang: "hi" | "en" }) {
   if (m.unit === "status" || m.value == null) return <p className={`${big} text-[24px]`}>{metricValue(m, lang)}</p>;
   if (m.unit === "inr") return <p className={big}>{inr(m.value)}</p>;
   if (m.unit === "days") return <p className={big}>{m.value}<span className={unit}>{lang === "hi" ? "din" : "days"}</span></p>;
-  if (m.unit === "per100") return <p className={big}>₹{m.value}<span className={unit}>{lang === "hi" ? "har ₹100 mein" : "per ₹100"}</span></p>;
+  if (m.unit === "per100") return <p className={big}>₹{figure(m.value)}<span className={unit}>{lang === "hi" ? "har ₹100 mein" : "per ₹100"}</span></p>;
   return <p className={big}>{m.value}</p>;
 }
 
@@ -35,7 +35,7 @@ export function metricValue(m: Metric, lang: "hi" | "en") {
   if (m.value == null) return lang === "hi" ? "Pata nahi" : "Unknown";
   if (m.unit === "inr") return inr(m.value);
   if (m.unit === "days") return `${m.value} ${lang === "hi" ? "din" : "days"}`;
-  if (m.unit === "per100") return `₹${m.value}/₹100`;
+  if (m.unit === "per100") return `₹${figure(m.value)}/₹100`;
   return String(m.value);
 }
 

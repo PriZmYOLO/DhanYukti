@@ -3,6 +3,8 @@ import { DEFAULT_FI_TYPES, fiTypeList } from "@/lib/aa/fi-types";
 import { useEffect, useRef, useState } from "react";
 import { Check, ExternalLink, Landmark, ShieldOff, Loader2 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import OpenAnumati from "@/components/OpenAnumati";
+import { stoppedHere } from "@/lib/aa-live";
 import { gov, paise } from "@/lib/gov";
 import { inr } from "@/lib/format";
 import type { L } from "@/lib/types";
@@ -14,7 +16,7 @@ const STATUS: Record<ConsentStatus, L & { cls: string }> = {
   active: { hi: "Chalu", en: "Active", cls: "bg-mint text-leaf" },
   denied: { hi: "Mana kiya", en: "Declined", cls: "bg-danger-soft text-danger" },
   expired: { hi: "Khatam", en: "Expired", cls: "bg-white/15" },
-  revoked: { hi: "Band kiya", en: "Revoked", cls: "bg-danger-soft text-danger" },
+  revoked: { hi: "Anumati par band", en: "Revoked at Anumati", cls: "bg-danger-soft text-danger" },
   paused: { hi: "Pata nahi", en: "Status not known", cls: "bg-white/15" },
   failed: { hi: "Pata nahi", en: "Status not known", cls: "bg-white/15" },
 };
@@ -28,7 +30,8 @@ const EVENT: Record<LinkActivity["event"], L> = {
   fetched: { hi: "Data khola aur padha", en: "Data decrypted and read" },
   fetch_failed: { hi: "Data nahi aaya", en: "Data didn't arrive" },
   decrypt_failed: { hi: "Data khul nahi paaya", en: "Couldn't decrypt" },
-  revoked: { hi: "Band kiya — data mitaya", en: "Revoked — data deleted" },
+  revoked: { hi: "Anumati par consent band hua — DhanYukti ne data mitaya", en: "Consent ended at Anumati — DhanYukti deleted the data" },
+  stopped: { hi: "Aapne DhanYukti mein band kiya — data mitaya, aage ka data mana", en: "You stopped it in DhanYukti — data deleted, late data refused" },
   expired: { hi: "Consent khatam", en: "Consent expired" },
   paused: { hi: "Ruka", en: "Paused" },
   consent_failed: { hi: "Consent fail", en: "Consent failed" },
@@ -65,7 +68,8 @@ export default function LiveLinkCard({ link, onChange, redirectUrl }: { link: So
   const { t, lang } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const st = STATUS[link.consent.status];
+  const here = link.consent.status === "revoked" && stoppedHere(link);
+  const st = here ? { hi: "DhanYukti mein band", en: "Stopped in DhanYukti", cls: "bg-amber-soft text-[#9a5f00]" } : STATUS[link.consent.status];
   const revoke = async () => {
     setBusy(true);
     try { onChange?.(await gov.revokeLink(link.link_id)); } finally { setBusy(false); setConfirm(false); }
@@ -126,18 +130,25 @@ export default function LiveLinkCard({ link, onChange, redirectUrl }: { link: So
         </details>
       )}
 
+      {here && (
+        <div className="mt-3 rounded-[18px] bg-white/10 p-3 text-[13px] space-y-2">
+          <p>{t({ hi: "DhanYukti ne data mita diya aur ab kuch nahi lega. Consent Anumati par abhi bhi chalu ho sakta hai — wahan band karein.", en: "DhanYukti deleted the data and won't take any more. The consent may still be open at Anumati — end it there." })}</p>
+          <OpenAnumati className="w-full text-ink" />
+        </div>
+      )}
       {(link.consent.status === "active" || link.consent.status === "paused") && (
         !confirm ? (
           <button onClick={() => setConfirm(true)} className="mt-3 w-full min-h-12 rounded-[18px] bg-white/10 border border-white/20 font-bold flex items-center justify-center gap-2">
-            <ShieldOff size={18} />{lang === "hi" ? "Consent band karein" : "Revoke consent"}
+            <ShieldOff size={18} />{lang === "hi" ? "DhanYukti mein band karein" : "Stop in DhanYukti"}
           </button>
         ) : (
           <div className="mt-3 rounded-[18px] bg-white/10 p-3 text-[13px]">
-            <p>{t({ hi: "DhanYukti ki copy turant mitegi aur aage ka data mana hoga. Anumati par consent khatam karne ke liye Anumati app bhi kholein.", en: "DhanYukti's copy is deleted now and late data is refused. To end the consent at the AA too, also end it in the Anumati app." })}</p>
+            <p>{t({ hi: "DhanYukti yeh data istemaal karna band karega, apni copy abhi mitayega aur aage aane wala data mana karega. Consent khud Anumati ke paas hai — use khatam karne ke liye Anumati app mein band karein.", en: "DhanYukti stops using this data, deletes its copy now and refuses any late data. The consent itself is held by Anumati — to end it, close it in the Anumati app." })}</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button onClick={() => setConfirm(false)} className="min-h-11 rounded-[14px] bg-white/15 font-bold">{lang === "hi" ? "Nahi" : "Cancel"}</button>
-              <button disabled={busy} onClick={revoke} className="min-h-11 rounded-[14px] bg-danger font-bold disabled:opacity-50">{lang === "hi" ? "Haan, band" : "Yes, revoke"}</button>
+              <button disabled={busy} onClick={revoke} className="min-h-11 rounded-[14px] bg-danger font-bold disabled:opacity-50">{lang === "hi" ? "Haan, band" : "Yes, stop"}</button>
             </div>
+            <OpenAnumati className="mt-2 w-full text-ink" />
           </div>
         )
       )}

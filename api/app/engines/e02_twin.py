@@ -57,6 +57,12 @@ def payee_key(narration: str) -> str:
     return " ".join(words[:4]) or "UNKNOWN"
 
 
+def redact(narration: str) -> str:
+    """The derived payee label kept in place of a bank narration (e.g. "UPI/RENT/ANIL KUMAR/REF9" → "Rent Anil Kumar")."""
+    key = payee_key(narration)
+    return "—" if key == "UNKNOWN" else _title(key)
+
+
 def _title(key: str) -> str:
     return " ".join(w.capitalize() for w in key.split())
 
@@ -317,7 +323,11 @@ def build(payload: dict) -> dict:
     first = members[0]["name"]
     fam = L(f"{first} ka parivaar", f"{first}'s family") if first != "Aap" else L("Aapka parivaar", "Your family")
 
-    # spend donut for last full month, then drop everyday rows (compute-then-delete)
+    # Compute-then-delete: the bank's own narration text (UPI refs, account numbers, full names) never
+    # outlives the 24-hour raw data. Every row the twin keeps carries only a derived payee label.
+    for r in rows:
+        r["narration"] = redact(r["narration"])
+    # spend donut for last full month, then drop everyday rows
     from app import pipeline  # late import: pipeline does not import this module
     spend = pipeline.spend_from_norm(norm, as_of)
     norm["rows"] = [r for r in rows if r["kind"] in EVIDENCE_KINDS]

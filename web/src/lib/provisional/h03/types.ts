@@ -121,7 +121,10 @@ export interface LinkActivity {
     | "fetched"
     | "fetch_failed"
     | "decrypt_failed"
+    /** Ended at the AA (Anumati's consent webhook). */
     | "revoked"
+    /** The member stopped it inside DhanYukti: data deleted, late data refused. The AA consent itself is ended in the Anumati app. */
+    | "stopped"
     | "expired"
     | "paused"
     | "consent_failed";
