@@ -20,8 +20,8 @@ export default function MonthReview() {
   const done = m.progress >= m.target;
 
   const summary = {
-    hi: `Is mahine aapne ${inr(saved)} bachaye aur ${inr(avoided)} ka nuksaan roka. Chalo, agle mahine ₹500 aur bachate hain.`,
-    en: `This month you saved ${inr(saved)} and avoided ${inr(avoided)} in losses. Let's save ₹500 more next month.`,
+    hi: `Is mahine aapne ${inr(saved)} bachaye aur ${inr(avoided)} ka nuksaan roka.${m.target > 0 ? ` Chalo, agle mahine ${inr(m.target)} aur bachate hain.` : ""}`,
+    en: `This month you saved ${inr(saved)} and avoided ${inr(avoided)} in losses.${m.target > 0 ? ` Let's save ${inr(m.target)} more next month.` : ""}`,
   };
 
   return (
@@ -74,7 +74,7 @@ export default function MonthReview() {
       </div>
 
       <p className="mt-4 text-[15px] font-extrabold text-ink-2">
-        {t({ hi: "Chalo, agle mahine ₹500 aur bachate hain 💪", en: "Let's save ₹500 more next month 💪" })}
+        {m.target > 0 && t({ hi: `Chalo, agle mahine ${inr(m.target)} aur bachate hain 💪`, en: `Let's save ${inr(m.target)} more next month 💪` })}
       </p>
     </section>
   );

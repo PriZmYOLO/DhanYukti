@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { supportTel } from "@/lib/support";
 
 export default function Error({ reset }: { error: Error; reset: () => void }) {
   return (
@@ -7,7 +9,9 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
       <p className="mt-4 text-xl font-extrabold">Kuch gadbad ho gayi</p>
       <p className="text-muted text-sm">Something went wrong. Your money data is safe.</p>
       <button onClick={reset} className="mt-6 rounded-[20px] bg-ink text-white px-6 min-h-12 font-bold">Dobara · Retry</button>
-      <a href="tel:1800000000" className="block mt-3 text-sm font-semibold underline">Madad chahiye? · Need help?</a>
+      {supportTel
+        ? <a href={supportTel} className="block mt-3 text-sm font-semibold underline">Madad chahiye? · Need help?</a>
+        : <Link href="/" className="block mt-3 text-sm font-semibold underline">Shuru se kholein · Start again</Link>}
     </div>
   );
 }

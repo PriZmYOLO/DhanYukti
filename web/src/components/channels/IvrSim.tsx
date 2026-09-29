@@ -93,7 +93,7 @@ export default function IvrSim() {
   };
 
   const live = state !== "idle";
-  const screen = live ? t(prompts(data, amt)[state]) : (lang === "hi" ? "DhanYukti IVR\n1800-000-000" : "DhanYukti IVR\n1800-000-000");
+  const screen = live ? t(prompts(data, amt)[state]) : (lang === "hi" ? "DhanYukti IVR\n(yojana — number abhi nahi)" : "DhanYukti IVR\n(planned — no number yet)");
   return (
     <div className="rounded-[28px] bg-white p-5 shadow-soft">
       <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ export default function IvrSim() {
           ))}
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-muted">{lang === "hi" ? "Smartphone nahi? 1800-000-000 par call karein." : "No smartphone? Call 1800-000-000."}</p>
+      <p className="mt-3 text-center text-xs text-muted">{lang === "hi" ? "Yeh phone line ka preview hai (bina smartphone walon ke liye) — number abhi chalu nahi." : "A preview of the planned phone line (for people without a smartphone) — no number is live yet."}</p>
     </div>
   );
 }

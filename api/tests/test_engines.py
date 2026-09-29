@@ -53,8 +53,10 @@ def test_simulate_move_fee_A():
     assert s["gap_before"] == 3000
     assert s["gap_after"] == 0
     assert s["scenario"] is True
+    # the daily cut is Sunita's own: ₹500/day everyday spend, at most a third (₹160), for the 6 days to the lowest point
     assert s["message"]["hi"] == ("Fee aage badhane se ₹3,000 ki kami khatam. Par salary se pehle ₹2,500 safety floor "
-                                  "se kam rahega — 5 din ₹200 kam kharch karein ya Gullak use karein.")
+                                  "se kam rahega. 6 din roz ₹160 kam kharch — ₹500 ki jagah ₹340. "
+                                  "Isse bhi ₹1,540 kam rahega — baaki Gullak ya parivaar se.")
     assert "₹2,500" in s["message"]["en"]
 
 
@@ -77,8 +79,12 @@ def test_hero_nba_A():
     assert n["body"]["hi"] == "School fee (₹5,000) salary se 2 din pehle hai."
     assert n["body"]["en"] == "The school fee comes 2 days before salary."
     assert n["task"]["hi"] == "School se fee 30 tareekh tak badhane ki request bhejein. Hum message likh denge."
-    assert n["if_not"]["en"] == "You may need an app loan, costing about ₹150–₹300."
-    assert n["second_step"]["hi"] == "Fee badhne ke baad bhi ₹2,500 kam — 5 din ₹200 kam kharch, ya Gullak se."
+    # from her own past app loans (₹460 on ₹8,000), not a made-up range
+    assert n["if_not"]["en"] == "You may need an app loan — at your past app loans' cost, about ₹170 interest on ₹3,000."
+    assert n["second_step"]["en"] == ("Even after moving the fee, you're ₹2,500 below your safety floor. 6 days, ₹160 less each day — "
+                                      "₹340 instead of ₹500. That still leaves ₹1,540 short — the rest from the Gullak or family.")
+    assert n["second_step"]["hi"] == ("Fee badhne ke baad bhi safety floor se ₹2,500 kam. 6 din roz ₹160 kam kharch — "
+                                      "₹500 ki jagah ₹340. Isse bhi ₹1,540 kam rahega — baaki Gullak ya parivaar se.")
     assert n["action"]["type"] == "message"
     assert n["action"]["payload"]["to"] == "School (St. Mary's, Panipat)"
     assert set(n["action"]["payload"]["text"]) == {"hi", "en"}
@@ -216,3 +222,74 @@ def test_live_failure_falls_back_to_replay(monkeypatch):
     assert st["mode"] == "replay" and st["status"] == "PENDING"
     r = client.post("/api/enrich/A/epf", json={"consent": True}).json()
     assert r["mode"] == "replay"
+
+
+# ---------------------------------------------------------------------------------------------
+# No fixed "₹200 less for 5 days": every plan comes from the household's own numbers
+# ---------------------------------------------------------------------------------------------
+from app.engines import e03_cashflow as _e03  # noqa: E402
+from app.engines import e17_whatif as _e17  # noqa: E402
+
+
+def test_cut_plan_uses_the_households_own_everyday_spend():
+    hh = pipeline.load("A")
+    hh["essentials_per_day"] = 330            # the review's example member
+    plan = _e17.cut_plan(hh, target="gap")
+    assert plan["per_day_now"] == 330
+    assert plan["cut_per_day"] == 110 and plan["per_day_after"] == 220      # capped at a third of ₹330
+    assert plan["days"] == 5 and plan["until"] == "2026-09-28"             # tomorrow .. the deficit day
+    river = _e03.run(hh, cut_per_day=plan["cut_per_day"])["series"]
+    low = min(x["balance_p"] for x in river if x["date"] <= plan["until"])
+    assert plan["left_after"] * 100 == -low and not plan["fixes"]         # what the river says, not arithmetic
+    text = _e17.cut_text(plan)
+    assert "₹330" in text["en"] and "₹220" in text["en"] and "₹500" not in text["en"] and "₹300" not in text["en"]
+
+
+def test_cut_plan_is_the_smallest_cut_that_closes_the_gap():
+    hh = pipeline.load("A")
+    hh["closing_balance"] += 2500             # ₹500 short on the 28th instead of ₹3,000
+    plan = _e17.cut_plan(hh, target="gap")
+    assert plan["fixes"] and plan["left_after"] == 0 and plan["cut_per_day"] == 100   # ₹500 over 5 days
+    river = _e03.run(hh, cut_per_day=plan["cut_per_day"] - 10)["series"]
+    assert min(x["balance_p"] for x in river if x["date"] <= plan["until"]) < 0        # ₹90 wouldn't do
+
+
+def test_cut_plan_unknown_spend_gives_no_numbers():
+    hh = pipeline.load("A")
+    hh["essentials_per_day"] = 0
+    assert _e17.cut_plan(hh, target="gap") is None
+    hh = pipeline.load("A")
+    hh["essentials_known"] = False
+    assert _e17.cut_plan(hh, target="gap") is None
+
+
+def test_deficit_plan_card_carries_the_households_own_plan():
+    hh = pipeline.load("A")
+    hh["essentials_per_day"] = 330
+    for e in hh["upcoming"]:
+        if e["type"] == "fee":
+            e["movable"] = False                 # nothing to move: the card offers the spending plan
+    ctx = pipeline.compute(hh)
+    card = next(n for n in ctx["nba"] if n["action"]["type"] == "plan" and "gap" in n["action"]["payload"])
+    plan = card["action"]["payload"]["cut_plan"]
+    assert plan["per_day_now"] == 330 and plan["cut_per_day"] == 110
+
+
+def test_whatif_cut_option_is_the_households_own_cut():
+    hh = pipeline.load("A")
+    hh["essentials_per_day"] = 330
+    scen = _e03.run(hh)
+    cut = next(r for r in _e17.responses(hh, {}, scen)["responses"] if r["kind"] == "cut")
+    assert cut["label"]["en"] == "Spend ₹110 less a day" and cut["plan"]["per_day_now"] == 330
+
+
+def test_reminder_is_the_day_before_their_own_emi():
+    hh = pipeline.load("A")
+    for e in hh["upcoming"]:
+        if e["type"] == "emi":
+            e["date"] = e["date"][:8] + "17"      # their EMI moves to the 17th
+    ctx = pipeline.compute(hh)
+    card = next((n for n in ctx["nba"] if n["id"] == "nba_penalties"), None)
+    if card:
+        rem = card["action"]["payload"]["reminders"]
+        assert rem and rem[0]["day"] == 16

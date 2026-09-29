@@ -122,6 +122,9 @@ async function main() {
   const a = await linked("9876543211");
   const db0 = await dashboardWhen(a.cookie, () => true, "owner's twin");
   check("owner: own account is 'me', shown in full", members(db0).me?.account_holder === true && a.link.member?.self === true, a.link.member);
+  const FIXED = ["₹200 less", "₹200 kam", "₹150–₹300", "₹300 instead of ₹500", "₹500 ki jagah ₹300", "1800000000", "1800-000-000", "About ₹300 extra", "About ₹100 will"];
+  const found = FIXED.filter((x) => JSON.stringify(db0).includes(x));
+  check("a real member's dashboard has none of the old hand-typed figures", found.length === 0, found);
 
   // 2) Same phone, a family member's account: the level is required, then "Sirf total".
   const noLevel = await call(a.cookie, "POST", "/api/aa/links", { source_access: true, member: { who: "family", relation: "Pati" } });
