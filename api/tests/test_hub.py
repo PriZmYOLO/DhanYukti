@@ -253,7 +253,8 @@ def test_tamil_nadu_drops_the_discom_code(live_hub):
 def test_not_found_and_outage_are_codes_not_demo_data(monkeypatch):
     monkeypatch.setattr(type(settings), "hub_mode", property(lambda self: "live"))
     monkeypatch.setattr(connectors, "hub", lambda: _client_with({"/v2/elec": {"status-code": "103"}}, []))
-    assert _lookup("electricity", {"board": "BESCOM", "consumer_no": "AB1234"}) == {"ok": False, "code": "not_found"}
+    nf = _lookup("electricity", {"board": "BESCOM", "consumer_no": "AB1234"})
+    assert nf["ok"] is False and nf["code"] == "not_found" and nf["upstream_status"] == 103
 
     from app.connectors.base import SponsorError
 
@@ -312,3 +313,12 @@ def test_png_gas_bill_lookup_and_river(live_hub, monkeypatch):
 def test_ration_lookup_endpoint(live_hub):
     r = _lookup("ration", {"card_no": "12344556433"})
     assert r["facts"]["ration"]["scheme"] == "AAY" and "KATHIKUND" not in repr(r)
+
+
+def test_challan_outage_keeps_the_vehicle_and_says_so(live_hub, monkeypatch):
+    calls = []
+    monkeypatch.setattr(connectors, "hub", lambda: _client_with(
+        {"/v3/rc-advanced": RC, "/v3/rc-challan": {"statusCode": 108, "requestId": "c9", "message": "Source down"}}, calls))
+    r = _lookup("rc", {"reg_no": "MH04CY4545"})
+    assert "rc" in r["facts"] and "challan" not in r["facts"]
+    assert r["challan_issue"] == {"code": "source_unavailable", "upstream_status": 108, "upstream_reason": "Source down"}
