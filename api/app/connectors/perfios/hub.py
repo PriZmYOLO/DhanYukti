@@ -11,6 +11,8 @@ result into the few derived facts DhanYukti keeps (no names, addresses, phone nu
 """
 from __future__ import annotations
 
+import time
+
 from app.connectors.base import HubConnector, SponsorError
 from app.connectors.perfios._http import PerfiosHTTP
 
@@ -62,9 +64,25 @@ class PerfiosHubClient(PerfiosHTTP, HubConnector):
         super().__init__({**cfg, "PERFIOS_BASE_URL": cfg.get("PERFIOS_HUB_BASE_URL") or DEFAULT_HUB_BASE_URL},
                          timeout=timeout)
 
+    # A quick 502/503 from the Hub is often momentary: try once more, fast. Never for EPF (a retry
+    # would send the member a second OTP / reuse one), never after a slow answer (time budget).
+    RETRY_KINDS = {"electricity", "png", "lpg", "ration", "rc", "challan", "dl", "agent"}
+    RETRY_WAIT = 2.0
+
+    def _post(self, kind: str, body: dict) -> dict:
+        started = time.monotonic()
+        try:
+            return self.request("POST", PATHS[kind], json={**body, "consent": "Y"})
+        except SponsorError as e:
+            quick = time.monotonic() - started < 10
+            if kind not in self.RETRY_KINDS or e.status_code not in (502, 503) or not quick:
+                raise
+        time.sleep(self.RETRY_WAIT)
+        return self.request("POST", PATHS[kind], json={**body, "consent": "Y"})
+
     def _call(self, kind: str, body: dict) -> dict:
         try:
-            out = self.request("POST", PATHS[kind], json={**body, "consent": "Y"})
+            out = self._post(kind, body)
         except SponsorError as e:
             if e.status_code in (400, 404):
                 raise HubLookupError("invalid_input", e.status_code, e.request_id, e.reason) from None

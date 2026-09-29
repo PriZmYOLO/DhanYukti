@@ -322,3 +322,32 @@ def test_challan_outage_keeps_the_vehicle_and_says_so(live_hub, monkeypatch):
     r = _lookup("rc", {"reg_no": "MH04CY4545"})
     assert "rc" in r["facts"] and "challan" not in r["facts"]
     assert r["challan_issue"] == {"code": "source_unavailable", "upstream_status": 108, "upstream_reason": "Source down"}
+
+
+def test_a_quick_503_is_retried_once_but_never_for_epf(monkeypatch):
+    from app.connectors.base import SponsorError
+    c = _client_with({}, [])
+    c.RETRY_WAIT = 0
+    seen = []
+
+    def flaky(method, path, *, json=None, files=None, data=None):
+        seen.append(path)
+        if len(seen) == 1:
+            raise SponsorError("x", 503, "r", "perfios")
+        return copy.deepcopy(RATION)
+    c.request = flaky
+    assert c.ration("12344556433")["result"]["schemeName"] == "AAY" and seen == ["/v3/ration-details"] * 2
+
+    seen.clear()
+
+    def down(method, path, *, json=None, files=None, data=None):
+        seen.append(path)
+        raise SponsorError("x", 503, "r", "perfios")
+    c.request = down
+    with pytest.raises(HubLookupError) as e:
+        c.epf_otp(uan="100912345678")
+    assert e.value.code == "source_unavailable" and seen == ["/v2/epf-get-otp"]   # no second OTP
+    seen.clear()
+    with pytest.raises(HubLookupError):
+        c.png("AG", "1000082138")
+    assert seen == ["/v2/png", "/v2/png"]    # retried once, then reported
