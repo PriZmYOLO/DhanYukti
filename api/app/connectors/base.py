@@ -16,6 +16,7 @@ class SponsorError(Exception):
         self.status_code = status_code
         self.request_id = request_id
         self.sponsor = sponsor
+        self.reason: str | None = None   # the sponsor's own short error text (never a payload)
 
 
 ConnectorError = SponsorError  # backwards-compatible alias

@@ -324,5 +324,9 @@ def hub_lookup(kind: str, body: HubIn):
         return {"ok": False, "code": e.code}
     except SponsorError as e:
         log.warning("hub %s unavailable status=%s req=%s", kind, e.status_code, e.request_id)
-        code = {401: "hub_auth", 402: "hub_credits", 429: "hub_busy"}.get(e.status_code or 0, "hub_unavailable")
-        return {"ok": False, "code": code}
+        code = {401: "hub_auth", 403: "hub_auth", 402: "hub_credits", 429: "hub_busy"}.get(e.status_code or 0, "hub_unavailable")
+        # setup problems carry Perfios' own reason and the username in use (never the password)
+        out = {"ok": False, "code": code, "upstream_status": e.status_code, "upstream_reason": e.reason}
+        if code == "hub_auth":
+            out["secure_id"] = settings.perfios.get("PERFIOS_SECURE_ID")
+        return out
