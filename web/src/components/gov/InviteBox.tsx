@@ -4,6 +4,7 @@ import { UserPlus, Copy, MessageCircle, X } from "lucide-react";
 import { Btn } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
 import { gov } from "@/lib/gov";
+import { SHARING_TEXT } from "@/lib/aa-live";
 import type { Invite, InviteRole } from "@/lib/onboarding/answers";
 
 /** Create a household invite (needs DPDP "member_profile"). */
@@ -22,8 +23,8 @@ export default function InviteBox({ enabled, onEnable }: { enabled: boolean; onE
   };
   const url = (code: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/join/${code}`;
   const msg = (code: string) => lang === "hi"
-    ? `DhanYukti par hamare parivaar mein judiye: ${url(code)} (code ${code}). Aapka data aapka rahega — jab tak aap khud consent na dein, kuch share nahi hota.`
-    : `Join our family on DhanYukti: ${url(code)} (code ${code}). Your data stays yours — nothing is shared until you give your own consent.`;
+    ? `DhanYukti par hamare parivaar ke hisaab mein apna khaata jodiye: ${url(code)} (code ${code}). Apne phone se, apne Anumati OTP se. Hamein utna hi dikhega jitna aap chunein — Poora, Sirf total ya Private.`
+    : `Add your account to our family's picture on DhanYukti: ${url(code)} (code ${code}). From your own phone, with your own Anumati OTP. We'll see only what you choose — Full, Totals only or Private.`;
   if (!enabled) return (
     <div className="mt-5 rounded-[24px] bg-white p-4 shadow-soft">
       <p className="text-sm">{t({ hi: "Invite banane ke liye 'Parivaar mein aapki profile' consent chahiye.", en: "Invites need the “Your profile in the household” consent." })}</p>
@@ -42,6 +43,12 @@ export default function InviteBox({ enabled, onEnable }: { enabled: boolean; onE
         <Btn variant="ink" className="w-full mt-3" onClick={make}><span className="inline-flex items-center gap-2"><UserPlus size={18} />{lang === "hi" ? "Invite banayein" : "Create invite"}</span></Btn>
         {err && <p className="mt-2 text-sm text-danger font-semibold">{err}</p>}
       </div>
+      {list.filter((i) => i.status === "joined").map((i) => (
+        <div key={i.code} className="rounded-[24px] bg-mint/70 p-4 text-[14px]">
+          <p className="font-extrabold">✓ {i.label ?? (i.role === "earning_adult" ? t({ hi: "Kamaane wale", en: "Earning adult" }) : t({ hi: "Ghar sambhaalne wale", en: "Non-earning adult" }))} {t({ hi: "jud gaye", en: "joined" })}</p>
+          <p className="text-[12px] text-muted mt-0.5">{t({ hi: "Unka apna khaata, unki chuni sharing: ", en: "Their own account, the sharing they chose: " })}<b>{i.joined_sharing ? t(SHARING_TEXT[i.joined_sharing].name) : "—"}</b></p>
+        </div>
+      ))}
       {list.filter((i) => i.status === "open").map((i) => (
         <div key={i.code} className="rounded-[24px] bg-ink text-white p-4">
           <div className="flex items-center gap-2"><p className="font-mono text-xl font-extrabold tracking-widest flex-1">{i.code}</p>

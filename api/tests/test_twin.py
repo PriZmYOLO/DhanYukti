@@ -360,3 +360,92 @@ def test_cheap_lender_missing_from_our_copy_is_unknown_not_risky():
     assert lt["on_rbi_list"] is None and not lt["above_our_cost_line"]
     assert "within DhanYukti's line" in lt["verdict"]["en"]
     assert not any(n["id"] == "nba_lender_shield" for n in db["nba"])
+
+
+# ---------------------------------------------------------------------------------------------
+# One household, several people: each account belongs to whoever linked it, at the level THEY chose
+# ---------------------------------------------------------------------------------------------
+def _husband_account(acct_id="hus-1", balance=8000.0):
+    txns = []
+    for mm in (6, 7, 8, 9):
+        txns += [
+            {"date": f"2026-{mm:02d}-03", "narration": "SALARY METRO TRANSPORT CORP", "amount": 22000.0},
+            {"date": f"2026-{mm:02d}-06", "narration": "UPI/RENT/VERMA PROPERTIES/REF77", "amount": -6000.0},
+            {"date": f"2026-{mm:02d}-15", "narration": "UPI/JIO RECHARGE/SECRETPAYEE", "amount": -399.0},
+        ]
+        txns += [{"date": f"2026-{mm:02d}-{10 + j}", "narration": "UPI/SHARMA GENERAL STORE", "amount": -250.0} for j in range(4)]
+    return {"id": acct_id, "masked": "XXXX4471", "fip": "HDFC-FIP", "type": "SAVINGS", "balance": balance,
+            "member": "inv-PQ7K", "transactions": txns}
+
+
+def _household(sharing):
+    p = _statement()
+    p["accounts"][0]["member"] = "me"
+    p["accounts"].append(_husband_account())
+    p["profile"]["linked"] = [{"id": "inv-PQ7K", "name": "Sunil", "relation": "Pati", "role": "earning_adult",
+                               "sharing": sharing, "self": False}]
+    r = client.post("/api/twin/build", json=p).json()
+    assert r["status"] == "ready"
+    return r["twin"], r["state"]
+
+
+def test_household_member_poora_is_attributed_and_counted():
+    twin, state = _household("poora")
+    ms = {m["id"]: m for m in twin["members"]}
+    sunil = ms["inv-PQ7K"]
+    assert sunil["name"] == "Sunil" and sunil["relation"] == "Pati" and sunil["sharing"] == "poora"
+    assert sunil["earner"] and sunil["account_holder"] and sunil["avatar"] == "man"
+    assert ms["me"]["earner"] and ms["me"]["main_earner"] and not sunil["main_earner"]   # 35k vs 22k
+    assert twin["closing_balance"] == 24000 + 8000
+    assert {a["member"] for a in twin["accounts"]} == {"me", "inv-PQ7K"}
+    assert any(e["type"] == "salary" and "Metro" in e["label"]["en"] for e in twin["upcoming"])
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state}).json()
+    dm = {m["id"]: m for m in db["household"]["members"]}
+    assert dm["inv-PQ7K"]["sharing"] == "poora" and dm["inv-PQ7K"]["account_holder"] is True
+
+
+def test_household_member_sirf_total_counts_but_hides_every_payee():
+    import json as _json
+    twin, state = _household("sirf_total")
+    blob = _json.dumps(twin).upper()
+    for secret in ("METRO", "VERMA", "SECRETPAYEE", "SHARMA", "4471", "HDFC"):
+        assert secret not in blob, secret
+    assert twin["closing_balance"] == 24000 + 8000          # the totals still count
+    hidden = [e for e in twin["upcoming"] if e.get("hidden_payee")]
+    assert hidden and all(e["label"]["en"].startswith("Sunil: ") and "(totals only)" in e["label"]["en"] for e in hidden)
+    assert all(not e["movable"] and "contact" not in e for e in hidden)
+    assert any(e["type"] == "salary" for e in hidden) and any(e["type"] == "rent" for e in hidden)
+    # the phone owner's own payments keep their names
+    assert any("Acme" in e["label"]["en"] for e in twin["upcoming"])
+    ms = {m["id"]: m for m in twin["members"]}
+    assert ms["inv-PQ7K"]["sharing"] == "sirf_total" and ms["inv-PQ7K"]["earner"]
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state}).json()
+    dblob = _json.dumps(db).upper()
+    for secret in ("METRO", "VERMA", "SECRETPAYEE", "SHARMA", "4471", "HDFC"):
+        assert secret not in dblob, secret
+
+
+def test_household_member_private_never_reaches_the_engines():
+    twin, _ = _household("private")
+    assert twin["closing_balance"] == 24000
+    assert [m["id"] for m in twin["members"]][:1] == ["me"] and "inv-PQ7K" not in {m["id"] for m in twin["members"]}
+    assert {a["member"] for a in twin["accounts"]} == {"me"}
+
+
+def test_members_survive_the_declared_answers_rebuild():
+    twin, state = _household("sirf_total")
+    declared = {"earners": {"state": "answered", "value": 2}}
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "declared": declared}).json()
+    ids = [m["id"] for m in db["household"]["members"]]
+    assert "inv-PQ7K" in ids and not any(i.startswith("earner") for i in ids)   # Sunil IS the second earner
+
+
+def test_only_a_family_members_account_linked():
+    p = _statement()
+    p["accounts"] = [_husband_account()]
+    p["profile"]["linked"] = [{"id": "inv-PQ7K", "name": "Sunil", "relation": "Pati", "role": "earning_adult",
+                               "sharing": "poora", "self": False}]
+    twin = client.post("/api/twin/build", json=p).json()["twin"]
+    me = twin["members"][0]
+    assert me["id"] == "me" and not me["account_holder"] and not me["earner"]
+    assert twin["members"][1]["id"] == "inv-PQ7K" and twin["members"][1]["main_earner"]

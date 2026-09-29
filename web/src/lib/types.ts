@@ -7,6 +7,8 @@ export type AvatarKind = "woman" | "man" | "girl" | "boy" | "elder_woman" | "eld
 export type Member = {
   id: string; name: string; role: L; earner: boolean; age?: number;
   sharing: "poora" | "sirf_total" | "private"; avatar: AvatarKind;
+  /** Live household: this member linked their OWN bank account (their sharing level is enforced). */
+  account_holder?: boolean; relation?: string | null;
 };
 
 export type Metric = {

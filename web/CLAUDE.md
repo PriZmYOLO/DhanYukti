@@ -36,6 +36,16 @@ them, each as a Value Ledger entry (`bill:<hash>`, no payee or amount); the
 reveal step shows `ConfirmBills`. Checks: `api/tests/test_twin.py` and
 `npm run test:my-bills` (mock bank + Next.js + FastAPI).
 
+A household is several people's OWN bank links. Every link records whose account
+it is (`LinkRecord.member`: "me", a family member added on this phone, or
+`inv-<code>` from an invite used on the member's own phone, which sets
+`household_sid` to the inviter's session) and the level THAT person chose:
+`poora`, `sirf_total` (E02 `hide_totals`: money counts, payees/apps/account
+numbers never leave the engines) or `private` (never sent to the engines).
+`buildTwin` merges this session's links + `listJoinedLinks`. Anyone may make a
+link show less (`/api/aa/links/[id]/sharing`); showing more is refused — the
+owner links again with their own Anumati OTP. Check: `npm run test:household`.
+
 Records from Perfios Hub (`/api/households/me/hub/[kind]`, `src/lib/server/twin/hub.ts`):
 the member's own electricity/gas bill, ration card, EPF (OTP), vehicle RC + e-challans and
 driving licence, each behind its own DPDP purpose (electricity, gas, ration, epf, rc, dl; the

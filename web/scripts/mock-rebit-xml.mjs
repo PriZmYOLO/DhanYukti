@@ -53,14 +53,14 @@ export const MOCK_INVESTMENTS = {
 };
 
 /** DEPOSIT account XML (the same values the JSON mock used to send). */
-export function depositXml({ masked, balance, start, today, txns }) {
+export function depositXml({ masked, balance, start, today, txns, holderName = "TEST USER" }) {
   const rows = txns
     .map(
       (t) =>
         `<Transaction ${attrs({ txnId: t.txnId, type: t.type, mode: t.mode, amount: t.amount, currentBalance: t.currentBalance, transactionTimestamp: t.transactionTimestamp, valueDate: t.valueDate, narration: t.narration, reference: t.reference })}/>`,
     )
     .join("");
-  return `<?xml version="1.0" encoding="UTF-8"?><Account ${ns("deposit")} ${attrs({ linkedAccRef: `ref-${masked.slice(-4)}`, maskedAccNumber: masked, version: "1.1", type: "deposit" })}>${holder()}<Summary ${attrs({ currentBalance: balance, currency: "INR", balanceDateTime: today.toISOString(), type: "SAVINGS", status: "ACTIVE" })}/><Transactions ${attrs({ startDate: isoDay(start), endDate: isoDay(today) })}>${rows}</Transactions></Account>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><Account ${ns("deposit")} ${attrs({ linkedAccRef: `ref-${masked.slice(-4)}`, maskedAccNumber: masked, version: "1.1", type: "deposit" })}>${holder({ name: holderName })}<Summary ${attrs({ currentBalance: balance, currency: "INR", balanceDateTime: today.toISOString(), type: "SAVINGS", status: "ACTIVE" })}/><Transactions ${attrs({ startDate: isoDay(start), endDate: isoDay(today) })}>${rows}</Transactions></Account>`;
 }
 
 function window(today) {

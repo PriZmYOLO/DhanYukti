@@ -366,7 +366,7 @@ def dashboard_for(hh: dict, *, data_source: dict, analytics: dict | None, game_b
             "income_type": hh["income_type"],
             # unknown is not zero: a twin with no complete month has no monthly income yet
             "monthly_income": R(norm["monthly_income_p"]) if norm.get("income_known", True) else None,
-            "members": [{k: m[k] for k in ("id", "name", "role", "earner", "age", "sharing", "avatar") if k in m}
+            "members": [{k: m[k] for k in ("id", "name", "role", "earner", "age", "sharing", "avatar", "account_holder", "relation") if k in m}
                         for m in hh["members"]],
             "literacy_mode": hh["literacy_mode"], "language": hh["language"],
         },

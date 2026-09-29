@@ -311,7 +311,11 @@ export interface LedgerEntry {
     | "bill_confirmed"
     | "bill_changed"
     | "bill_ignored"
-    | "bill_undone";
+    | "bill_undone"
+    /** A family member's own bank link joined this household (subject "aa:<ref>"). */
+    | "household_joined"
+    /** A member's account now shows less in the household picture. */
+    | "sharing_tightened";
   /**
    * DPDP purpose id, "aa:<short link ref>", "engine:cover:<input hash>",
    * "report:<id>" or "bill:<hash of the payment>" (no payee, no amount).

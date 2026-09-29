@@ -11,7 +11,7 @@
  */
 import type { AccountSummary } from "@/lib/contracts/aa-summary";
 import { DEFAULT_FI_TYPES, fiTypeList, type FiType } from "@/lib/aa/fi-types";
-import type { ConsentChoices, SourceLink } from "@/lib/provisional/h03/types";
+import type { ConsentChoices, LinkMember, Sharing, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 import { ensureSession } from "@/lib/session";
 
@@ -51,6 +51,32 @@ export function liveSee(fiTypes: readonly FiType[]): L {
 }
 
 const PENDING_KEY = "dy.aa.pendingLink";
+
+export type HouseholdAccount = {
+  link_id: string;
+  member: LinkMember | null;
+  consent_status: SourceLink["consent"]["status"];
+  import_status: SourceLink["import"]["status"];
+  /** "their_phone": linked from an invite on the member's own phone. */
+  from: "this_phone" | "their_phone";
+};
+export type HouseholdAccounts = { accounts: HouseholdAccount[]; joined_elsewhere: HouseholdAccount[] };
+
+/** The three levels, as every screen words them. */
+export const SHARING_TEXT: Record<Sharing, { name: L; what: L }> = {
+  poora: {
+    name: { hi: "Poora", en: "Full" },
+    what: { hi: "Ghar ke hisaab mein poora — len-den aur kise diya, sab", en: "In full: payments and who they went to" },
+  },
+  sirf_total: {
+    name: { hi: "Sirf total", en: "Totals only" },
+    what: { hi: "Paisa hisaab mein ginta hai, par kise diya ya kisne diya nahi dikhta", en: "The money counts, but who was paid (or who paid) stays hidden" },
+  },
+  private: {
+    name: { hi: "Private", en: "Private" },
+    what: { hi: "Ghar ke hisaab mein bilkul nahi", en: "Not in the household picture at all" },
+  },
+};
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => null);
@@ -102,6 +128,17 @@ export const aaLive = {
       await fetch("/api/aa/links", opts("POST", { source_access: true, ...grants })),
     );
     if (!r.ok || !r.link) throw new Error(r.reason ?? "could_not_create");
+    return r.link;
+  },
+
+  /** Whose accounts feed this household and how each shows (ids and tags only). */
+  async household(): Promise<HouseholdAccounts> {
+    return json<HouseholdAccounts>(await fetch("/api/aa/household", opts("GET")));
+  },
+
+  /** Show a member's account LESS in the household picture. Showing more needs them to link again. */
+  async setSharing(linkId: string, sharing: Sharing): Promise<SourceLink> {
+    const r = await json<{ link: SourceLink }>(await fetch(`/api/aa/links/${linkId}/sharing`, opts("POST", { sharing })));
     return r.link;
   },
 

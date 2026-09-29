@@ -1,6 +1,7 @@
 import type { ConsentChoices } from "@/lib/provisional/h03/types";
 import {
   createLink,
+  LinkChoiceError,
   listLinks,
   resolveFiTypes,
 } from "@/lib/server/aa/links";
@@ -44,6 +45,11 @@ export async function POST(request: Request) {
     );
   }
   const sid = await sessionId(true);
-  const link = await createLink(sid!, choices);
-  return Response.json({ ok: true, link }, { status: 201, headers: noStore });
+  try {
+    const link = await createLink(sid!, choices);
+    return Response.json({ ok: true, link }, { status: 201, headers: noStore });
+  } catch (e) {
+    if (e instanceof LinkChoiceError) return errorResponse(400, e.code, e.safe);
+    throw e;
+  }
 }

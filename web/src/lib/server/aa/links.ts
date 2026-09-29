@@ -18,8 +18,11 @@ import type {
   ImportStatus,
   ImportedAccount,
   LinkActivity,
+  LinkMember,
+  Sharing,
   SourceLink,
 } from "@/lib/provisional/h03/types";
+import { SHARING_ORDER } from "@/lib/provisional/h03/types";
 import {
   aaConfig,
   aaConfigured,
@@ -45,6 +48,7 @@ import { appendLedger, hasConsent } from "@/lib/server/dpdp/ledger";
 import { detectPolicies, summariseCover } from "@/lib/server/insurance/cover";
 import { readTags, saveTags, validTags } from "@/lib/server/insurance/tags";
 import { checkJanSuraksha } from "@/lib/server/schemes/jan-suraksha";
+import { markInviteJoined, resolveInvite, updateJoinedSharing } from "@/lib/server/onboarding/store";
 import { STATE_TTL, twinKeys, withoutBankCorrections } from "@/lib/server/twin/keys";
 
 /**
@@ -93,6 +97,28 @@ interface LinkRecord {
   pending: PendingRetrieval | null;
   /** FI types requested; absent on older records = DEPOSIT. */
   fi_types?: FiType[];
+  /** Whose account this is. Absent on older records = the phone's owner. */
+  member?: LinkMember;
+  /**
+   * The household (session) this link feeds. Absent = its own session.
+   * Differs only for a link made from another household's invite.
+   */
+  household_sid?: string;
+  /** The invite it was made from (single-use). */
+  invite_code?: string;
+}
+
+const SELF: LinkMember = { id: "me", self: true, relation: null, role: "self", sharing: "poora" };
+const memberOf = (r: Pick<LinkRecord, "member">): LinkMember => r.member ?? SELF;
+const householdOf = (r: Pick<LinkRecord, "household_sid" | "session_id">) => r.household_sid ?? r.session_id;
+const isSharing = (x: unknown): x is Sharing => x === "poora" || x === "sirf_total" || x === "private";
+const cleanRelation = (x: unknown) =>
+  typeof x === "string" ? x.replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 24) || null : null;
+
+export class LinkChoiceError extends Error {
+  constructor(public code: "sharing_required" | "invite_invalid" | "own_invite", public safe: string) {
+    super(code);
+  }
 }
 
 const linkFiTypes = (record: Pick<LinkRecord, "fi_types">): FiType[] =>
@@ -144,6 +170,8 @@ const keys = {
   summary: (id: string) => `aa:summary:${id}`,
   raw: (id: string) => `aa:raw:${id}`,
   lock: (id: string) => `aa:lock:${id}`,
+  /** Links from OTHER sessions (family members' own phones) that feed this household. */
+  household: (sid: string) => `aa:household:${sid}`,
 };
 
 const now = (): IsoTimestamp => new Date().toISOString();
@@ -166,7 +194,7 @@ function aaSubject(record: { link_id: string }) {
 /** Ledger writes never block the AA flow. */
 async function ledger(
   sid: string,
-  kind: "aa_requested" | "aa_approved" | "aa_revoked" | "aa_ended",
+  kind: "aa_requested" | "aa_approved" | "aa_revoked" | "aa_ended" | "household_joined" | "sharing_tightened",
   record: { link_id: string },
 ) {
   try {
@@ -257,11 +285,18 @@ async function purgeData(record: LinkRecord) {
     keys.data(record.link_id),
     keys.summary(record.link_id),
     keys.raw(record.link_id),
-    twinKeys.twin(record.session_id),
   );
-  // Decisions about this bank data's payments go too; jars and points stay.
-  const state = await kvGet<Record<string, unknown>>(twinKeys.state(record.session_id));
-  if (state) await kvSet(twinKeys.state(record.session_id), withoutBankCorrections(state), STATE_TTL);
+  // The picture built from it goes too: on this phone and, for a joined link, in the
+  // inviter's household. Decisions about its payments go; jars and points stay.
+  await forgetTwin(record.session_id);
+  if (householdOf(record) !== record.session_id) await forgetTwin(householdOf(record));
+}
+
+/** Delete a household's twin (rebuilt on next load) and its decisions about bank payments. */
+async function forgetTwin(sid: string) {
+  await kvDel(twinKeys.twin(sid));
+  const state = await kvGet<Record<string, unknown>>(twinKeys.state(sid));
+  if (state) await kvSet(twinKeys.state(sid), withoutBankCorrections(state), STATE_TTL);
 }
 
 type DataRead =
@@ -309,6 +344,8 @@ export function toSourceLink(record: LinkRecord): SourceLink {
     } via Anumati${aaConfig.isSandbox ? " (sandbox test bank)" : ""}`,
     is_demo: false,
     is_sandbox: aaConfig.isSandbox,
+    member: memberOf(record),
+    household: householdOf(record) === record.session_id ? "own" : "joined",
     fi_types: linkFiTypes(record),
     terms: liveTerms(linkFiTypes(record)),
     grants: record.grants,
@@ -356,16 +393,41 @@ export async function createLink(
   const fiTypes = resolveFiTypes(choices.fi_types);
   if (fiTypes.length === 0) throw new Error("no_fi_types");
   const at = now();
+  // Whose account is this? The phone's owner, a family member here, or someone joining from an invite.
+  let member: LinkMember = SELF;
+  let household_sid: string | undefined;
+  let invite_code: string | undefined;
+  if (choices.invite_code) {
+    const inv = await resolveInvite(String(choices.invite_code));
+    if (!inv) throw new LinkChoiceError("invite_invalid", "This invite has expired, was cancelled or was already used.");
+    if (inv.owner === sid) throw new LinkChoiceError("own_invite", "This is your own invite — send it to the family member.");
+    if (!isSharing(choices.member?.sharing)) throw new LinkChoiceError("sharing_required", "Choose how your account shows in the family's picture.");
+    invite_code = String(choices.invite_code).toUpperCase();
+    household_sid = inv.owner;
+    member = { id: `inv-${invite_code}`, self: false, relation: inv.label, role: inv.role, sharing: choices.member!.sharing! };
+  } else if (choices.member?.who === "family") {
+    if (!isSharing(choices.member.sharing)) throw new LinkChoiceError("sharing_required", "Choose how this account shows in the household picture.");
+    member = {
+      id: `fam-${randomUUID().slice(0, 8)}`,
+      self: false,
+      relation: cleanRelation(choices.member.relation),
+      role: choices.member.role === "non_earning_adult" ? "non_earning_adult" : "earning_adult",
+      sharing: choices.member.sharing,
+    };
+  }
+  // For someone else's account the sharing level IS the viewer and computation grant.
+  const shared = member.self || member.sharing !== "private";
   const record: LinkRecord = {
     fi_types: fiTypes,
     link_id: `aa-${randomUUID()}`,
     session_id: sid,
+    ...(member.self ? {} : { member }),
+    ...(household_sid ? { household_sid, invite_code } : {}),
     grants: {
-      household_computation: Boolean(choices.household_computation),
-      viewer_scope:
-        choices.viewer_scope === "household_adults"
-          ? "household_adults"
-          : "only_me",
+      household_computation: member.self ? Boolean(choices.household_computation) : shared,
+      viewer_scope: member.self
+        ? choices.viewer_scope === "household_adults" ? "household_adults" : "only_me"
+        : shared ? "household_adults" : "only_me",
       alerts_and_actions: Boolean(choices.alerts_and_actions),
     },
     consent_status: "requested",
@@ -388,7 +450,71 @@ export async function createLink(
   await ledger(sid, "aa_requested", record);
   const ids = await sessionLinkIds(sid);
   await kvSet(keys.session(sid), [...ids, record.link_id].slice(-20), LINK_TTL);
+  if (household_sid && invite_code) {
+    const joined = (await kvGet<string[]>(keys.household(household_sid))) ?? [];
+    await kvSet(keys.household(household_sid), [...joined, record.link_id].slice(-12), LINK_TTL);
+    await markInviteJoined(household_sid, invite_code, member.sharing);
+    await ledger(household_sid, "household_joined", record);
+  }
   return toSourceLink(record);
+}
+
+/* ------------------------------- household -------------------------------- */
+
+/** Links from family members' own phones that joined this household. Never their data. */
+export async function listJoinedLinks(hsid: string): Promise<SourceLink[]> {
+  const ids = (await kvGet<string[]>(keys.household(hsid))) ?? [];
+  const records = await Promise.all(ids.map((id) => loadLink(id)));
+  const mine = records.filter((r): r is LinkRecord => r !== null && householdOf(r) === hsid && r.session_id !== hsid);
+  await Promise.all(mine.map((r) => collectIfPending(r)));
+  return mine.map(toSourceLink);
+}
+
+/** A joined member's data, for building the household they joined (nobody else). */
+export async function readHouseholdAccountData(hsid: string, linkId: string): Promise<StoredAccountData | null> {
+  const record = await loadLink(linkId);
+  if (!record || householdOf(record) !== hsid || record.session_id === hsid) return null;
+  if (record.consent_status !== "active" || memberOf(record).sharing === "private") return null;
+  return kvGet<StoredAccountData>(keys.data(linkId));
+}
+
+/** The household a link feeds (its own session unless it joined from an invite). */
+export async function householdOfLink(linkId: string): Promise<string | null> {
+  const record = await loadLink(linkId);
+  return record ? householdOf(record) : null;
+}
+
+export type SharingResult =
+  | { ok: true; link: SourceLink; households: string[] }
+  | { ok: false; code: "not_found" | "self" | "needs_member"; safe: string };
+
+/**
+ * Change how a member's account shows in the household picture. Anyone who can
+ * see the link may make it MORE private (instantly). Showing MORE needs the
+ * account's owner to approve again at Anumati with their own OTP, so this
+ * refuses it: they link again.
+ */
+export async function setLinkSharing(sid: string, linkId: string, to: unknown): Promise<SharingResult> {
+  const record = await loadLink(linkId);
+  if (!record || (record.session_id !== sid && householdOf(record) !== sid) || !isSharing(to)) {
+    return { ok: false, code: "not_found", safe: "That account isn't in your household." };
+  }
+  const m = memberOf(record);
+  if (m.self) return { ok: false, code: "self", safe: "Your own account always shows in your own picture. To stop it, stop the link." };
+  if (SHARING_ORDER.indexOf(to) < SHARING_ORDER.indexOf(m.sharing)) {
+    return { ok: false, code: "needs_member", safe: "Showing more needs the account's owner: they link again and approve at Anumati with their own OTP." };
+  }
+  if (to !== m.sharing) {
+    record.member = { ...m, sharing: to };
+    record.grants = { ...record.grants, household_computation: to !== "private", viewer_scope: to === "private" ? "only_me" : "household_adults" };
+    await saveLink(record);
+    // The household picture was built at the old level: delete it (and decisions about its payments).
+    await forgetTwin(householdOf(record));
+    await ledger(sid, "sharing_tightened", record);
+    if (householdOf(record) !== sid) await ledger(householdOf(record), "sharing_tightened", record);
+    if (record.invite_code) await updateJoinedSharing(householdOf(record), record.invite_code, to);
+  }
+  return { ok: true, link: toSourceLink(record), households: [...new Set([householdOf(record)])] };
 }
 
 export type StartApprovalResult =
@@ -1117,6 +1243,6 @@ export async function deleteSessionLinks(
     );
     removed.push({ ref: shortRef(id)!, was });
   }
-  await kvDel(keys.session(sid), twinKeys.twin(sid), twinKeys.state(sid));
+  await kvDel(keys.session(sid), keys.household(sid), twinKeys.twin(sid), twinKeys.state(sid));
   return removed;
 }

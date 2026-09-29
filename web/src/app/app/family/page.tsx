@@ -27,6 +27,9 @@ import VoiceLanguages from "@/components/gov/VoiceLanguages";
 import MyAnswers from "@/components/gov/MyAnswers";
 import MyReports from "@/components/gov/MyReports";
 import { gov } from "@/lib/gov";
+import { aaLive, SHARING_TEXT, type HouseholdAccounts } from "@/lib/aa-live";
+import SharingPicker from "@/components/gov/SharingPicker";
+import type { Sharing } from "@/lib/provisional/h03/types";
 import type { SourceLink } from "@/lib/provisional/h03/types";
 
 const TABS = [
@@ -51,10 +54,14 @@ export default function Family() {
   const [revoke, setRevoke] = useState<ConsentArtefact | null>(null);
   const [revoked, setRevoked] = useState<string[] | null>(null);
   const [receipt, setReceipt] = useState<ConsentArtefact | null>(null);
+  const [hhAccts, setHhAccts] = useState<HouseholdAccounts | null>(null);
+  const [shareErr, setShareErr] = useState<string | null>(null);
 
   useEffect(() => { api.households().then(setHomes).catch(() => {}); api.capabilities().then(setCaps).catch(() => {}); }, []);
   useEffect(() => { api.passport(hid).then(setPass).catch(() => {}); }, [hid, consentHandle]);
   useEffect(() => { if (tab === "consent") gov.links().then(setLiveLinks).catch(() => {}); }, [tab]);
+  const isMe = hid === "me";
+  useEffect(() => { if (tab === "family" && isMe) aaLive.household().then(setHhAccts).catch(() => {}); }, [tab, isMe, data]);
   const reloadDpdp = dpdp.reload;
   useEffect(() => { if (tab === "consent" || tab === "ledger" || tab === "family") reloadDpdp(); }, [tab, reloadDpdp]);
 
@@ -65,10 +72,21 @@ export default function Family() {
   // Household Consent Bundle: each earning adult consents for their own accounts.
   const askConsent = async (memberId: string) => {
     // Live Anumati: each adult links from their own phone through onboarding.
-    if ((await gov.aaStatus().catch(() => null))?.live_ui_enabled) { router.push("/?step=consent"); return; }
+    if ((await gov.aaStatus().catch(() => null))?.live_ui_enabled) { router.push("/?step=consent&who=family"); return; }
     const r = await api.aaStart(hid, memberId, "9999999999");
     if (r.mode === "live" && r.redirect_url.startsWith("http")) window.open(r.redirect_url, "_blank");
     else router.push(`/anumati?handle=${encodeURIComponent(r.consent_handle)}&mobile=9999999999&return=/app/family`);
+  };
+
+  // Live household: show a member's account LESS (instant). Showing more needs them to link again.
+  const tighten = async (memberId: string, to: Sharing) => {
+    setShareErr(null);
+    const links = (hhAccts?.accounts ?? []).filter((a) => a.member?.id === memberId && a.consent_status === "active");
+    try {
+      for (const a of links) await aaLive.setSharing(a.link_id, to);
+      await refresh();
+      setHhAccts(await aaLive.household());
+    } catch (e) { setShareErr(e instanceof Error ? e.message : "error"); }
   };
 
   const doRevoke = async () => {
@@ -111,9 +129,12 @@ export default function Family() {
       </div>
 
       <SectionTitle v={{ hi: "Sadasya aur sharing", en: "Members & sharing" }} />
+      {!isMe && <p className="mx-5 lg:mx-0 -mt-3 mb-2 text-[12px] text-muted">{t({ hi: "Demo parivaar: yahan sharing badalna sirf dikhane ke liye hai.", en: "Demo family: changing sharing here is only a preview." })}</p>}
+      {isMe && <p className="mx-5 lg:mx-0 -mt-3 mb-2 text-[12px] text-muted">{t({ hi: "Har sadasya ka apna khaata, unki apni chuni sharing. Kam dikhana turant hota hai; zyada dikhane ke liye woh khud dobara jodte hain.", en: "Each member's own account, at the level they chose. Showing less is instant; showing more needs them to link again." })}</p>}
       <div className="mx-5 lg:mx-0 space-y-2">
         {data.household.members.map((m) => {
           const s = sharing[m.id] ?? m.sharing;
+          const fromTheirPhone = hhAccts?.accounts.some((a) => a.member?.id === m.id && a.from === "their_phone");
           return (
             <div key={m.id} className="rounded-[24px] bg-white p-3 shadow-soft">
               <div className="flex items-center gap-3">
@@ -121,16 +142,37 @@ export default function Family() {
                 <div className="flex-1"><p className="font-extrabold">{m.name}{m.age ? <span className="text-muted font-semibold text-sm"> · {m.age}</span> : null}</p><p className="text-xs text-muted">{t(m.role)}</p></div>
                 {m.earner && <span className="rounded-full bg-mint text-leaf text-[11px] font-extrabold px-2 py-1">{lang === "hi" ? "KAMAANE WALE" : "EARNER"}</span>}
               </div>
-              {m.earner && (
+              {!isMe && m.earner && (
                 <div className="mt-3 grid grid-cols-3 gap-1 rounded-full bg-lav p-1">
                   {SHARE.map((o) => (
                     <button key={o.k} onClick={() => setSharing({ ...sharing, [m.id]: o.k })} className={`min-h-11 rounded-full text-[12px] font-bold ${s === o.k ? "bg-ink text-white" : "text-muted"}`}>{lang === "hi" ? o.hi : o.en}</button>
                   ))}
                 </div>
               )}
+              {isMe && m.id !== "me" && m.account_holder && (
+                <div className="mt-3">
+                  <SharingPicker compact stricterOnly value={m.sharing} onChange={(to) => { if (to !== m.sharing) void tighten(m.id, to); }} />
+                  <p className="mt-1.5 text-[11px] text-muted">{t(SHARING_TEXT[m.sharing].what)}{fromTheirPhone ? t({ hi: " · unke apne phone se juda", en: " · linked from their own phone" }) : ""}</p>
+                </div>
+              )}
+              {isMe && !m.account_holder && m.earner && (
+                <button onClick={() => router.push("/?step=consent&who=family")} className="mt-3 w-full min-h-11 rounded-full bg-lav text-[13px] font-bold">{t({ hi: "Khaata nahi juda — unke saath jodein", en: "Account not linked — link it with them" })}</button>
+              )}
             </div>
           );
         })}
+        {isMe && hhAccts?.accounts.filter((a) => a.member && !a.member.self && a.member.sharing === "private" && a.consent_status === "active").map((a) => (
+          <div key={a.link_id} className="rounded-[24px] bg-white/70 p-3 text-[13px]">
+            <p className="font-bold">{a.member?.relation ?? t({ hi: "Parivaar ke sadasya", en: "Family member" })} · {t(SHARING_TEXT.private.name)}</p>
+            <p className="text-muted text-[12px]">{t(SHARING_TEXT.private.what)}</p>
+          </div>
+        ))}
+        {shareErr && <p className="rounded-[20px] bg-danger-soft p-3 text-sm font-semibold text-danger">{shareErr}</p>}
+        {isMe && (
+          <button onClick={() => router.push("/?step=consent&who=family")} className="w-full rounded-[24px] border-2 border-dashed border-ink/20 p-4 text-center font-bold text-[14px]">
+            + {t({ hi: "Parivaar ke sadasya ka khaata jodein (is phone se)", en: "Add a family member's account (on this phone)" })}
+          </button>
+        )}
       </div>
 
       <SectionTitle v={{ hi: "Aapke jawaab", en: "Your answers" }} />

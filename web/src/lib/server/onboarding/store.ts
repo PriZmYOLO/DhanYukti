@@ -26,6 +26,8 @@ const INVITE_TTL = 7 * 24 * 60 * 60;
 const answersKey = (sid: string) => `onb:answers:${sid}`;
 const invitesKey = (sid: string) => `onb:invites:${sid}`;
 const inviteKey = (code: string) => `onb:invite:${code}`;
+/** Server-only: which session (household) an invite joins. Never returned by any route. */
+const inviteOwnerKey = (code: string) => `onb:invite:owner:${code}`;
 
 function count(input: unknown, max: number): Answer<number> {
   const a = input as { state?: unknown; value?: unknown } | null;
@@ -158,6 +160,7 @@ export async function createInvite(sid: string, role: unknown, label: unknown): 
   // The public lookup holds only the role and label: never the inviter's
   // answers, bank data or session.
   await kvSet(inviteKey(code), { role: invite.role, label: invite.label, expires_at: invite.expires_at }, INVITE_TTL);
+  await kvSet(inviteOwnerKey(code), sid, INVITE_TTL);
   return invite;
 }
 
@@ -167,7 +170,7 @@ export async function cancelInvite(sid: string, code: string): Promise<boolean> 
   if (!found) return false;
   found.status = "cancelled";
   await kvSet(invitesKey(sid), invites, TTL);
-  await kvDel(inviteKey(code));
+  await kvDel(inviteKey(code), inviteOwnerKey(code));
   return true;
 }
 
@@ -179,5 +182,38 @@ export async function lookupInvite(code: string): Promise<{ role: InviteRole; la
 /** DPDP withdrawal of "member_profile": answers and every invite go. */
 export async function deleteMemberProfile(sid: string) {
   const invites = await listInvites(sid);
-  await kvDel(answersKey(sid), invitesKey(sid), ...invites.map((i) => inviteKey(i.code)));
+  await kvDel(answersKey(sid), invitesKey(sid), ...invites.flatMap((i) => [inviteKey(i.code), inviteOwnerKey(i.code)]));
+}
+
+/** Server-only: the household an open invite joins, with what the inviter chose. */
+export async function resolveInvite(code: string): Promise<{ owner: string; role: InviteRole; label: string | null } | null> {
+  const c = code.toUpperCase();
+  if (!/^[A-Z2-9]{8}$/.test(c)) return null;
+  const [pub, owner] = await Promise.all([lookupInvite(c), kvGet<string>(inviteOwnerKey(c))]);
+  if (!pub || !owner) return null;
+  const inv = (await listInvites(owner)).find((i) => i.code === c);
+  if (!inv || inv.status !== "open") return null;
+  return { owner, role: pub.role, label: pub.label };
+}
+
+/** An invite is single-use: once someone links from it, the code stops working. */
+export async function markInviteJoined(owner: string, code: string, sharing: NonNullable<Invite["joined_sharing"]>) {
+  const invites = await listInvites(owner);
+  const inv = invites.find((i) => i.code === code);
+  if (inv) {
+    inv.status = "joined";
+    inv.joined_sharing = sharing;
+    inv.joined_at = new Date().toISOString();
+    await kvSet(invitesKey(owner), invites, TTL);
+  }
+  await kvDel(inviteKey(code), inviteOwnerKey(code));
+}
+
+/** The joined member tightened their level: the inviter's list shows the current one. */
+export async function updateJoinedSharing(owner: string, code: string, sharing: NonNullable<Invite["joined_sharing"]>) {
+  const invites = await listInvites(owner);
+  const inv = invites.find((i) => i.code === code);
+  if (!inv) return;
+  inv.joined_sharing = sharing;
+  await kvSet(invitesKey(owner), invites, TTL);
 }

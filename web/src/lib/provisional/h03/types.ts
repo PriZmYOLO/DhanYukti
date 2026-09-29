@@ -57,6 +57,37 @@ export interface ConsentChoices {
    * choice ∩ its allow-list (AA_FI_TYPES); absent → savings only.
    */
   fi_types?: FiType[];
+  /** "Whose account is this?" Absent = the phone's owner ("self"). */
+  member?: MemberChoice;
+  /** Linking from an invite: the account joins the inviter's household. */
+  invite_code?: string;
+}
+
+/**
+ * How one member's account shows in the household picture. Chosen by the
+ * account's owner. "sirf_total" counts the money but hides who was paid;
+ * "private" keeps it out of the household picture altogether.
+ */
+export type Sharing = "poora" | "sirf_total" | "private";
+export const SHARING_ORDER: readonly Sharing[] = ["poora", "sirf_total", "private"];
+
+export interface MemberChoice {
+  who: "self" | "family";
+  /** What the family calls them, e.g. "Pati" (max 24 chars). */
+  relation?: string;
+  role?: "earning_adult" | "non_earning_adult";
+  /** Required for a family member's or an invited member's account. */
+  sharing?: Sharing;
+}
+
+/** Whose account a link is, as the household sees it. */
+export interface LinkMember {
+  /** "me" = the phone's owner; otherwise a stable id for this family member. */
+  id: string;
+  self: boolean;
+  relation: string | null;
+  role: "self" | "earning_adult" | "non_earning_adult";
+  sharing: Sharing;
 }
 
 export const DEFAULT_CHOICES: ConsentChoices = {
@@ -159,6 +190,14 @@ export interface SourceLink {
   activity?: LinkActivity[];
   /** Live links only: data came from the provider's test sandbox. */
   is_sandbox?: boolean;
+  /** Whose account this is (live links). */
+  member?: LinkMember;
+  /**
+   * "own": feeds this phone's household. "joined": linked from an invite, so
+   * it feeds the inviter's household (at the owner's sharing level) and this
+   * phone only ever sees it as its own.
+   */
+  household?: "own" | "joined";
 }
 
 export type RequestConsentResult =
