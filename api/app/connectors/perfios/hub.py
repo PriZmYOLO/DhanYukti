@@ -38,11 +38,13 @@ STATUS = {102: "invalid_input", 103: "not_found", 104: "max_retries", 105: "cons
 class HubLookupError(Exception):
     """The source answered, but not with a record (wrong number, no record, OTP expired...)."""
 
-    def __init__(self, code: str, status: int | None = None, request_id: str | None = None):
+    def __init__(self, code: str, status: int | None = None, request_id: str | None = None,
+                 reason: str | None = None):
         super().__init__(code)
         self.code = code
         self.status = status
         self.request_id = request_id
+        self.reason = reason   # Perfios' own short error text, when it sent one
 
 
 def _status(body: dict) -> int | None:
@@ -65,14 +67,15 @@ class PerfiosHubClient(PerfiosHTTP, HubConnector):
             out = self.request("POST", PATHS[kind], json={**body, "consent": "Y"})
         except SponsorError as e:
             if e.status_code in (400, 404):
-                raise HubLookupError("invalid_input", e.status_code, e.request_id) from None
+                raise HubLookupError("invalid_input", e.status_code, e.request_id, e.reason) from None
             if e.status_code in (503, 504):
-                raise HubLookupError("source_unavailable", e.status_code, e.request_id) from None
+                raise HubLookupError("source_unavailable", e.status_code, e.request_id, e.reason) from None
             raise
         st = _status(out)
         rid = out.get("request_id") or out.get("requestId")
         if st != FOUND:
-            raise HubLookupError(STATUS.get(st or 0, "lookup_failed"), st, rid)
+            msg = out.get("message") or out.get("error") or out.get("status-message")
+            raise HubLookupError(STATUS.get(st or 0, "lookup_failed"), st, rid, str(msg)[:160] if msg else None)
         return {"request_id": rid, "result": out.get("result")}
 
     # --- utility bills -------------------------------------------------------------------------

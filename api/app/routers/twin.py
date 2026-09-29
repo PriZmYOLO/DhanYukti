@@ -305,23 +305,28 @@ def hub_lookup(kind: str, body: HubIn):
         if kind == "rc":
             r = c.rc(inp["reg_no"])
             facts = {"rc": hub_facts.derive("rc", r["result"], as_of=as_of, entered=inp)}
+            challan_issue = None
             try:  # e-challans on the same vehicle: same consent ("vehicle"), best effort
                 ch = c.challan(inp["reg_no"])
                 facts["challan"] = hub_facts.derive("challan", ch["result"], as_of=as_of, entered=inp)
             except HubLookupError as e:
                 if e.code == "not_found":
                     facts["challan"] = hub_facts.derive("challan", [], as_of=as_of, entered=inp)
-            except SponsorError:
-                pass
-            return {"ok": True, "facts": facts}
+                else:
+                    log.info("hub challan -> %s (status=%s reason=%s)", e.code, e.status, e.reason)
+                    challan_issue = {"code": e.code, "upstream_status": e.status, "upstream_reason": e.reason}
+            except SponsorError as e:
+                log.info("hub challan unavailable status=%s reason=%s", e.status_code, e.reason)
+                challan_issue = {"code": "hub_unavailable", "upstream_status": e.status_code, "upstream_reason": e.reason}
+            return {"ok": True, "facts": facts, **({"challan_issue": challan_issue} if challan_issue else {})}
         if kind == "dl":
             r = c.dl(inp["dl_no"], inp["dob"])
             return {"ok": True, "facts": {"dl": hub_facts.derive("dl", r["result"], as_of=as_of, entered=inp)}}
         r = c.agent(inp["pan"])
         return {"ok": True, "agent": hub_facts.agent_view(r["result"])}
     except HubLookupError as e:
-        log.info("hub %s -> %s (status=%s req=%s)", kind, e.code, e.status, e.request_id)
-        return {"ok": False, "code": e.code}
+        log.info("hub %s -> %s (status=%s req=%s reason=%s)", kind, e.code, e.status, e.request_id, e.reason)
+        return {"ok": False, "code": e.code, "upstream_status": e.status, "upstream_reason": e.reason}
     except SponsorError as e:
         log.warning("hub %s unavailable status=%s req=%s", kind, e.status_code, e.request_id)
         code = {401: "hub_auth", 403: "hub_auth", 402: "hub_credits", 429: "hub_busy"}.get(e.status_code or 0, "hub_unavailable")
