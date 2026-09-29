@@ -26,7 +26,7 @@ Primary user is usually the woman running the household budget. Shared ₹8–12
 | Feasibility (5%) / Demo (5%) | Architecture with trust boundaries; drag-the-bill moment |
 
 ## Features (v1 scope)
-1. **Onboarding** (< 4 min): language by spoken sample → OTP (no Aadhaar/PAN) → family in 5 taps → Dual-Consent Passport → Anumati connect → first reveal + Pehla Kadam badge → first Gullak.
+1. **Onboarding** (< 3 min, 8 steps): language by spoken sample → Consent Passport with the bank-registered mobile (no Aadhaar/PAN, no DhanYukti OTP) → Anumati approval (Anumati's OTP is the identity step) → first reveal from their own bank + confirm repeating bills → only what the bank can't tell (family, cash at home, a bill paid in cash, goal) → invite → first Gullak.
 2. **Home**: Aaj ka kaam, Safe-to-Spend dial, 30-day cash river (drag a bill), Gullak jars, Family Health tiles, Agar…? sliders, mission bar, spend donut.
 3. **Four numbers**: Safe to Spend (E03), Resilience Days (E05), Debt Load per ₹100 (E04), Protection (E06), each with pakka/andaaza/pata nahi.
 4. **Needs + Priority**: E13 picks one; E14 writes the card; every card has Kyon? / Karo / Baad mein.

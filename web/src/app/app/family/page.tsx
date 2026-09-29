@@ -176,7 +176,7 @@ export default function Family() {
       </div>
 
       <SectionTitle v={{ hi: "Aapke jawaab", en: "Your answers" }} />
-      <div className="mx-5 lg:mx-0"><MyAnswers onEdit={() => { setOnboarded(false); router.push("/"); }} /></div>
+      <div className="mx-5 lg:mx-0"><MyAnswers onEdit={() => router.push("/?step=about")} /></div>
       <SectionTitle v={{ hi: "Parivaar ko bulaayein", en: "Invite family" }} />
       <div className="mx-5 lg:mx-0 -mt-5"><InviteBox enabled={dpdp.status("member_profile") === "granted"} onEnable={() => void dpdp.set("member_profile", "grant")} /></div>
       </>)}
