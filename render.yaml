@@ -26,6 +26,8 @@ services:
       - { key: PERFIOS_SECURE_ID, sync: false }
       - { key: PERFIOS_SECURE_CREDENTIAL, sync: false }
       - { key: PERFIOS_ORG_ID, sync: false }
+      # Hub base URL; empty = test environment (hub-test.perfios.ai)
+      - { key: PERFIOS_HUB_BASE_URL, sync: false }
       - { key: ANTHROPIC_API_KEY, sync: false }
       # Team-only demo reset token (web/scripts/reset-demo.sh). Unset = reset refused.
       - { key: ADMIN_RESET_TOKEN, sync: false }

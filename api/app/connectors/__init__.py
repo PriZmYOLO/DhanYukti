@@ -51,7 +51,7 @@ def replay_bsa() -> PerfiosBSAReplay:
 
 
 def hub():
-    return PerfiosHubClient(settings.perfios) if settings.perfios_mode == "live" else _replay_hub
+    return PerfiosHubClient(settings.hub_config) if settings.hub_mode == "live" else _replay_hub
 
 
 def replay_hub() -> PerfiosHubReplay:

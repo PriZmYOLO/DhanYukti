@@ -13,6 +13,7 @@ import {
 } from "@/lib/server/engines/cover/store";
 import { deleteAllTags } from "@/lib/server/insurance/tags";
 import { deleteMemberProfile } from "@/lib/server/onboarding/store";
+import { deleteHubFacts, PURPOSE_KINDS } from "@/lib/server/twin/hub";
 
 /**
  * Grant or withdraw one DPDP purpose. Both are one call, same effort
@@ -71,6 +72,9 @@ async function deleteDataFor(sid: string, purpose: PurposeId) {
   }
   if (purpose === "health_conditions") await deleteConditions(sid);
   if (purpose === "member_profile") await deleteMemberProfile(sid);
+  // records looked up through Perfios Hub (bills, ration card, EPF, vehicle, licence)
+  const hubKinds = PURPOSE_KINDS[purpose];
+  if (hubKinds) await deleteHubFacts(sid, hubKinds);
   // manual_entries live only in the browser in this build (the notice says
   // withdrawal isn't enforced server-side yet).
 }

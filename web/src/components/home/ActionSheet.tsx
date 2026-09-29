@@ -23,6 +23,7 @@ export default function ActionSheet({ open, onClose, action, nba }: Props) {
       {action.type === "protect" && <ProtectFlow action={action} onDone={onClose} />}
       {action.type === "cheaper_option" && <CheaperFlow action={action} onDone={onClose} />}
       {action.type === "plan" && <PlanFlow onDone={onClose} />}
+      {action.type === "link" && <LinkFlow action={action} nba={nba} onDone={onClose} />}
       {action.type === "help" && (
         <a href="tel:1800000000" className="flex items-center gap-3 rounded-[24px] bg-white p-4"><Phone /> <span className="font-bold">{t({ hi: "Callback maangein", en: "Request a callback" })}</span></a>
       )}
@@ -180,6 +181,31 @@ function PlanFlow({ onDone }: { onDone: () => void }) {
       <p className="text-[15px]">{t({ hi: "5 din roz ₹200 kam kharch — ₹500 ki jagah ₹300.", en: "5 days, ₹200 less each day — ₹300 instead of ₹500." })}</p>
       {msg && <p className="rounded-2xl bg-haldi-soft p-3 text-sm">{t(msg)} <span className="text-[11px] font-bold text-muted">· sirf andaaza</span></p>}
       <Btn className="w-full" onClick={() => { award("task_done", { hi: "Plan shuru!", en: "Plan started!" }); onDone(); }}>{lang === "hi" ? "Plan shuru karo" : "Start plan"}</Btn>
+    </div>
+  );
+}
+
+/** A task done on an official site (renew insurance, pay a challan, renew a licence). */
+function LinkFlow({ action, nba, onDone }: { action: Action; nba?: NBA | null; onDone: () => void }) {
+  const { t, award, lang } = useApp();
+  const url = String(action.payload.url ?? "");
+  const steps = (Array.isArray(action.payload.steps) ? action.payload.steps : []).map(asL);
+  return (
+    <div className="space-y-3">
+      {steps.map((s, i) => (
+        <div key={i} className="flex items-start gap-3 rounded-[20px] bg-white p-3">
+          <span className="grid place-items-center h-7 w-7 shrink-0 rounded-full bg-haldi text-sm font-bold">{i + 1}</span>
+          <p className="text-[15px] leading-snug">{t(s)}</p>
+        </div>
+      ))}
+      {url.startsWith("https://") && (
+        <a href={url} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 min-h-14 rounded-[20px] bg-ink text-white font-bold">
+          <ExternalLink size={18} /> {t({ hi: "Sarkari site kholein", en: "Open the official site" })}
+        </a>
+      )}
+      <Btn variant="white" className="w-full" onClick={() => { award("task_done", { hi: "Ho gaya! Shabaash", en: "Done! Well done" }, { ref: nba?.id }); onDone(); }}>
+        {lang === "hi" ? "Maine kar liya" : "I've done it"}
+      </Btn>
     </div>
   );
 }

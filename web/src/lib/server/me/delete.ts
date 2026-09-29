@@ -8,6 +8,7 @@ import { deleteSessionLinks } from "@/lib/server/aa/links";
 import { setConsent } from "@/lib/server/dpdp/consents";
 import { purposeStates, readLedger } from "@/lib/server/dpdp/ledger";
 import { deleteReports } from "@/lib/server/reports/store";
+import { deleteHubFacts } from "@/lib/server/twin/hub";
 
 /**
  * "Delete everything" for ONE browser session, never anyone else's:
@@ -38,6 +39,9 @@ export async function deleteEverything(
     const result = await setConsent(sid, id, "withdraw");
     if (result.ok) deleted.push({ kind: "dpdp_purpose", purpose: id });
   }
+
+  // anything left from Perfios Hub lookups (each purpose above already deleted its own)
+  await deleteHubFacts(sid);
 
   const reports = await deleteReports(sid);
   if (reports > 0) deleted.push({ kind: "reports", count: reports });

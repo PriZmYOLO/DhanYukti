@@ -24,8 +24,8 @@ KINDS = {
                "used_for": L("Sarkari yojana (NFSA / Ayushman) ki patrata ka andaaza",
                              "Estimates eligibility for schemes (NFSA / Ayushman)")},
     "epf": {"call": lambda c, i: c.epf(i.get("uan", "")),
-            "used_for": L("PF bachat ko suraksha (bina aamdani kitne din) mein ginna",
-                          "Counts PF savings in your safety net (days covered)")},
+            "used_for": L("PF retirement ki bachat hai — dikhate hain, kharch layak paise mein nahi ginte. Naukri ke saath EDLI jeevan bima bhi.",
+                          "PF is retirement savings — shown, never counted as spendable. Active PF also means EDLI life cover.")},
     "digilocker": {"call": lambda c, i: c.digilocker(i.get("doc_type", "AADHAAR"), i.get("consent_ref", "")),
                    "used_for": L("Pehchaan dastavez se yojana form jaldi bharna", "Pre-fills scheme forms from ID documents")},
 }
@@ -59,11 +59,10 @@ def enrich(hid: str, kind: str, body: EnrichIn):
             store.STATE["dpdp"][h][kind] = True
     inp = {**DEFAULT_INPUT[h], **{k: str(v) for k, v in (body.input or {}).items()}}
     spec = KINDS[kind]
-    live = connectors.hub()
-    result, mode = connectors.run_with_fallback(
-        (lambda: spec["call"](live, inp)) if getattr(live, "mode", "replay") == "live" else None,
-        lambda: spec["call"](connectors.replay_hub().for_household(h), inp))
-    return {"kind": kind, "mode": mode, "result": result, "used_for": spec["used_for"]}
+    # Demo households are fictional: their lookups are always replayed (no Perfios credits spent on
+    # made-up numbers). A linked member's own lookups go live through /api/twin/hub/{kind}.
+    result = spec["call"](connectors.replay_hub().for_household(h), inp)
+    return {"kind": kind, "mode": "replay", "result": result, "used_for": spec["used_for"]}
 
 
 @router.post("/bsa/upload")
@@ -96,6 +95,11 @@ def capability_rows() -> list[dict]:
     creds_a = "Sandbox creds present — not yet verified end-to-end" if a == "live" else "No Anumati creds; serving replay"
     creds_p = "Sandbox creds present — not yet verified end-to-end" if p == "live" else "No Perfios creds; serving replay"
 
+    h = settings.hub_mode
+    hub_s = "live" if h == "live" else "replay"
+    hub_note = ("Live for a linked member's own records (hub-test.perfios.ai); demo households stay replay"
+                if h == "live" else "No Perfios Hub creds (PERFIOS_SECURE_ID / _SECURE_CREDENTIAL / _ORG_ID); demo replay only")
+
     def s(mode, blocked=False):
         if mode != "live":
             return "replay"
@@ -119,11 +123,11 @@ def capability_rows() -> list[dict]:
         ("Perfios", "BSA: upload PDF", s(p, blocked=True), "Blocked behind BSA initiate" if p == "live" else creds_p),
         ("Perfios", "BSA: status", s(p, blocked=True), "Blocked behind BSA initiate" if p == "live" else creds_p),
         ("Perfios", "BSA: retrieve report", s(p, blocked=True), "Blocked behind BSA initiate" if p == "live" else creds_p),
-        ("Perfios", "Hub: electricity bill", s(p), creds_p),
-        ("Perfios", "Hub: RC Advanced", s(p), creds_p),
-        ("Perfios", "Hub: ration details", s(p), creds_p),
-        ("Perfios", "Hub: EPF passbook", s(p), creds_p),
-        ("Perfios", "Hub: DigiLocker pull", s(p), creds_p),
+        *[("Perfios", f"Hub: {name}", hub_s, hub_note) for name in (
+            "electricity bill (v2/elec)", "PNG gas bill (v2/png)", "ration details (v3/ration-details)",
+            "EPF passbook with OTP (v2/epf-get-otp, v2/epf-get-passbook)", "vehicle RC Advanced (v3/rc-advanced)",
+            "e-challans (v3/rc-challan)", "driving licence (v3/dl)", "insurance agent / IRDAI (v3/irda-verification)")],
+        ("Perfios", "Hub: DigiLocker pull", "blocked", "Not in this build (needs the member's own DigiLocker login)"),
         ("Anthropic", "Ask: rephrase templated answer (optional)",
          "untested" if settings.llm_enabled else "blocked",
          "Numbers always computed by rules; LLM only rephrases" if settings.llm_enabled else "ANTHROPIC_API_KEY not set; deterministic answers only"),

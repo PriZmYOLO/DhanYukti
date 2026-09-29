@@ -12,7 +12,7 @@
  */
 import type { ModeText } from "@/lib/display-mode";
 
-export const NOTICE_VERSION = "2026-09-28.4";
+export const NOTICE_VERSION = "2026-09-29.1";
 
 export type PurposeId =
   | "cover_profile"
@@ -25,7 +25,9 @@ export type PurposeId =
   | "device_signals"
   | "ration"
   | "electricity"
+  | "gas"
   | "rc"
+  | "dl"
   | "epf";
 
 export interface NoticePurpose {
@@ -221,42 +223,62 @@ export const NOTICE_PURPOSES: NoticePurpose[] = [
   {
     id: "ration",
     title: { standard: "Ration card", simple: "Ration card" },
-    purpose: { standard: "To check which government schemes your family may qualify for.", simple: "To check government schemes for you." },
-    data: { standard: "Ration card category and family size, looked up with your permission.", simple: "Ration card type and family size." },
-    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
-    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    purpose: { standard: "To point you to government schemes your family may qualify for (e.g. Ayushman PM-JAY for AAY cards).", simple: "To check government schemes for you." },
+    data: { standard: "From the ration card number you enter: its scheme category (AAY, PHH…), state and the number of members. No member names.", simple: "Ration card type and family size. No names." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
     in_build: true,
-    enforced: false,
+    enforced: true,
   },
   {
     id: "electricity",
     title: { standard: "Electricity bill", simple: "Electricity bill" },
-    purpose: { standard: "To know your bill dates and amounts so month-end plans include them.", simple: "To know when the bill comes and how much." },
-    data: { standard: "Bill amount, due date and payment history for your connection.", simple: "Bill amount and due date." },
-    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
-    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    purpose: { standard: "To put your electricity bill's real due date and amount in your month plan.", simple: "To know when the bill comes and how much." },
+    data: { standard: "From the consumer number you enter: your board, the latest bill amount, amount due and due date. Consumer number kept masked (last 4). No name or address.", simple: "Bill amount and due date only." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
     in_build: true,
-    enforced: false,
+    enforced: true,
+  },
+  {
+    id: "gas",
+    title: { standard: "Piped gas (PNG) bill", simple: "Gas bill" },
+    purpose: { standard: "To put your piped-gas bill's due date and amount in your month plan.", simple: "To know when the gas bill comes and how much." },
+    data: { standard: "From the consumer / BP number you enter: the gas company, latest bill amount and due date. Number kept masked. No name or address.", simple: "Gas bill amount and due date only." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
+    in_build: true,
+    enforced: true,
   },
   {
     id: "rc",
-    title: { standard: "Vehicle RC", simple: "Vehicle RC" },
-    purpose: { standard: "To check a vehicle loan or insurance that may be due.", simple: "To check vehicle loan and insurance." },
-    data: { standard: "Vehicle registration details: owner match, financier, insurance validity.", simple: "Vehicle loan and insurance details." },
-    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
-    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    title: { standard: "Vehicle (RC and e-challans)", simple: "Vehicle papers" },
+    purpose: { standard: "To remind you before your vehicle's insurance or PUC runs out, and about unpaid traffic challans.", simple: "To remind you about vehicle insurance, PUC and fines." },
+    data: { standard: "From the registration number you enter: vehicle class, insurance / PUC / fitness / tax validity dates, whether a loan is recorded, and the count and total of unpaid e-challans. No owner name, address, chassis, engine or policy number.", simple: "Vehicle dates, loan yes/no and unpaid fines. No names." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
     in_build: true,
-    enforced: false,
+    enforced: true,
+  },
+  {
+    id: "dl",
+    title: { standard: "Driving licence", simple: "Driving licence" },
+    purpose: { standard: "To remind you before your licence (especially a commercial one you earn with) expires.", simple: "To remind you before your licence runs out." },
+    data: { standard: "From the licence number and birth date you enter: licence status, validity dates and vehicle classes. Your birth date and photo are never stored.", simple: "Licence status and end dates only." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
+    in_build: true,
+    enforced: true,
   },
   {
     id: "epf",
     title: { standard: "EPF passbook", simple: "EPF passbook" },
-    purpose: { standard: "To count your PF savings in your family's safety net.", simple: "To count your PF savings." },
-    data: { standard: "EPF balance and last contribution month.", simple: "PF balance." },
-    retention: { standard: "Kept while this consent is on. Deleted when you withdraw or delete your data.", simple: "Deleted when you say stop." },
-    processor: { standard: "Perfios (lookup on DhanYukti's behalf)", simple: "Perfios" },
+    purpose: { standard: "To show your PF as locked retirement savings (never counted as spendable) and your EDLI life cover while you contribute.", simple: "To show your PF savings and PF life cover." },
+    data: { standard: "After an OTP from EPFO to your phone: PF and pension balance, last contribution month and number of employers. UAN kept masked. No passbook PDF, employer or personal details.", simple: "PF balance and last contribution month." },
+    retention: { standard: "Only the derived facts listed here are kept, for 30 days from the lookup. Deleted immediately when you withdraw or delete everything. The full answer from the source is never stored.", simple: "Kept up to 30 days. Deleted as soon as you say stop." },
+    processor: { standard: "Perfios (looks it up on DhanYukti's behalf, only when you ask)", simple: "Perfios" },
     in_build: true,
-    enforced: false,
+    enforced: true,
   },
 ];
 

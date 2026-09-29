@@ -11,6 +11,7 @@
     "test:aa-summary": "node scripts/aa-summary-check.mjs",
     "test:my-bills": "node scripts/my-bills-check.mjs",
     "test:household": "node scripts/household-check.mjs",
+    "test:hub-records": "node scripts/hub-records-check.mjs",
     "voice:record": "tsx --conditions=react-server scripts/bhashini-record.ts"
   },
   "dependencies": {
