@@ -120,6 +120,8 @@ def event_out(e: dict) -> dict:
             out["basis"] = e["basis"]
     if e.get("series"):
         out["series"] = e["series"]
+    if e.get("biller"):
+        out["biller"] = True   # date and amount from the biller itself (Perfios Hub, with consent)
     if e.get("checked"):
         # the member's own word on this payment: "confirmed" as seen, or "corrected" by them
         out["checked"] = e["checked"]

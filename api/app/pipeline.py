@@ -145,9 +145,10 @@ def validate_correction(hid: str, field: str, value) -> None:
     apply_overlay(hh, {field: value})  # raises CorrectionError / ValueError
 
 
-def load_twin(twin: dict, state: dict | None, declared: dict | None = None) -> dict:
-    """A linked member's household: their twin (from their own bank data) + what they told us + their own state."""
-    from app.engines import e02_twin  # late import: e02 imports this module lazily too
+def load_twin(twin: dict, state: dict | None, declared: dict | None = None, hub: dict | None = None) -> dict:
+    """A linked member's household: their twin (from their own bank data) + what they told us + their own state
+    + records they chose to add through Perfios Hub (each with its own DPDP consent)."""
+    from app.engines import e02_twin, hub_facts  # late import: e02 imports this module lazily too
     state = state or {}
     overlays = state.get("overlays") or {}
     # 1) the member's decisions on bank-found payments, 2) what they told us fills the gaps left,
@@ -156,6 +157,8 @@ def load_twin(twin: dict, state: dict | None, declared: dict | None = None) -> d
     rest = {k: v for k, v in overlays.items() if k not in bank}
     hh = apply_overlay(copy.deepcopy(twin), bank)
     hh = e02_twin.apply_declared(hh, declared)
+    # 2b) records from their bill providers / EPFO / ration / RTO: the source's own dates win over our projection
+    hh = hub_facts.apply_hub(hh, hub)
     hh = apply_overlay(hh, rest)
     for e in hh["upcoming"]:
         if e.get("_corrected"):
@@ -219,7 +222,7 @@ def compute(hh: dict) -> dict:
     liquid_p = P(hh["closing_balance"]) + idle_p + emergency_p + P(hh.get("declared_cash") or 0)
     res_days = e05.resilience_days(liquid_p, P(hh["essentials_per_day"]), norm["fixed_monthly_p"])
 
-    prot = e06.assess(hh["members"], norm["premiums"])
+    prot = e06.assess(hh["members"], norm["premiums"], hh.get("ration"))
 
     income_conf = e16.grade(source="aa", months_seen=max(norm["salary_months"], 3 if norm["gig_rows"] else 0),
                             estimated=hh["income_type"] == "gig" or bool(norm.get("income_declared")))
@@ -268,9 +271,11 @@ def metrics(ctx: dict) -> dict:
         "resilience_days": {"value": rd, "unit": "days", "status": e05.status(rd), "confidence": ctx["conf"]["resilience"],
                             "label": L("Bina aamdani kitne din", "Days covered without income"),
                             "sub": L(f"Bachat {inr(R(ctx['liquid_p']))} ÷ roz {inr(ess + fixed_day)}"
-                                     + (f" (ghar ka cash {inr(hh['declared_cash'])} samet, aapne bataya)" if hh.get("declared_cash") else ""),
+                                     + (f" (ghar ka cash {inr(hh['declared_cash'])} samet, aapne bataya)" if hh.get("declared_cash") else "")
+                                     + (f" · PF {inr(hh['locked_savings'])} nahi gina (retirement ke liye)" if hh.get("locked_savings") else ""),
                                      f"Savings {inr(R(ctx['liquid_p']))} ÷ {inr(ess + fixed_day)}/day"
-                                     + (f" (incl. {inr(hh['declared_cash'])} cash at home, you told us)" if hh.get("declared_cash") else "")),
+                                     + (f" (incl. {inr(hh['declared_cash'])} cash at home, you told us)" if hh.get("declared_cash") else "")
+                                     + (f" · PF {inr(hh['locked_savings'])} not counted (locked for retirement)" if hh.get("locked_savings") else "")),
                             "engine": "E05"},
         "debt_load": {"value": ctx["per100"], "unit": "per100", "status": e04.debt_status(ctx["per100"], lenders_risky),
                       "confidence": ctx["conf"]["debt"],
@@ -376,6 +381,9 @@ def dashboard_for(hh: dict, *, data_source: dict, analytics: dict | None, game_b
         "lender_shield": [_public_lender(x) for x in ctx["lenders"]],
         # Perfios cross-check only exists where Perfios analysed the same data (the replay fixtures).
         "crosscheck": crosscheck(ctx, analytics) if analytics else [],
+        # records the member added through Perfios Hub (derived facts only) and anything to act on
+        "records": hh.get("records") or [],
+        "records_notes": hh.get("records_notes") or [],
         "game": game_block,
     }
 

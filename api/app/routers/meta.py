@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api", tags=["meta"])
 
 @router.get("/health")
 def health():
-    return {"ok": True, "mode": {"anumati": settings.anumati_mode, "perfios": settings.perfios_mode}}
+    return {"ok": True, "mode": {"anumati": settings.anumati_mode, "perfios": settings.perfios_mode, "perfios_hub": settings.hub_mode}}
 
 
 @router.get("/capabilities")

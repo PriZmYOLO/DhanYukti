@@ -11,6 +11,7 @@ import Gullak from "@/components/art/Gullak";
 import { HelpLink, SectionTitle, Skeleton } from "@/components/ui/bits";
 import { useApp } from "@/lib/store";
 import CoverCheck from "@/components/gov/CoverCheck";
+import AgentCheck from "@/components/AgentCheck";
 import SurakshaCheck from "@/components/gov/SurakshaCheck";
 import { inr } from "@/lib/format";
 
@@ -67,6 +68,7 @@ export default function Goals() {
           <SurakshaCheck />
           <CoverCheck />
         </div>
+        <div className="mt-4 lg:max-w-xl"><AgentCheck /></div>
       </section>
       <div className="lg:grid lg:grid-cols-2 lg:gap-6">
         <div>

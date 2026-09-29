@@ -188,7 +188,31 @@ Shape based on Perfios "Insights" v3 as it appears in partner integrations (e.g.
 
 **P7 analytics on AA data:** Perfios probably runs the same categoriser on AA data through FIU++ ("pre-built integrations with Perfios' analytics engine"). Ask whether we can send decrypted ReBIT FI XML/JSON to BSA, or whether FIU++ returns categorised output directly.
 
-### 3.4 Perfios Hub / KYC (Trust stage): all UNVERIFIED
+### 3.4 Perfios Hub / KYC — VERIFIED 29 Sep 2026 (hub.perfios.ai sandbox docs + a live test call)
+
+Read in the Hub portal (Documentation Guide + each API's page) with the team's sandbox account; the
+electricity call was run from the portal against the test environment and returned a real bill (HTTP 200,
+status-code 101). Implemented in `api/app/connectors/perfios/hub.py`; derived facts in `api/app/engines/hub_facts.py`.
+
+- Base URL: test `https://hub-test.perfios.ai/ssp/kyc/api`, live `https://hub.perfios.ai/ssp/kyc/api` (`PERFIOS_HUB_BASE_URL` overrides; default test).
+- Headers: `x-secure-id` (portal username), `x-secure-cred` (portal password), `x-organization-ID` (client id), `Content-Type: application/json`; optional `X-Customer-Reference-ID`. Backend only (no CORS).
+- Every body carries `"consent": "Y"`. Answer: `status-code` / `statusCode` 101 = found, 102 invalid input, 103 no record, 104 max retries, 105 missing consent, 106 multiple records. HTTP 402 = out of credits, 429 = quota.
+- Test mode: 100 calls per API.
+
+| Use in DhanYukti | Path | Body | What we keep |
+|---|---|---|---|
+| Electricity bill → biller-confirmed date in the river | `POST /v2/elec` | `consumer_id`, `service_provider` (DISCOM code), `district` (UPPCL/JBVNL/MANIPUR), `regMobileNo` (KERALA) | board, bill, amount due, due date, masked consumer no |
+| Piped gas bill | `POST /v2/png` | `service_provider` (AG/IG/MG/GAIL/GJ), `consumer_id` and/or `bp_no` | company, bill, due date |
+| Ration card → Ayushman pointer | `POST /v3/ration-details` | `rationCardNumber` (or `aadhaarNumber`, not used) | scheme (AAY/PHH…), state, member count |
+| EPF → locked savings + EDLI | `POST /v2/epf-get-otp` then `POST /v2/epf-get-passbook` | `uan` or `mobile_no`; then `request_id`, `otp`, `epf_balance:"y"`, `is_pdf_required:"n"` | PF/pension balance, last contribution month, active yes/no |
+| Vehicle insurance / PUC / loan | `POST /v3/rc-advanced` | `registrationNumber`, `version: 3.1` | class, insurance/PUC/fitness/tax dates, financed yes/no |
+| Unpaid traffic fines | `POST /v3/rc-challan` | `vehicleNo` | count and total of unpaid challans |
+| Licence expiry (gig drivers) | `POST /v3/dl` | `dlNo`, `dob` (DD-MM-YYYY) | status, validity end dates, classes |
+| Insurance agent check (IRDAI) | `POST /v3/irda-verification` | `pan` (the agent's) | nothing (shown once) |
+
+Not used: DigiLocker, BSA upload, Mobile OTP, EPF Profile/UAN validation (1 credit or less on our account).
+
+#### Earlier hypotheses (kept for history)
 
 Perfios acquired Karza Technologies (2022), and many Hub KYC APIs are Karza-lineage. The paths below are hypotheses **only**. Use the Hub Postman collection.
 

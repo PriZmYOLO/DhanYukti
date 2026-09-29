@@ -195,3 +195,20 @@ bank shows none in the next 30 days (and fills monthly income only when no compl
 bill only when no bank-projected payment of about that amount is within 3 days; "income varies" makes pay dates
 estimates; "no income of my own" only when the bank shows none; cash at home counts toward days without income.
 Everything added is `certainty: "andaaza"` with basis "You told us".
+
+### Records from Perfios Hub (v1.5 — additive)
+Browser → Next.js: `POST /api/households/me/hub/{electricity|png|ration|epf_otp|epf|rc|dl|agent}
+{consent: true, input}` (the call grants that record's DPDP purpose — electricity, gas, ration, epf, rc, dl — and
+writes a receipt; `agent` needs none and stores nothing). EPF is two calls: `epf_otp {uan}` → OTP from EPFO →
+`epf {otp}` (the request id stays server-side, 10 min). `GET /api/households/me/hub` → `{facts}`;
+`DELETE /api/households/me/hub/{kind}` withdraws (facts deleted at once). Errors: `hub_not_configured` 503,
+`not_found` 404, `invalid_input` 422, `otp_expired` 410, `daily_limit` 429 (20 lookups a day per session),
+`source_unavailable` 503. Never falls back to demo data.
+Next.js → FastAPI: `POST /api/twin/hub/{kind} {as_of, input}` → `{ok: true, facts: {kind: derived}}` |
+`{ok: true, otp_sent, request_id}` | `{ok: true, agent: {found, any_active, records}}` | `{ok: false, code}`.
+Every `/api/twin/*` call then carries `hub` (consented kinds only). Engines: a biller's due date/amount replaces
+our projection of that bill (`certainty: "pakka"`, `biller: true`; a passed due date becomes a `records_notes`
+line); PF is shown, never counted as spendable (resilience sub says so); an active EPF member has EDLI life cover;
+an AAY / priority ration card points to Ayushman; vehicle insurance/PUC, unpaid e-challans and licence expiry
+become NBA cards with `action.type: "link"` (`payload: {url, steps}`) and `why.source`. Dashboard adds
+`records: [{kind, title, lines, fetched_on, source}]` and `records_notes: L[]` (both `[]` for demo households).

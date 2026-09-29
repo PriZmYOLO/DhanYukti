@@ -10,9 +10,9 @@ from app.connectors.base import SponsorError
 
 log = logging.getLogger("dhanyukti.perfios")
 
-SECURE_ID_HEADER = "x-secure-id"                # TODO(confirm with sandbox docs)
-SECURE_CREDENTIAL_HEADER = "x-secure-cred"      # TODO(confirm with sandbox docs)
-ORG_ID_HEADER = "x-organization-id"             # TODO(confirm with sandbox docs)
+SECURE_ID_HEADER = "x-secure-id"                # Hub docs: portal username
+SECURE_CREDENTIAL_HEADER = "x-secure-cred"      # Hub docs: portal password
+ORG_ID_HEADER = "x-organization-id"             # Hub docs: client id (header names are case-insensitive)
 
 
 class PerfiosHTTP:
@@ -25,7 +25,7 @@ class PerfiosHTTP:
 
     def _headers(self, req_id: str, json_body: bool = True) -> dict:
         h = {SECURE_ID_HEADER: self._sid, SECURE_CREDENTIAL_HEADER: self._cred, ORG_ID_HEADER: self._org,
-             "x-request-id": req_id}
+             "X-Customer-Reference-ID": req_id}
         if json_body:
             h["Content-Type"] = "application/json"
         return h

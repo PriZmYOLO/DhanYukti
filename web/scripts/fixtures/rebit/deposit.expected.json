@@ -48,7 +48,8 @@
         "timestamp": null,
         "narration": null
       }
-    ]
+    ],
+    "holder_first_name": "TEST"
   },
   "deposit-prefixed.xml": {
     "masked_acc_number": "XXXXXXXX9648",
@@ -99,7 +100,8 @@
         "timestamp": null,
         "narration": null
       }
-    ]
+    ],
+    "holder_first_name": "TEST"
   },
   "deposit.json": {
     "masked_acc_number": "XXXXXXXX2231",
@@ -130,6 +132,7 @@
         "timestamp": "2026-09-10T09:00:00+05:30",
         "narration": "UPI/TEST SHOP"
       }
-    ]
+    ],
+    "holder_first_name": "TEST"
   }
 }

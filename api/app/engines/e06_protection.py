@@ -17,7 +17,7 @@ PMJJBY_PREMIUM = 436  # TODO(re-check on jansuraksha.gov.in before demo — prem
 PMSBY_PREMIUM = 20
 
 
-def assess(members: list[dict], premiums: list[dict]) -> dict:
+def assess(members: list[dict], premiums: list[dict], ration: dict | None = None) -> dict:
     evidence_names = " ".join(p["narration"].upper() for p in premiums)
     detail = []
     unknowns = 0
@@ -34,6 +34,12 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
             life = True
         if m.get("account_holder") and any(k in evidence_names for k in ("HEALTH", "MEDICLAIM", "PMJAY")):
             health = True
+        note = cov.get("note", L("", ""))
+        if m.get("edli") and not life:
+            # an active EPF member is insured under EDLI (Perfios Hub EPF passbook, with their consent)
+            life = True
+            note = L("EDLI (PF ke saath): ₹7 lakh tak, jab tak PF katta rahe",
+                     "EDLI (with PF): up to ₹7 lakh, while PF contributions continue")
         if health is None:
             unknowns += 1
         if m.get("earner") and life is None and m.get("account_holder"):
@@ -42,7 +48,7 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
         elif m.get("earner") and not life:
             uncovered_earners.append(m)
         detail.append({"member_id": m["id"], "name": m["name"], "life": bool(life), "health": bool(health),
-                       "note": cov.get("note", L("", ""))})
+                       "note": note})
 
     earners = [m for m in members if m.get("earner")]
     main_uncovered = any(m.get("main_earner") for m in uncovered_earners)
@@ -60,7 +66,14 @@ def assess(members: list[dict], premiums: list[dict]) -> dict:
     for m in unknown_life:
         parts_hi.append(f"{m['name']}: jeevan bima bank data mein nahi dikha")
         parts_en.append(f"{m['name']}: no life cover seen in bank data")
-    if unknowns:
+    scheme = (ration or {}).get("scheme")
+    if unknowns and scheme == "AAY":
+        parts_hi.append("Ayushman: AAY ration card — patr ho sakte hain, check karein")
+        parts_en.append("Ayushman: AAY ration card — you may be eligible, check")
+    elif unknowns and (ration or {}).get("priority"):
+        parts_hi.append("Ayushman: priority ration card — patrata check karein")
+        parts_en.append("Ayushman: priority ration card — check eligibility")
+    elif unknowns:
         parts_hi.append("Ayushman: pata nahi")
         parts_en.append("Ayushman: unknown")
     sub = L(" · ".join(parts_hi) or "Sabka bima hai", " · ".join(parts_en) or "Everyone is covered")

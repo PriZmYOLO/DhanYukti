@@ -4,6 +4,7 @@ import { listLinks, readAccountData } from "@/lib/server/aa/links";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
 import { hasConsent } from "@/lib/server/dpdp/ledger";
 import { readAnswers } from "@/lib/server/onboarding/store";
+import { readHubFacts, type HubFacts } from "@/lib/server/twin/hub";
 import { STATE_TTL, twinKeys, withoutBankCorrections } from "@/lib/server/twin/keys";
 import type { L } from "@/lib/types";
 
@@ -141,13 +142,16 @@ export async function rebuildTwinQuietly(sid: string): Promise<void> {
  * twin if their data is here and it isn't built yet. The answers are read on
  * every call (only with DPDP "profile" consent), so an edit or a withdrawal
  * shows up at once. The engines use them only to fill gaps in the bank data.
+ * Records from Perfios Hub come the same way (a withdrawn purpose drops out at once).
  */
-export async function loadTwin(sid: string): Promise<{ twin: Twin; state: TwinState; declared: unknown }> {
+export async function loadTwin(sid: string): Promise<{ twin: Twin; state: TwinState; declared: unknown; hub: HubFacts }> {
   let twin = await kvGet<Twin>(twinKeys.twin(sid));
   if (!twin) twin = await buildTwin(sid);
   const state = (await kvGet<TwinState>(twinKeys.state(sid))) ?? {};
   const declared = (await hasConsent(sid, "member_profile")) ? await readAnswers(sid) : null;
-  return { twin, state, declared };
+  // records added through Perfios Hub, each only while its own DPDP purpose is granted
+  const hub = await readHubFacts(sid);
+  return { twin, state, declared, hub };
 }
 
 export async function saveState(sid: string, state: TwinState) {

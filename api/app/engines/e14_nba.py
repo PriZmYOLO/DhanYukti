@@ -257,8 +257,104 @@ def _grow(need, ctx):
                    "We never name a fund — information only. Take investment advice from a SEBI RIA."))
 
 
+# --------------------------------------------------------------------------------------------
+# records the member added through Perfios Hub (RTO: vehicle RC, e-challans, driving licence)
+PARIVAHAN_URL = "https://vahan.parivahan.gov.in/vahanservice/"
+ECHALLAN_URL = "https://echallan.parivahan.gov.in/"
+SARATHI_URL = "https://sarathi.parivahan.gov.in/"
+HUB_WHY = L("Aapki anumati se Perfios Hub (RTO record) se dekha", "Looked up with your consent via Perfios Hub (RTO record)")
+
+
+def _fmt_date(s: str) -> str:
+    x = d(s)
+    return f"{x.day:02d}-{x.month:02d}-{x.year}"
+
+
+def _link(label: L, url: str, steps: list[L]) -> dict:
+    return {"type": "link", "label": label, "payload": {"url": url, "steps": steps}}
+
+
+def _vehicle_insurance(need, ctx):
+    f = need["fact"]
+    when = _fmt_date(f["insurance_upto"])
+    if need["expired"]:
+        title = L(f"Gaadi {f['reg']} ka bima {when} ko khatam ho gaya", f"Insurance on vehicle {f['reg']} ended on {when}")
+    else:
+        title = L(f"Gaadi {f['reg']} ka bima {when} ko khatam hoga", f"Insurance on vehicle {f['reg']} ends on {when}")
+    work = f.get("commercial")
+    body = L("Third-party bima kanoon se zaroori hai. " + ("Yeh kaam ki gaadi hai — bina bima chalaana kamai ke liye khatra." if work else ""),
+             "Third-party insurance is compulsory by law. " + ("This is a work vehicle — driving it uninsured puts your income at risk." if work else ""))
+    return _card(need, f"nba_vehicle_insurance_{f['reg']}", "shield", "E13", title, body,
+                 L("Purani policy wali company ya kisi aur se renew karein; kam se kam third-party zaroor.",
+                   "Renew with your insurer or another one — at least third-party cover."),
+                 L("Bina bima pakde gaye to jurmana; durghatna mein poora kharch aap par.",
+                   "A fine if stopped uninsured; after an accident, every cost falls on you."),
+                 _link(L("Renew kaise karein", "How to renew"), PARIVAHAN_URL,
+                       [L("Purani policy ka number aur RC saath rakhein", "Keep the old policy number and RC handy"),
+                        L("2-3 companies ka third-party + own-damage premium milayein", "Compare third-party + own-damage premiums from 2–3 insurers"),
+                        L("Nayi policy ki copy phone mein rakhein", "Keep a copy of the new policy on your phone")]),
+                 {"saw": [], "rule": L(f"RTO record: bima {when} tak", f"RTO record: insured until {when}"),
+                  "confidence": "pakka", "tag": "jaankari", "source": HUB_WHY}, 25)
+
+
+def _puc(need, ctx):
+    f = need["fact"]
+    when = _fmt_date(f["puc_upto"])
+    title = L(f"Gaadi {f['reg']} ka PUC {when} tak", f"PUC for vehicle {f['reg']} valid until {when}")
+    return _card(need, f"nba_puc_{f['reg']}", "alert", "E13", title,
+                 L("PUC khatam hone par jurmana lag sakta hai.", "An expired PUC can mean a fine."),
+                 L("Nazdeeki petrol pump ke PUC centre par jaanch karwayein (kuch minute, kam kharch).",
+                   "Get a PUC test at a petrol-pump PUC centre (a few minutes, low cost)."),
+                 L("Pakde gaye to jurmana.", "A fine if stopped."),
+                 _link(L("PUC ke baare mein", "About PUC"), PARIVAHAN_URL, [L("RC saath le jaayein", "Take the RC with you")]),
+                 {"saw": [], "rule": L(f"RTO record: PUC {when} tak", f"RTO record: PUC until {when}"),
+                  "confidence": "pakka", "tag": "jaankari", "source": HUB_WHY}, 10)
+
+
+def _challans(need, ctx):
+    f = need["fact"]
+    title = L(f"Gaadi {f['reg']} par {f['pending']} challan bakaya — {inr(f['pending_amount'])}",
+              f"{f['pending']} unpaid challan(s) on vehicle {f['reg']} — {inr(f['pending_amount'])}")
+    return _card(need, f"nba_challans_{f['reg']}", "alert", "E13", title,
+                 L("Bakaya challan court tak ja sakta hai aur gaadi ke kaam (RC transfer, renew) rok sakta hai.",
+                   "Unpaid challans can go to court and block vehicle work (RC transfer, renewals)."),
+                 L("echallan.parivahan.gov.in par gaadi number se dekhein aur sirf wahin bharein.",
+                   "Check by vehicle number on echallan.parivahan.gov.in and pay only there."),
+                 L("Jurmana badh sakta hai; court ka notice aa sakta hai.", "The fine can grow; a court notice may follow."),
+                 _link(L("Challan dekhein", "See challans"), ECHALLAN_URL,
+                       [L("Kisi link ya call par bharne se bachein — sirf sarkari site", "Don't pay through links or callers — only the official site"),
+                        L("Galat challan lage to wahin shikayat karein", "If a challan looks wrong, dispute it there")]),
+                 {"saw": [], "rule": L(f"RTO record: {f['total']} mein se {f['pending']} bakaya", f"RTO record: {f['pending']} of {f['total']} unpaid"),
+                  "confidence": "pakka", "tag": "jaankari", "source": HUB_WHY}, 10)
+
+
+def _licence(need, ctx):
+    f = need["fact"]
+    end = f["valid_t"] if need["commercial"] else f["valid_nt"]
+    when = _fmt_date(end)
+    kind = L("commercial (kaam ka)", "commercial") if need["commercial"] else L("", "")
+    ended = need["expired"]
+    title = L(f"Driving licence {kind['hi']} {when} ko {'khatam ho gaya' if ended else 'khatam hoga'}".replace("  ", " "),
+              f"Your {kind['en']} driving licence {'ended' if ended else 'ends'} on {when}".replace("  ", " "))
+    body = L("Kaam ke liye gaadi chalate hain to licence renew hone tak kamai ruk sakti hai." if need["commercial"] else
+             "Renewal mein kuch hafte lag sakte hain.",
+             "If you drive for work, your income can stop until the licence is renewed." if need["commercial"] else
+             "Renewal can take a few weeks.")
+    return _card(need, f"nba_licence_{f['dl']}", "alert", "E13", title, body,
+                 L("sarathi.parivahan.gov.in par renewal apply karein; slot pehle se lein.",
+                   "Apply for renewal on sarathi.parivahan.gov.in; book a slot early."),
+                 L("Bina valid licence jurmana — aur kaam ki gaadi ho to kamai ka nuksaan.",
+                   "A fine without a valid licence — and lost income if you drive for work."),
+                 _link(L("Renew kaise karein", "How to renew"), SARATHI_URL,
+                       [L("Purana licence aur pata pramaan saath rakhein", "Keep the old licence and address proof handy"),
+                        L("Transport licence ke liye medical certificate (Form 1A) lagta hai", "A transport licence needs a medical certificate (Form 1A)")]),
+                 {"saw": [], "rule": L(f"RTO record: licence {when} tak", f"RTO record: licence valid until {when}"),
+                  "confidence": "pakka", "tag": "jaankari", "source": HUB_WHY}, 25)
+
+
 BUILDERS = {"deficit": _deficit, "protected_obligation": _deficit, "lender": _lender, "protect_earner": _protect,
-            "penalties": _penalties, "resilience": _resilience, "grow": _grow}
+            "penalties": _penalties, "resilience": _resilience, "grow": _grow,
+            "vehicle_insurance": _vehicle_insurance, "puc": _puc, "challans": _challans, "licence": _licence}
 
 
 def cards(needs: list[dict], ctx: dict) -> list[dict]:

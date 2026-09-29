@@ -21,6 +21,9 @@ ANUMATI_VARS = [
     "ANUMATI_REDIRECT_URL",
 ]
 PERFIOS_VARS = ["PERFIOS_BASE_URL", "PERFIOS_SECURE_ID", "PERFIOS_SECURE_CREDENTIAL", "PERFIOS_ORG_ID"]
+# Perfios Hub (KYC authentication APIs) needs only the three credentials; its base URL defaults to
+# the test environment (https://hub-test.perfios.ai/ssp/kyc/api). Analytics/BSA also need PERFIOS_BASE_URL.
+PERFIOS_HUB_VARS = ["PERFIOS_SECURE_ID", "PERFIOS_SECURE_CREDENTIAL", "PERFIOS_ORG_ID"]
 
 
 def _env(name: str) -> str:
@@ -41,6 +44,14 @@ class Settings:
     @property
     def perfios_mode(self) -> str:
         return "live" if all(self.perfios.values()) else "replay"
+
+    @property
+    def hub_mode(self) -> str:
+        return "live" if all(self.perfios.get(k) for k in PERFIOS_HUB_VARS) else "replay"
+
+    @property
+    def hub_config(self) -> dict:
+        return {**self.perfios, "PERFIOS_HUB_BASE_URL": _env("PERFIOS_HUB_BASE_URL")}
 
     @property
     def llm_enabled(self) -> bool:
