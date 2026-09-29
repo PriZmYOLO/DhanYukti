@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, Eye, Target, Hourglass, Volume2, Minus, Plus, ShieldCheck, Lock, ExternalLink, Landmark } from "lucide-react";
+import { ArrowLeft, Check, Eye, Target, Hourglass, Volume2, ShieldCheck, Lock, ExternalLink, Landmark } from "lucide-react";
 import HomeScene from "@/components/art/HomeScene";
 import DemoHouseholds from "@/components/DemoHouseholds";
 import MyHouseholdIssue from "@/components/MyHouseholdIssue";
@@ -22,15 +22,19 @@ import DemoDataChip from "@/components/DemoDataChip";
 import { inr, primaryMember } from "@/lib/format";
 import type { L } from "@/lib/types";
 import { gov } from "@/lib/gov";
-import { DpdpPurposes, useDpdp } from "@/components/gov/Dpdp";
+import { useDpdp } from "@/components/gov/Dpdp";
 import InviteBox from "@/components/gov/InviteBox";
 import VoiceLanguages from "@/components/gov/VoiceLanguages";
-import { GOALS, OWN_INCOME, WORK_KINDS, answered, unansweredCount, withDefaults, type Answer, type GoalIntent, type OnboardingAnswers, type OwnIncome, type WorkKind } from "@/lib/onboarding/answers";
-import { OWN_INCOME_LABEL, WHY, WORK_LABEL } from "@/lib/onboarding/labels";
-import { MoneyStep, ReviewStep, Why } from "@/components/onboarding/MoneyReview";
+import { withDefaults, type OnboardingAnswers } from "@/lib/onboarding/answers";
+import { AboutStep } from "@/components/onboarding/MoneyReview";
 import type { ConsentChoices } from "@/lib/provisional/h03/types";
 
-const STEPS = ["splash", "language", "login", "family", "money", "review", "passport", "connect", "reveal", "invite", "gullak"] as const;
+/**
+ * Bank first, questions after. Anumati's OTP is the identity step (we don't
+ * send one of our own), and after the reveal we ask only what the bank data
+ * can't tell: family, cash at home, a bill paid in cash, the goal.
+ */
+const STEPS = ["splash", "language", "passport", "connect", "reveal", "about", "invite", "gullak"] as const;
 type Step = (typeof STEPS)[number];
 
 const LANGS = [
@@ -44,7 +48,6 @@ export default function Onboarding() {
   const { t, lang, setLang, speak, hid, data, setOnboarded, setConsentHandle, refresh, celebrate, assisted, setAssisted, showMyHousehold, meIssue } = app;
   const [step, setStep] = useState<Step>("splash");
   const [mobile, setMobile] = useState("");
-  const [otp, setOtp] = useState("");
   const [ans, setAnsS] = useState<OnboardingAnswers>(() => readLocalAnswers());
   const setAns = (a: OnboardingAnswers) => { setAnsS(a); try { localStorage.setItem("dy.onboarding", JSON.stringify(a)); } catch { /* private mode */ } };
   const [saved, setSaved] = useState<"device" | "server" | "error">("device");
@@ -105,6 +108,8 @@ export default function Onboarding() {
     const p = new URLSearchParams(window.location.search);
     const s = p.get("step"); const h = p.get("handle");
     if (s === "consent") setStep("passport");
+    // "Edit your answers" from Family → the after-reveal questions.
+    if (s === "about") { setStep("about"); setReturnTo("/app/family"); }
     // From an invite (/join/CODE on the member's own phone) or "Add a family member's account".
     const code = p.get("invite");
     if (code) {
@@ -215,7 +220,6 @@ export default function Onboarding() {
       tab?.close();
       if (h.mode === "needs_details") {
         setErr(t({ hi: "Bank mein registered 10 ank ka mobile number daalein", en: "Enter the 10-digit mobile number registered with your bank" }));
-        if (!forOther) setStep("login");
         return;
       }
       setErr(h.mode === "unavailable" ? h.reason : t({ hi: "Abhi jud nahi paaye", en: "Couldn't connect right now" }));
@@ -274,120 +278,33 @@ export default function Onboarding() {
             </div>
             <div className="mt-5"><VoiceLanguages compact /></div>
             <div className="flex-1" />
-            <Btn variant="ink" className="w-full mt-6" onClick={() => go("login")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
+            <Btn variant="ink" className="w-full mt-6" onClick={() => go("passport")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
           </>)}
-
-          {step === "login" && (<>
-            <Title v={{ hi: "Aapka mobile number", en: "Your mobile number" }} sub={{ hi: "Aadhaar ya PAN ki zaroorat nahi", en: "No Aadhaar or PAN needed" }} />
-            <div className="mt-6 flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
-              <span className="font-bold text-lg">🇮🇳 +91</span>
-              <input inputMode="numeric" maxLength={10} value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))} placeholder="98765 43210" className="flex-1 text-2xl font-bold num outline-none min-w-0 bg-transparent" />
-            </div>
-            {mobile.length === 10 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
-                <p className="text-sm font-bold mb-2">OTP <span className="text-muted font-normal">({lang === "hi" ? "demo: koi bhi 6 ank" : "demo: any 6 digits"})</span></p>
-                <input inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} className="w-full tracking-[0.6em] text-center text-3xl font-extrabold num rounded-[24px] bg-white p-4 shadow-soft outline-none" placeholder="••••••" />
-              </motion.div>
-            )}
-            <button onClick={() => setAssisted(!assisted)} className={`mt-5 w-full flex items-center gap-3 rounded-[20px] p-3 text-left min-h-14 ${assisted ? "bg-haldi" : "bg-white"}`}>
-              <span className="text-2xl">🤝</span>
-              <span className="flex-1"><span className="block font-bold text-sm">{t({ hi: "Koi madad kar raha hai? (bank mitra / parivaar)", en: "Someone helping you? (bank mitra / family)" })}</span>
-                <span className="block text-xs opacity-70">{t({ hi: "Sahayak mode chalu karein", en: "Turn on assisted mode" })}</span></span>
-              <span className={`h-6 w-6 rounded-md grid place-items-center ${assisted ? "bg-ink text-white" : "border-2 border-ink/20"}`}>{assisted && <Check size={14} />}</span>
-            </button>
-            {assisted && mobile.length === 10 && <p className="mt-3 rounded-[20px] bg-ink text-white p-3 text-sm font-semibold">✋ {t({ hi: "OTP daalne se pehle phone khud le lijiye. Helper OTP na dekhein.", en: "Take the phone back before entering the OTP. The helper must not see it." })}</p>}
-            {err && step === "login" && <p className="mt-3 text-sm text-danger font-semibold">{err}</p>}
-            <div className="mt-3 flex items-center gap-3 rounded-[20px] bg-mint/70 p-3 text-[13px]"><Lock size={18} className="text-leaf shrink-0" />{t({ hi: "Sahayak mode mein rakam chhupi rehti hai jab tak aap 'Dikhayein' na dabayein. OTP hamesha khud daalein.", en: "In assisted mode, amounts stay hidden until you tap Show. Always type the OTP yourself." })}</div>
-            <div className="flex-1" />
-            <Btn variant="ink" className="w-full mt-6" disabled={mobile.length !== 10 || otp.length !== 6} onClick={() => go("family")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
-          </>)}
-
-          {step === "family" && (<>
-            <Title v={{ hi: "Aapka parivaar", en: "Your family" }} sub={{ hi: "Jo pata ho woh batayein — chhodna bhi theek hai", en: "Answer what you know — skipping is fine" }} />
-            <div className="mt-4 space-y-2">
-              <CountRow e="👨‍👩‍👧‍👦" l={{ hi: "Ghar mein kitne log?", en: "People at home" }} a={ans.members} set={(v) => setAns({ ...ans, members: v })} />
-              <CountRow e="💼" l={{ hi: "Kitne kamaate hain?", en: "How many earn?" }} a={ans.earners} set={(v) => setAns({ ...ans, earners: v })} />
-            </div>
-            <Why v={WHY.people} />
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Kaun kamaane walon par nirbhar hai?", en: "Who depends on the earners?" })}</p>
-            <div className="mt-2 space-y-2">
-              <CountRow e="🧒" l={{ hi: "Bachche", en: "Children" }} a={ans.dependents.children} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, children: v } })} />
-              <CountRow e="🎒" l={{ hi: "Unmein school jaane wale", en: "Of them, in school" }} a={ans.dependents.children_in_school} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, children_in_school: v } })} />
-              <CountRow e="👵" l={{ hi: "Buzurg (60+)", en: "Elders (60+)" }} a={ans.dependents.elders} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, elders: v } })} />
-              <CountRow e="🧑‍🦽" l={{ hi: "Aur koi nirbhar", en: "Other dependents" }} a={ans.dependents.other} set={(v) => setAns({ ...ans, dependents: { ...ans.dependents, other: v } })} />
-            </div>
-            <Why v={WHY.dependents} />
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Aap kya kaam karte hain?", en: "What work do you do?" })}</p>
-            <div className="mt-2 grid grid-cols-4 gap-2">
-              {WORK_KINDS.map((k) => {
-                const on = ans.work.state === "answered" && ans.work.value === k;
-                return <button key={k} aria-pressed={on} onClick={() => setAns({ ...ans, work: on ? { state: "unanswered" } : answered<WorkKind>(k) })} className={`rounded-[20px] py-2.5 px-1 ${on ? "bg-haldi" : "bg-white"}`}><p className="text-2xl">{WORK_LABEL[k].e}</p><p className="text-[11px] font-bold leading-tight">{t(WORK_LABEL[k])}</p></button>;
-              })}
-            </div>
-            <Why v={WHY.work} />
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Aapki apni aamdani kaisi hai?", en: "How does your own income come?" })}</p>
-            <div className="mt-2 space-y-2">
-              {OWN_INCOME.map((k) => {
-                const on = ans.own_income.state === "answered" && ans.own_income.value === k;
-                return <button key={k} aria-pressed={on} onClick={() => setAns({ ...ans, own_income: on ? { state: "unanswered" } : answered<OwnIncome>(k) })} className={`w-full min-h-12 rounded-[18px] px-4 text-left text-[14px] font-bold ${on ? "bg-ink text-white" : "bg-white"}`}>{t(OWN_INCOME_LABEL[k])}</button>;
-              })}
-            </div>
-            <Why v={WHY.own_income} />
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Koi loan chal raha hai?", en: "Any running loans?" })}</p>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {([[answered(true), "Haan", "Yes"], [answered(false), "Nahi", "No"], [{ state: "dont_know" } as Answer<boolean>, "Pata nahi", "Not sure"]] as const).map(([v, hi, en]) => {
-                const on = JSON.stringify(ans.loans) === JSON.stringify(v);
-                return <button key={hi} onClick={() => setAns({ ...ans, loans: on ? { state: "unanswered" } : v })} className={`min-h-13 rounded-[20px] font-bold ${on ? "bg-ink text-white" : "bg-white"}`}>{lang === "hi" ? hi : en}</button>;
-              })}
-            </div>
-            <Why v={WHY.loans} />
-            <p className="mt-4 font-bold text-sm">{t({ hi: "Sabse bada lakshya?", en: "Your biggest goal?" })}</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {GOALS.map((g) => {
-                const on = ans.goal.state === "answered" && ans.goal.value === g;
-                return <button key={g} onClick={() => setAns({ ...ans, goal: on ? { state: "unanswered" } : answered<GoalIntent>(g) })} className={`min-h-12 rounded-[18px] px-3 text-left text-[13px] font-bold ${on ? "bg-clay text-white" : "bg-white"}`}>{GOAL_EMOJI[g]} {t(GOAL_LABEL[g])}</button>;
-              })}
-            </div>
-            <Why v={WHY.goal} />
-            <p className="mt-4 rounded-[18px] bg-lav/70 p-3 text-[12px] leading-snug">
-              {unansweredCount(ans) > 0
-                ? t({ hi: `${unansweredCount(ans)} sawaal chhode — koi baat nahi. Unhe "jawaab nahi diya" maana jaayega, zero nahi.`, en: `${unansweredCount(ans)} left blank — that's fine. They're saved as "not answered", never as zero.` })
-                : t({ hi: "Sab jawaab mil gaye. Shukriya!", en: "All answered. Thank you!" })}
-            </p>
-            <div className="flex-1" />
-            <Btn variant="ink" className="w-full mt-5" onClick={() => go("money")}>{lang === "hi" ? "Aage" : "Next"}</Btn>
-          </>)}
-
-          {step === "money" && <MoneyStep ans={ans} setAns={setAns} onNext={() => go("review")} />}
-
-          {step === "review" && <ReviewStep ans={ans} saved={saved} profileOn={profileOn} onChange={(to) => go(to)} onNext={() => go("passport")} />}
 
           {step === "passport" && (<>
             <Title v={{ hi: "Consent Passport", en: "Consent Passport" }} sub={{ hi: "Alag alag permission — har ek kabhi bhi band kar sakte hain", en: "Separate permissions — stop any of them anytime" }} />
-            <div className="mt-4 rounded-[28px] bg-rose p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-extrabold text-[17px]">{t({ hi: "1. DhanYukti kya rakhe", en: "1. What DhanYukti keeps" })}</p>
-                <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold bg-white text-rose-deep">DPDP</span>
-              </div>
-              <DpdpPurposes dpdp={dpdp} only={["member_profile", "voice", "cover_profile", "device_signals"]} compact tone="rose" />
-              <p className="mt-2 text-[12px] font-semibold">
-                {saved === "server" ? `✓ ${t({ hi: `Aapke jawaab save hue${unansweredCount(ans) ? ` (${unansweredCount(ans)} "jawaab nahi diya")` : ""}`, en: `Your answers are saved${unansweredCount(ans) ? ` (${unansweredCount(ans)} "not answered")` : ""}` })}`
-                  : saved === "error" ? t({ hi: "Jawaab save nahi hue — dobara koshish karein", en: "Couldn't save your answers — try again" })
-                  : t({ hi: "Profile consent ke bina jawaab sirf is phone par rahenge", en: "Without profile consent, answers stay only on this phone" })}
-              </p>
-            </div>
             {live && <WhoseAccount v={whose} set={setWhose} invite={invite} />}
-            {live && invite && mobile.length !== 10 && (
-              <div className="mt-2 flex items-center gap-2 rounded-[20px] bg-white px-3 shadow-soft">
-                <span className="font-bold">+91</span>
-                <input inputMode="numeric" maxLength={10} value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
-                  placeholder={lang === "hi" ? "Aapka bank wala mobile" : "Your bank-registered mobile"} className="flex-1 min-h-12 text-[15px] font-bold num outline-none bg-transparent min-w-0" />
-              </div>
-            )}
+            {whose.who !== "family" && (<>
+              <label className="mt-4 block">
+                <span className="block text-[13px] font-bold mb-1">{t({ hi: "Bank mein registered mobile", en: "Mobile registered with your bank" })}</span>
+                <span className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-soft">
+                  <span className="font-bold text-lg">🇮🇳 +91</span>
+                  <input inputMode="numeric" autoComplete="tel-national" maxLength={10} value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))} placeholder="98765 43210" className="flex-1 text-2xl font-bold num outline-none min-w-0 bg-transparent" />
+                </span>
+              </label>
+              <p className="mt-2 flex items-start gap-2 rounded-[20px] bg-mint/70 p-3 text-[13px]"><Lock size={16} className="text-leaf shrink-0 mt-0.5" aria-hidden />{t({ hi: "Anumati (RBI-licensed) is number par OTP bhejega — wahi aapki pehchaan hai. DhanYukti apna koi OTP nahi maangta. Aadhaar ya PAN nahi chahiye.", en: "Anumati (RBI-licensed) sends an OTP to this number — that is how you prove it's you. DhanYukti never asks for an OTP of its own. No Aadhaar or PAN." })}</p>
+              <button type="button" onClick={() => setAssisted(!assisted)} aria-pressed={assisted} className={`mt-2 w-full flex items-center gap-3 rounded-[20px] p-3 text-left min-h-14 ${assisted ? "bg-haldi" : "bg-white"}`}>
+                <span className="text-2xl" aria-hidden>🤝</span>
+                <span className="flex-1"><span className="block font-bold text-sm">{t({ hi: "Koi madad kar raha hai? (bank mitra / parivaar)", en: "Someone helping you? (bank mitra / family)" })}</span>
+                  <span className="block text-xs opacity-70">{t({ hi: "Sahayak mode: rakam chhupi rehti hai jab tak aap 'Dikhayein' na dabayein", en: "Assisted mode: amounts stay hidden until you tap Show" })}</span></span>
+                <span className={`h-6 w-6 rounded-md grid place-items-center ${assisted ? "bg-ink text-white" : "border-2 border-ink/20"}`}>{assisted && <Check size={14} />}</span>
+              </button>
+              {assisted && <p className="mt-2 rounded-[20px] bg-ink text-white p-3 text-sm font-semibold">✋ {t({ hi: "Anumati ka OTP aane par phone khud le lijiye. Helper OTP na dekhein.", en: "When Anumati's OTP arrives, take the phone back yourself. The helper must not see it." })}</p>}
+            </>)}
             {live === false && (invite || whose.who === "family") && (
               <p className="mt-3 rounded-[20px] bg-amber-soft p-3 text-[13px] font-semibold">{t({ hi: "Parivaar ke sadasya ka khaata sirf live Anumati se judta hai — yeh deployment abhi replay par hai.", en: "A family member's account links only through live Anumati — this deployment is on replay right now." })}</p>
             )}
-            <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
+            <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "Bank ka len-den", en: "Bank transactions" }}
               see={live ? liveSee(fiChoice) : LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
             {live && fiAllowed.length > 1 && (
               <fieldset className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
@@ -407,9 +324,10 @@ export default function Onboarding() {
                 {!forOther && <GrantRow on={grants.viewer_scope === "household_adults"} set={(v) => setGrants({ ...grants, viewer_scope: v ? "household_adults" : "only_me" })} l={{ hi: "Ghar ke bade bhi nateeje dekh sakein", en: "Household adults may see the results" }} />}
               </div>
             )}
+            <p className="mt-2 px-1 text-[12px] text-muted leading-snug">{t({ hi: "Baaki permission (awaaz, bima check, aapki profile) tabhi poochhi jaati hain jab koi feature unhe maange — sab Family → Consent mein.", en: "Other permissions (voice, cover check, your profile) are asked only when a feature needs them — all listed in Family → Consent." })}</p>
             {err && <p className="mt-3 text-sm text-danger font-semibold">{err}{live ? "" : ` — ${t({ hi: "API chal raha hai?", en: "Is the API running?" })}`}</p>}
             <div className="flex-1" />
-            <Btn variant="haldi" className="w-full mt-5" disabled={(live === true && (fiChoice.length === 0 || !whoseReady)) || (live === false && forOther)} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
+            <Btn variant="haldi" className="w-full mt-5" disabled={(live === true && (fiChoice.length === 0 || !whoseReady || (whose.who !== "family" && mobile.length !== 10))) || (live === false && forOther)} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
             {live && !forOther && <button onClick={startReplay} className="mt-2 w-full min-h-11 text-[13px] font-bold text-muted underline">{t({ hi: "Net kharab? Recorded sandbox (replay) chalayein", en: "Bad network? Use the recorded sandbox (replay)" })}</button>}
             <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}{live ? " · live sandbox" : ""}</p>
           </>)}
@@ -484,9 +402,16 @@ export default function Onboarding() {
               const b = data.game.badges.find((x) => x.id === "pehla_kadam") ?? data.game.badges[0];
               api.gameEvent(hid, "setup").then(() => refresh()).catch(() => {});
               celebrate({ points: 100, title: { hi: "Pehla Kadam!", en: "First Step!" }, badge: b ? { ...b, earned: true } : undefined });
-              go("invite");
+              go("about");
             }}>{lang === "hi" ? "Badhiya! Aage" : "Great! Next"}</Btn>
           </>)}
+
+          {step === "about" && (
+            <AboutStep ans={ans} setAns={setAns} saved={saved} profileOn={profileOn}
+              bankIncome={data?.household.monthly_income != null}
+              onAllowProfile={() => void dpdp.set("member_profile", "grant")}
+              onNext={() => { void refresh(); if (returnTo) router.push(returnTo); else go("invite"); }} />
+          )}
 
           {step === "invite" && (<>
             <Title v={{ hi: "Ghar ke aur logon ko bulaayein", en: "Invite others at home" }} sub={{ hi: "Har koi apna consent khud deta hai — kuch bhi apne aap share nahi hota", en: "Everyone gives their own consent — nothing is shared automatically" }} />
@@ -627,35 +552,6 @@ function readLocalAnswers(): OnboardingAnswers {
     if (raw) return withDefaults(JSON.parse(raw) as OnboardingAnswers);
   } catch { /* first run or private mode */ }
   return withDefaults(null);
-}
-
-const GOAL_LABEL: Record<GoalIntent, L> = {
-  education: { hi: "Bachchon ki padhai", en: "Children's education" },
-  emergency_cushion: { hi: "Mushkil waqt ke liye bachat", en: "Emergency cushion" },
-  repay_debt: { hi: "Karz utaarna", en: "Pay off loans" },
-  big_purchase: { hi: "Badi kharidari", en: "A big purchase" },
-  festival_wedding: { hi: "Tyohaar / shaadi", en: "Festival / wedding" },
-  other: { hi: "Kuch aur", en: "Something else" },
-};
-const GOAL_EMOJI: Record<GoalIntent, string> = { education: "🎓", emergency_cushion: "🛟", repay_debt: "🧾", big_purchase: "🏍️", festival_wedding: "🪔", other: "✨" };
-
-/** A count that can be skipped or "don't know" — never silently zero. */
-function CountRow({ e, l, a, set }: { e: string; l: L; a: Answer<number>; set: (v: Answer<number>) => void }) {
-  const { t, lang } = useApp();
-  const n = a.state === "answered" ? a.value : null;
-  const dk = a.state === "dont_know";
-  return (
-    <div className="flex items-center gap-2 rounded-[22px] bg-white p-2.5 pl-3 shadow-soft">
-      <span className="text-2xl">{e}</span>
-      <span className="flex-1 min-w-0">
-        <span className="block font-bold text-[14px] leading-tight">{t(l)}</span>
-        <button onClick={() => set(dk ? { state: "unanswered" } : { state: "dont_know" })} className={`mt-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${dk ? "bg-ink text-white" : "bg-lav text-muted"}`}>{dk ? "✓ " : ""}{lang === "hi" ? "Pata nahi" : "Not sure"}</button>
-      </span>
-      <button aria-label="−" onClick={() => set(n === null ? answered(0) : n === 0 ? { state: "unanswered" } : answered(n - 1))} className="grid place-items-center h-10 w-10 rounded-full bg-lav shrink-0"><Minus size={16} /></button>
-      <span className={`w-6 text-center font-extrabold num ${n === null ? "text-muted text-lg" : "text-2xl"}`}>{n ?? (dk ? "?" : "–")}</span>
-      <button aria-label="+" onClick={() => set(answered((n ?? 0) + 1))} className="grid place-items-center h-10 w-10 rounded-full bg-ink text-white shrink-0"><Plus size={16} /></button>
-    </div>
-  );
 }
 
 /** One "Which accounts to share" row: label and one line on why it helps. */

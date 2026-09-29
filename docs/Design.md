@@ -229,21 +229,27 @@ Library: `motion/react`. Keep total animation assets < 200 KB (no Lottie). Respe
 
 Common to every tab screen: `TopBar` (or page header) → content → `HelpLink` → 112 px tab-bar clearance. Loading = `Skeleton` blocks of real card heights. Language toggle always reachable in the top-right.
 
-### 8.1 Onboarding (`/onboarding`, 8 steps, target < 4 min)
+### 8.1 Onboarding (`/`, 8 steps, target < 3 min)
 
-Shell: no tab bar. From step 2: back button (44 px) → 7-segment progress bar → LangToggle. Each step title uses `Title` = 30 px heading + muted sub + `SpeakBtn`.
+Bank first, questions after. Anumati's OTP is the only OTP and the identity
+step; DhanYukti never sends one of its own. After the reveal we ask only what
+the bank data can't tell. Shell: no tab bar. From step 2: back button (44 px)
+→ 7-segment progress bar → LangToggle.
 
-| # | Step | Purpose | Layout (top → bottom) | Primary action | States | A11y / voice |
-|---|---|---|---|---|---|---|
-| 1 | `splash` | Promise + trust | "// DhanYukti" + LangToggle → 44 px headline (clay second line) → sub → `HomeScene` 300 → ink Btn → "Parivaar ke liye muft · Anumati AA se surakshit" | Shuru karein → | — | **Fix:** add SpeakBtn for headline |
-| 2 | `language` | Pick language by *hearing* it | Title → 5 rows: native name (Devanagari/Tamil/Bengali) + English + 🔊 48 px. Selected = ink row + haldi speaker. Tamil/Marathi/Bengali at 60% opacity "· v1.1" | Aage | Unavailable languages disabled but playable | 🔊 plays a spoken sample in that language |
-| 3 | `login` | Mobile + OTP, no Aadhaar/PAN | Title → +91 field (24 px number) → OTP field appears after 10 digits (6 dots, wide tracking) → mint note "Helper kabhi aapka OTP ya balance nahi dekhte" | Aage (disabled until 10 + 6 digits) | Demo: any 6 digits | `inputMode=numeric`; **Spec:** voice OTP read-out |
-| 4 | `family` | Family in 5 taps | Title → avatar stack 60 px → 3 counters (log / kamaane wale / school) with 44 px −/+ → work type 4-chip grid (🏭 Naukri, 🏪 Dukaan, 🛵 Gig, 🧱 Mazdoori) → loans Haan/Nahi | Aage (disabled until loans answered) | — | **Fix:** −/+ to 48 px |
-| 5 | `passport` | Dual-Consent Passport | Title → rose DPDP card (Kya dekhenge / Kyon / Kab tak + "✓ Haan" / "Phone signal nahi") → ink AA card (same 3 rows, tag "AA · Anumati") → error line → haldi Btn → "Consent Anumati … sambhaalta hai" | Haan — Anumati se jodein | Disabled until DPDP choice; error "{err}" | Icon + bold label per row; speaker on title |
-| — | *Anumati approval* | See §8.2 | | | | |
-| 6 | `connect` | Make AA → Perfios visible | Pulsing ink circle with `bank` scene → "Aapka hisaab ban raha hai…" → mode line → 7 step rows ticking leaf every 650 ms | (auto) → reveal | Error: danger text + "Dobara" back to passport | **Spec:** speak each step in Aasaan |
-| 7 | `reveal` | First reveal | Title "{Name} ji, parivaar ki paisa sehat" → ink card: Resilience Days 64 px + sub + 3 mini-metrics → danger-soft "Pehla kaam" card with Scene + title + 🔊 | Badhiya! Aage → Pehla Kadam celebration (+100) | Metric null → "?" / "Pata nahi" | Speak the first task |
-| 8 | `gullak` | First Gullak | Title → 3-col jar cards (Gullak 70 + name + goal) → white trust note "Paisa aapke apne bank RD / bachat mein rehta hai…" | Ghar chalein 🏠 (clay) | — | **Spec:** tap a jar to choose it (currently display only) |
+| # | Step | Purpose | What's on it |
+|---|---|---|---|
+| 1 | `splash` | Promise + trust | Headline, HomeScene, "Shuru karein", demo households |
+| 2 | `language` | Pick language by *hearing* it | Hindi / English rows with 🔊, Bhashini read-out language |
+| 3 | `passport` | Consent to the bank link | Bank-registered mobile (Anumati sends its OTP there; "DhanYukti never asks for an OTP of its own") → assisted mode ("take the phone back when Anumati's OTP arrives") → whose account → AA card (see / why / until) → accounts to share → the three grants, all off → "Other permissions are asked only when a feature needs them" → Connect via Anumati |
+| — | *Anumati approval* | Identity + consent | Anumati's own OTP and approval (live), or §8.2 (replay) |
+| 4 | `connect` | Make AA → FIU visible | Step rows ticking as the consent and data arrive |
+| 5 | `reveal` | First reveal, from their own bank | Bank facts card → cover days + 3 mini-metrics → "We think these repeat" (confirm / fix / ignore) → first task |
+| 6 | `about` | Only what the bank can't tell | DPDP "Your profile" consent in place → family counts → cash at home → income *only if the bank shows none* → a bill paid in cash → goal. Every item skippable, "not answered" is never zero. Also reached from Family → Your answers → Edit (`/?step=about`) |
+| 7 | `invite` | Others at home | Invite box (each person gives their own consent) |
+| 8 | `gullak` | First Gullak | Jar cards → "money stays in your own bank" → Ghar chalein |
+
+Not asked any more (the bank data shows them): work type, loans, own income when
+the bank shows income, and the "one important bill" when it's paid from the account.
 
 ### 8.2 Anumati approval (`/anumati`, replay-mode stand-in)
 

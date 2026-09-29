@@ -25,6 +25,8 @@ export default function MyAnswers({ onEdit }: { onEdit: () => void }) {
       : x.state === "none" ? <span className="font-bold">{lang === "hi" ? "Koi nahi" : "None"}</span>
       : <span className="text-muted italic">{lang === "hi" ? "Jawaab nahi diya" : "Not answered"}</span>;
   if (!a) return <p className="text-sm text-muted">{t({ hi: "Abhi koi jawaab nahi.", en: "No answers yet." })}</p>;
+  // Work and loans are no longer asked (the bank data shows income and EMIs); shown only if answered earlier.
+  const asked = (x: Answer<unknown>) => x.state !== "unanswered";
   const rows: [L, React.ReactNode][] = [
     [{ hi: "Ghar mein log", en: "People at home" }, show(a.members, String)],
     [{ hi: "Kamaane wale", en: "Earners" }, show(a.earners, String)],
@@ -32,14 +34,14 @@ export default function MyAnswers({ onEdit }: { onEdit: () => void }) {
     [{ hi: "School mein", en: "In school" }, show(a.dependents.children_in_school, String)],
     [{ hi: "Buzurg (60+)", en: "Elders (60+)" }, show(a.dependents.elders, String)],
     [{ hi: "Aur nirbhar", en: "Other dependents" }, show(a.dependents.other, String)],
-    [{ hi: "Kaam", en: "Work" }, show(a.work, (v) => t(WORK[v]))],
+    ...(asked(a.work) ? [[{ hi: "Kaam", en: "Work" }, show(a.work, (v) => t(WORK[v]))] as [L, React.ReactNode]] : []),
     [{ hi: "Apni aamdani", en: "Own income" }, show(a.own_income, (v) => t(OWN_INCOME_LABEL[v]))],
-    [{ hi: "Loan", en: "Loans" }, show(a.loans, (v) => (v ? (lang === "hi" ? "Haan" : "Yes") : (lang === "hi" ? "Nahi" : "No")))],
+    ...(asked(a.loans) ? [[{ hi: "Loan", en: "Loans" }, show(a.loans, (v) => (v ? (lang === "hi" ? "Haan" : "Yes") : (lang === "hi" ? "Nahi" : "No")))] as [L, React.ReactNode]] : []),
     [{ hi: "Lakshya", en: "Goal" }, show(a.goal, (v) => t(GOAL[v]))],
     [{ hi: "Ghar ka cash", en: "Cash in hand" }, show(a.money.cash, inr)],
     [{ hi: "Aamdani", en: "Income" }, show(a.money.income_amount, (v) => `${inr(v)}${a.money.income_frequency.state === "answered" ? ` · ${t(FREQUENCY_LABEL[a.money.income_frequency.value])}` : ""}`)],
     [{ hi: "Agli aamdani", en: "Next income" }, show(a.money.next_pay, day)],
-    [{ hi: "Zaroori bill", en: "Important bill" }, a.money.bill_name.state === "none" ? show(a.money.bill_name, String) : show(a.money.bill_amount, (v) => `${a.money.bill_name.state === "answered" ? a.money.bill_name.value + " · " : ""}${inr(v)}${a.money.bill_due.state === "answered" ? ` · ${day(a.money.bill_due.value)}` : ""}`)],
+    [{ hi: "Cash wala bill", en: "Bill paid in cash" }, a.money.bill_name.state === "none" ? show(a.money.bill_name, String) : show(a.money.bill_amount, (v) => `${a.money.bill_name.state === "answered" ? a.money.bill_name.value + " · " : ""}${inr(v)}${a.money.bill_due.state === "answered" ? ` · ${day(a.money.bill_due.value)}` : ""}`)],
   ];
   return (
     <div className="rounded-[24px] bg-white p-4 shadow-soft">
