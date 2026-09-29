@@ -283,6 +283,7 @@ export default function Onboarding() {
 
           {step === "passport" && (<>
             <Title v={{ hi: "Consent Passport", en: "Consent Passport" }} sub={{ hi: "Alag alag permission — har ek kabhi bhi band kar sakte hain", en: "Separate permissions — stop any of them anytime" }} />
+            {live && <WhoseAccount v={whose} set={setWhose} invite={invite} />}
             {whose.who !== "family" && (<>
               <label className="mt-4 block">
                 <span className="block text-[13px] font-bold mb-1">{t({ hi: "Bank mein registered mobile", en: "Mobile registered with your bank" })}</span>
@@ -300,11 +301,10 @@ export default function Onboarding() {
               </button>
               {assisted && <p className="mt-2 rounded-[20px] bg-ink text-white p-3 text-sm font-semibold">✋ {t({ hi: "Anumati ka OTP aane par phone khud le lijiye. Helper OTP na dekhein.", en: "When Anumati's OTP arrives, take the phone back yourself. The helper must not see it." })}</p>}
             </>)}
-            {live && <WhoseAccount v={whose} set={setWhose} invite={invite} />}
             {live === false && (invite || whose.who === "family") && (
               <p className="mt-3 rounded-[20px] bg-amber-soft p-3 text-[13px] font-semibold">{t({ hi: "Parivaar ke sadasya ka khaata sirf live Anumati se judta hai — yeh deployment abhi replay par hai.", en: "A family member's account links only through live Anumati — this deployment is on replay right now." })}</p>
             )}
-            <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
+            <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "Bank ka len-den", en: "Bank transactions" }}
               see={live ? liveSee(fiChoice) : LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
             {live && fiAllowed.length > 1 && (
               <fieldset className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
