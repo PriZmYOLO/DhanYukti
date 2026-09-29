@@ -22,7 +22,7 @@ function prompts(d: Dashboard, amt: number): Record<Exclude<State, "idle">, L> {
     confirm: { hi: `${inr(amt)}, Gullak mein. Sahi hai toh 1 dabaiye.`, en: `${inr(amt)} into your Gullak. Press 1 to confirm.` },
     pin: { hi: "UPI 123PAY se mandate bheja gaya. Apna 4 ank ka UPI PIN daaliye.", en: "Mandate sent via UPI 123PAY. Enter your 4-digit UPI PIN." },
     paid: { hi: "Ho gaya! Gullak mein paisa gaya. Wapas ke liye star.", en: "Done! Money is in your Gullak. Back, star." },
-    help: { hi: "Bank mitra aapko 10 minute mein call karenge. Dhanyavaad.", en: "A bank mitra will call you within 10 minutes. Thank you." },
+    help: { hi: "Yeh preview hai — callback seva abhi chalu nahi. Apne bank ki branch ya bank mitra se madad lein.", en: "This is a preview — callbacks aren't live yet. Ask your bank's branch or bank mitra for help." },
   };
 }
 
