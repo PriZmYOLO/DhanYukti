@@ -60,4 +60,4 @@ Responses always say which one served them (`mode`).
   - 75 family habits unlock Parivaar Champion.
   - Checkin gives points once per real calendar day, and the streak continues from "yesterday".
 - **Ask**: `tag` is always `"jaankari"`. If `ANTHROPIC_API_KEY` is set, Claude (`ANTHROPIC_MODEL`, default `claude-sonnet-5`) only rephrases the answer. Any rephrase that drops or changes a number is thrown away.
-- **Scheme facts** (PMJJBY ₹436/yr for ₹2 lakh, PMSBY ₹20/yr) must be re-checked on jansuraksha.gov.in before the demo. The RBI DLA list in `e04_debt.py` is a small local snapshot.
+- **Scheme facts** (PMJJBY ₹436/yr for ₹2 lakh, PMSBY ₹20/yr) must be re-checked on jansuraksha.gov.in before the demo. The RBI DLA list in `e04_debt.py` is a small local copy (16 of RBI's 1,600+ apps): on live data an app missing from it is shown as "not in our copy — check RBI's site" (`pata_nahi`), never "not on RBI's list". The 36%-a-year line is DhanYukti's own rule, not RBI's.

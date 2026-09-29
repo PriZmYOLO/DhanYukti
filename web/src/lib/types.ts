@@ -49,9 +49,15 @@ export type Game = {
   leaderboard: { member_id: string; name: string; habits: number; streak: number }[];
   ledger: { date: string; what: L; amount: number; evidenced: boolean }[];
 };
+/** RBI's DLA directory has 1,600+ apps; we carry a small copy. `on_rbi_list: null` = not in our copy,
+ *  so unknown (live data) — never shown as "not on RBI's list". `false` only happens in demo fixtures. */
+export type RbiListStatus = "in_our_copy" | "not_on_list" | "not_in_our_copy";
 export type LenderCheck = {
-  app: string; on_rbi_list: boolean; borrowed: number; charges: number; days: number;
-  effective_annual_pct: number; verdict: L;
+  app: string; on_rbi_list: boolean | null; rbi_list_status?: RbiListStatus;
+  confidence?: "pakka" | "andaaza" | "pata_nahi";
+  borrowed: number; charges: number; days: number;
+  /** above DhanYukti's own ₹36-a-year-per-₹100 line — our rule, not RBI's */
+  effective_annual_pct: number; above_our_cost_line?: boolean; verdict: L;
 };
 export type SpendSlice = { key: "ghar" | "khana" | "emi" | "bachat" | "baaki"; label: L; amount: number; top: Txn[] };
 

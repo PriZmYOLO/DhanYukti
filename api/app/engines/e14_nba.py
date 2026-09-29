@@ -100,14 +100,31 @@ def _deficit(need, ctx):
                  action, {"saw": saw, "rule": rule, "confidence": ctx["conf"]["deficit"], "tag": "jaankari"}, 25, second)
 
 
+def _lender_rule(lenders):
+    """Keep RBI's list and DhanYukti's own ₹36 line apart, so a judge (or member) never reads ours as RBI's."""
+    cost = e04_debt.COST_RULE
+    if any(x["rbi_list_status"] == e04_debt.NOT_ON_LIST for x in lenders):
+        return L("Demo: RBI ki list mein nahi = khatra. " + cost["hi"], "Demo: not on RBI's list = danger. " + cost["en"])
+    if any(x["rbi_list_status"] == e04_debt.NOT_IN_OUR_COPY for x in lenders):
+        return L(cost["hi"] + ". RBI list: hamari copy adhoori hai, isliye pata nahi — RBI ki site par check karein.",
+                 cost["en"] + ". RBI's list: our copy is partial, so unknown — check RBI's site.")
+    return cost
+
+
 def _lender(need, ctx):
     lenders = need["lenders"]
     worst = max(lenders, key=lambda x: x["effective_annual_pct"])
     n = len(ctx["lenders"])
-    title = L(f"{worst['app']} RBI list mein nahi — {worst['days']} din mein {inr(worst['charges'])} byaaj gaya",
-              f"{worst['app']} isn't on RBI's list — {inr(worst['charges'])} interest in {worst['days']} days") if not worst["on_rbi_list"] else \
-        L(f"{worst['app']} bahut mehenga — {worst['days']} din mein {inr(worst['charges'])} byaaj",
-          f"{worst['app']} is very expensive — {inr(worst['charges'])} interest in {worst['days']} days")
+    st = worst["rbi_list_status"]
+    if st == e04_debt.NOT_ON_LIST:  # demo fixtures only
+        title = L(f"{worst['app']} RBI list mein nahi — {worst['days']} din mein {inr(worst['charges'])} byaaj gaya",
+                  f"{worst['app']} isn't on RBI's list — {inr(worst['charges'])} interest in {worst['days']} days")
+    elif st == e04_debt.NOT_IN_OUR_COPY:  # live data: we don't know, so we don't accuse
+        title = L(f"{worst['app']} mehenga — {worst['days']} din mein {inr(worst['charges'])} byaaj. RBI list par check karein",
+                  f"{worst['app']} is expensive — {inr(worst['charges'])} interest in {worst['days']} days. Check it on RBI's list")
+    else:
+        title = L(f"{worst['app']} bahut mehenga — {worst['days']} din mein {inr(worst['charges'])} byaaj",
+                  f"{worst['app']} is very expensive — {inr(worst['charges'])} interest in {worst['days']} days")
     body = L(f"3 mahine mein {n} app loan. {worst['app']} ne {inr(worst['borrowed'])} par {worst['days']} din mein {inr(worst['charges'])} liye.",
              f"{n} app loans in 3 months. {worst['app']} charged {inr(worst['charges'])} on {inr(worst['borrowed'])} for {worst['days']} days.")
     saw = []
@@ -117,17 +134,18 @@ def _lender(need, ctx):
         if ln.get("repay"):
             saw.append(txn_out(ln["repay"]))
     action = {"type": "cheaper_option", "label": L("Sasta vikalp dekhein", "See a cheaper option"),
-              "payload": {"rbi_dla_url": e04_debt.RBI_DLA_URL, "sachet_url": e04_debt.SACHET_URL,
+              "payload": {"rbi_dla_url": e04_debt.RBI_DLA_URL, "rbi_dla_path": e04_debt.RBI_DLA_PATH,
+                          "sachet_url": e04_debt.SACHET_URL,
                           "option": L("Bank overdraft / chhota loan", "Bank overdraft / small loan"),
-                          "apps": [{"app": x["app"], "on_rbi_list": x["on_rbi_list"], "effective_annual_pct": x["effective_annual_pct"]} for x in ctx["lenders"]]}}
+                          "apps": [{"app": x["app"], "on_rbi_list": x["on_rbi_list"], "rbi_list_status": x["rbi_list_status"],
+                                   "effective_annual_pct": x["effective_annual_pct"]} for x in ctx["lenders"]]}}
     return _card(need, "nba_lender_shield", "loan", "E04", title, body,
                  L("Agli baar app loan se pehle bank se overdraft ya chhota loan poochhein. App RBI list mein hai ya nahi, check karein.",
                    "Before the next app loan, ask your bank for an overdraft or small loan. Check whether the app is on RBI's list."),
                  L("Har baar ~₹300 extra, aur galat app se dhamki aur data ka khatra.",
                    "About ₹300 extra each time, plus risk of harassment and data misuse from unregistered apps."),
                  action,
-                 {"saw": saw[:5], "rule": L("RBI list mein nahi, ya ₹100 par saal ka ₹36 se zyada byaaj = khatra",
-                                            "Not on RBI's list, or over ₹36 a year per ₹100 = danger"),
+                 {"saw": saw[:5], "rule": _lender_rule(lenders),
                   "confidence": ctx["conf"]["lender"], "tag": "jaankari"}, 25,
                  L("Dhamki ya galat vasooli ho to sachet.rbi.org.in par shikayat karein.",
                    "If you face threats or unfair recovery, complain at sachet.rbi.org.in."))

@@ -100,11 +100,13 @@ def answer_with(db: dict, simulate, question: str) -> tuple[dict, list[str]]:
         if not ls:
             return L("Pichhle 3 mahine mein koi app loan nahi dikha. Zaroorat ho to pehle bank se poochhein.",
                      "No app loans in the last 3 months. If you need credit, ask your bank first."), ["get_decision", "lender_shield"]
-        bad = [x for x in ls if not x["on_rbi_list"] or x["effective_annual_pct"] > 36]
+        bad = [x for x in ls if x["on_rbi_list"] is False or x["above_our_cost_line"]]
+        tag_hi = {"not_on_list": " — RBI list mein nahi (demo)", "not_in_our_copy": " — hamari RBI list ki copy mein nahi, RBI site par check karein"}
+        tag_en = {"not_on_list": " — not on RBI list (demo)", "not_in_our_copy": " — not in our copy of RBI's list, check RBI's site"}
         hi = f"3 mahine mein {len(ls)} app loan. " + " ".join(
-            f"{x['app']}: {inr(x['borrowed'])} par {inr(x['charges'])} ({x['days']} din){'' if x['on_rbi_list'] else ' — RBI list mein nahi'}." for x in ls)
+            f"{x['app']}: {inr(x['borrowed'])} par {inr(x['charges'])} ({x['days']} din){tag_hi.get(x['rbi_list_status'], '')}." for x in ls)
         en = f"{len(ls)} app loans in 3 months. " + " ".join(
-            f"{x['app']}: {inr(x['charges'])} on {inr(x['borrowed'])} ({x['days']} days){'' if x['on_rbi_list'] else ' — not on RBI list'}." for x in ls)
+            f"{x['app']}: {inr(x['charges'])} on {inr(x['borrowed'])} ({x['days']} days){tag_en.get(x['rbi_list_status'], '')}." for x in ls)
         if bad:
             hi += " Agli baar bank overdraft / chhota loan poochhein."
             en += " Next time, ask your bank for an overdraft / small loan."

@@ -306,6 +306,7 @@ Card fields: **title** · **body** · **task** (Aaj ka kaam) · **if_not** (Agar
 | action | Sasta vikalp dekhein | See a cheaper option |
 | rule (code) | RBI list mein nahi, ya saal ka kharcha 36% se zyada = khatra | Not on RBI's list, or costing over 36% a year = danger |
 | **Suggested rule** | RBI list mein nahi, ya ₹100 par saal ka ₹36 se zyada kharcha = khatra | Not on RBI's list, or over ₹36 a year per ₹100 = danger |
+| **Shipped rule** | DhanYukti ka niyam (RBI ka nahi): ₹100 par saal ka ₹36 se zyada = mehenga. Live data: hamari RBI list ki copy mein nahi = pata nahi, RBI site par check karein | DhanYukti's rule (not RBI's): more than ₹36 a year per ₹100 = expensive. Live data: not in our copy of RBI's list = unknown, check RBI's site |
 | Lender row verdict (code) | RBI ki list mein nahi — saal ka ~276% kharcha. Isse bachein. | Not on RBI's list — costs ~276% a year. Avoid. |
 | Lender row line (code) | ₹3,000 liye, 15 din mein ₹340 byaaj gaya | Borrowed ₹3,000, paid ₹340 in 15 days |
 

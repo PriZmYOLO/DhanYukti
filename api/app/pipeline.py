@@ -206,7 +206,9 @@ def compute(hh: dict) -> dict:
 
     ninety = iso(add_days(d(as_of), -90))
     recent_loans = [ln for ln in norm["app_loans"] if ln["disbursal"]["date"] >= ninety]
-    lenders = e04.lender_shield(recent_loans)
+    # A linked member's twin (real AA data) never gets a "not on RBI's list" verdict from our partial copy.
+    live = bool(hh.get("_norm"))
+    lenders = e04.lender_shield(recent_loans, live=live)
     per100 = e04.debt_load(norm["emi_monthly_p"], norm["monthly_income_p"])
     if norm.get("emi_known") is False:
         per100 = None  # a linked member with no complete month of data: unknown, not ₹0
@@ -223,7 +225,7 @@ def compute(hh: dict) -> dict:
                             estimated=hh["income_type"] == "gig" or bool(norm.get("income_declared")))
     conf = {
         "deficit": e16.combine(income_conf, "pakka"),
-        "lender": "pakka",
+        "lender": e04.lender_confidence(lenders),
         "protection": prot["confidence"],
         "resilience": "andaaza",
         "safe": income_conf,

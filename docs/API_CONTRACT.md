@@ -54,8 +54,13 @@ type Game = { points: number; streak: number; streak_shield: number;
               leaderboard: { member_id: string; name: string; habits: number; streak: number }[];  // habits only, never money
               ledger: { date: string; what: L; amount: number; evidenced: boolean }[] };        // Value Ledger
 
-type LenderCheck = { app: string; on_rbi_list: boolean; borrowed: number; charges: number;
-                     days: number; effective_annual_pct: number; verdict: L };
+// on_rbi_list: true = in our copy of RBI's DLA list; false = demo fixtures only ("not on the list" in the story);
+// null = live data, not in our (partial) copy -> unknown, confidence "pata_nahi", never shown as "not on RBI's list".
+// above_our_cost_line: over DhanYukti's own ₹36-a-year-per-₹100 line (our rule, not RBI's).
+type LenderCheck = { app: string; on_rbi_list: boolean | null;
+                     rbi_list_status: "in_our_copy" | "not_on_list" | "not_in_our_copy";
+                     confidence: "pakka" | "pata_nahi"; borrowed: number; charges: number;
+                     days: number; effective_annual_pct: number; above_our_cost_line: boolean; verdict: L };
 
 type Dashboard = {
   household: { id: string; family_name: L; primary_user: string; city: L; income_type: "salary"|"gig"|"dual";

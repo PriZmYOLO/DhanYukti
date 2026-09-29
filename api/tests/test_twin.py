@@ -321,3 +321,42 @@ def test_twin_keeps_no_bank_narration_text():
     blob = json.dumps(twin)
     assert not any(n in blob for n in raw if "/" in n or "PVT LTD" in n)
     assert "Rent Anil Kumar" in blob
+
+
+def _with_app_loans(loans):
+    """The member's statement plus app-loan cycles: (app narration, borrowed, repaid, disbursal date, repay date)."""
+    p = _statement()
+    for name, borrowed, repaid, d1, d2 in loans:
+        p["accounts"][0]["transactions"] += [
+            {"date": d1, "narration": f"UPI/{name}/LOAN DISBURSAL", "amount": float(borrowed)},
+            {"date": d2, "narration": f"UPI/{name}/LOAN REPAY", "amount": -float(repaid)},
+        ]
+    r = client.post("/api/twin/build", json=p).json()
+    assert r["status"] == "ready"
+    return client.post("/api/twin/dashboard", json={"twin": r["twin"], "state": r["state"]}).json()
+
+
+def test_lender_shield_never_accuses_a_real_lender_missing_from_our_copy():
+    # RupeeRedee is detected as an app lender but is not in our 16-name copy of RBI's list.
+    db = _with_app_loans([("RUPEEREDEE", 3000, 3340, "2026-08-10", "2026-08-25"),
+                          ("KREDITBEE", 5000, 5120, "2026-08-12", "2026-09-11")])
+    ls = {x["app"]: x for x in db["lender_shield"]}
+    rr = ls["RupeeRedee"]
+    assert rr["on_rbi_list"] is None and rr["rbi_list_status"] == "not_in_our_copy" and rr["confidence"] == "pata_nahi"
+    assert rr["verdict"]["en"].startswith("Not in our copy of RBI's list — check it on RBI's site.")
+    assert "Avoid" not in rr["verdict"]["en"] and "Not on RBI's list" not in rr["verdict"]["en"]
+    assert "our rule, not RBI's" in rr["verdict"]["en"]
+    assert ls["KreditBee"]["rbi_list_status"] == "in_our_copy" and "our rule, not RBI's" in ls["KreditBee"]["verdict"]["en"]
+    card = next(n for n in db["nba"] if n["id"] == "nba_lender_shield")   # flagged for cost (our line), not the list
+    assert "isn't on RBI's list" not in card["title"]["en"] and "Check it on RBI's list" in card["title"]["en"]
+    assert card["why"]["confidence"] == "pata_nahi"
+    assert "DhanYukti's rule (not RBI's)" in card["why"]["rule"]["en"]
+    assert all(a["on_rbi_list"] is not False for a in card["action"]["payload"]["apps"])
+
+
+def test_cheap_lender_missing_from_our_copy_is_unknown_not_risky():
+    db = _with_app_loans([("LOANTAP", 10000, 10100, "2026-08-01", "2026-08-31")])
+    (lt,) = db["lender_shield"]
+    assert lt["on_rbi_list"] is None and not lt["above_our_cost_line"]
+    assert "within DhanYukti's line" in lt["verdict"]["en"]
+    assert not any(n["id"] == "nba_lender_shield" for n in db["nba"])
