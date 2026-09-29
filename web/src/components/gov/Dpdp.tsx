@@ -98,6 +98,8 @@ const KIND: Record<LedgerEntry["kind"], L> = {
   bill_changed: { hi: "Bill theek kiya", en: "Bill corrected" },
   bill_ignored: { hi: "Bill hataya", en: "Bill ignored" },
   bill_undone: { hi: "Faisla wapas", en: "Decision undone" },
+  household_joined: { hi: "Sadasya ka khaata parivaar mein juda", en: "A member's account joined the household" },
+  sharing_tightened: { hi: "Sharing kam ki", en: "Sharing reduced" },
 };
 
 export function purposeTitle(id: PurposeId, lang: "hi" | "en") {

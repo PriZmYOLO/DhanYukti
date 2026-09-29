@@ -27,6 +27,8 @@ export async function POST(request: Request) {
       // Build the member's own household from this data while it is here.
       if (done.import_status === "complete" || done.import_status === "partial") {
         await rebuildTwinQuietly(done.session_id);
+        // Linked from an invite: rebuild the household it joined as well.
+        if (done.household_sid && done.household_sid !== done.session_id) await rebuildTwinQuietly(done.household_sid);
       }
     });
   }

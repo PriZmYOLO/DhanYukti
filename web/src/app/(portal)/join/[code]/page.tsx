@@ -9,8 +9,9 @@ import { useApp } from "@/lib/store";
 import { gov } from "@/lib/gov";
 
 /**
- * Where an invite link lands. Shows only the role and label the inviter
- * chose; joining shares nothing until this person gives their own consents.
+ * Where an invite link lands, on the invited person's own phone. It shows
+ * only the role and label the inviter chose. Joining = linking their OWN bank
+ * (their own Anumati OTP) into that family's picture, at the level THEY choose.
  */
 export default function Join({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -32,11 +33,13 @@ export default function Join({ params }: { params: Promise<{ code: string }> }) 
       )}
       {err && <p className="mt-4 rounded-[20px] bg-danger-soft p-3 text-sm font-semibold text-danger">{err}</p>}
       <div className="mt-4 rounded-[24px] bg-mint/70 p-4 text-[14px] space-y-2">
-        <p className="flex gap-2"><ShieldCheck size={18} className="text-leaf shrink-0" />{t({ hi: "Judne se kuch share nahi hota. Aapka bank data, bachat aur jawaab aapke hain.", en: "Joining shares nothing. Your bank data, savings and answers stay yours." })}</p>
-        <p className="flex gap-2"><ShieldCheck size={18} className="text-leaf shrink-0" />{t({ hi: "Har permission aap khud dete hain — aur kabhi bhi band kar sakte hain.", en: "You give every permission yourself — and can stop any of them anytime." })}</p>
+        <p className="flex gap-2"><ShieldCheck size={18} className="text-leaf shrink-0" />{t({ hi: "Judne ka matlab: aap apna bank khaata is parivaar ke hisaab mein jodte hain — Anumati par apne OTP se, apni manzoori se.", en: "Joining means linking your own bank account into this family's picture — approved by you at Anumati, with your own OTP." })}</p>
+        <p className="flex gap-2"><ShieldCheck size={18} className="text-leaf shrink-0" />{t({ hi: "Parivaar ko utna hi dikhega jitna aap chunein: Poora, Sirf total (kise diya nahi dikhta) ya Private.", en: "The family sees only what you choose: Full, Totals only (who was paid stays hidden) or Private." })}</p>
+        <p className="flex gap-2"><ShieldCheck size={18} className="text-leaf shrink-0" />{t({ hi: "Aapke jawaab aur bachat aapke hi rehte hain. Kabhi bhi kam dikhayein ya band karein.", en: "Your answers and savings stay yours. Show less, or stop, anytime." })}</p>
       </div>
       <div className="flex-1" />
-      <Btn variant="ink" className="w-full mt-6" disabled={!inv} onClick={() => router.push("/")}>{lang === "hi" ? "Shuru karein →" : "Get started →"}</Btn>
+      <Btn variant="ink" className="w-full mt-6" disabled={!inv} onClick={() => router.push(`/?step=consent&invite=${encodeURIComponent(code.toUpperCase())}`)}>{lang === "hi" ? "Apna bank jodein →" : "Link my bank →"}</Btn>
+      <button onClick={() => router.push("/")} className="mt-2 w-full min-h-11 text-sm font-bold text-muted">{lang === "hi" ? "Abhi nahi — pehle app dekhein" : "Not now — look around first"}</button>
     </div>
   );
 }

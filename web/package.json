@@ -10,6 +10,7 @@
     "test:engine": "tsx scripts/cover-engine-fixtures.ts && tsx scripts/voice-fixtures.ts && tsx --conditions=react-server scripts/privacy-retention-check.ts && tsx --conditions=react-server scripts/aa-fi-types-check.ts",
     "test:aa-summary": "node scripts/aa-summary-check.mjs",
     "test:my-bills": "node scripts/my-bills-check.mjs",
+    "test:household": "node scripts/household-check.mjs",
     "voice:record": "tsx --conditions=react-server scripts/bhashini-record.ts"
   },
   "dependencies": {

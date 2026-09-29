@@ -14,6 +14,7 @@ import { metricValue } from "@/components/home/HealthTiles";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { aaLive, liveSee, liveStage, LIVE_CONSENT, LIVE_STEPS, type AccountSummary, type SourceLink } from "@/lib/aa-live";
+import WhoseAccount, { SELF_WHOSE, type Whose } from "@/components/gov/WhoseAccount";
 import { DEFAULT_FI_TYPES, FI_TYPE_TEXT, fiTypeList, type FiType } from "@/lib/aa/fi-types";
 import BankSummaryCard from "@/components/BankSummaryCard";
 import ConfirmBills from "@/components/ConfirmBills";
@@ -66,6 +67,13 @@ export default function Onboarding() {
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [summaryErr, setSummaryErr] = useState<string | null>(null);
   const liveActive = liveLink !== null && !liveLink.is_demo && liveLink.consent.status === "active";
+  // "Whose account is this?" — and, when linking from an invite, the family being joined.
+  const [whose, setWhose] = useState<Whose>(SELF_WHOSE);
+  const [invite, setInvite] = useState<{ code: string; label: string | null; role: string } | null>(null);
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  const forOther = invite !== null || whose.who === "family";
+  const linkMobile = whose.who === "family" && !invite ? whose.mobile : mobile;
+  const whoseReady = !forOther || (whose.sharing !== null && linkMobile.length === 10);
 
   const go = (s: Step) => setStep(s);
   const profileOn = dpdp.status("member_profile") === "granted";
@@ -97,6 +105,14 @@ export default function Onboarding() {
     const p = new URLSearchParams(window.location.search);
     const s = p.get("step"); const h = p.get("handle");
     if (s === "consent") setStep("passport");
+    // From an invite (/join/CODE on the member's own phone) or "Add a family member's account".
+    const code = p.get("invite");
+    if (code) {
+      gov.lookupInvite(code.toUpperCase())
+        .then((i) => setInvite({ code: code.toUpperCase(), label: i.label, role: i.role }))
+        .catch(() => setErr(t({ hi: "Yeh invite khatam ho gaya, radd hua ya pehle hi istemaal ho chuka hai.", en: "This invite has expired, was cancelled or was already used." })));
+    }
+    if (p.get("who") === "family") { setWhose({ ...SELF_WHOSE, who: "family" }); setReturnTo("/app/family"); }
     if (s === "connect" && h) { setConsentHandle(h); setStep("connect"); runFetch(h); }
     // Is the live Anumati flow switched on for this deployment?
     aaLive.status().then(async (st) => {
@@ -181,8 +197,13 @@ export default function Onboarding() {
     // Open the tab inside the tap, before any await, so it isn't blocked as a popup.
     const tab = window.open("about:blank", "_blank");
     try {
-      const link = await aaLive.create({ ...grants, fi_types: fiChoice });
-      const h = await aaLive.approve(link.link_id, mobile);
+      const member = invite
+        ? { who: "self" as const, sharing: whose.sharing ?? undefined }
+        : whose.who === "family"
+          ? { who: "family" as const, relation: whose.relation, role: whose.role, sharing: whose.sharing ?? undefined }
+          : undefined;
+      const link = await aaLive.create({ ...grants, fi_types: fiChoice, member, invite_code: invite?.code });
+      const h = await aaLive.approve(link.link_id, linkMobile);
       if (h.mode === "redirect") {
         aaLive.rememberPending(link.link_id);
         setLiveLink(h.link); setLiveUrl(h.redirect_url);
@@ -194,7 +215,7 @@ export default function Onboarding() {
       tab?.close();
       if (h.mode === "needs_details") {
         setErr(t({ hi: "Bank mein registered 10 ank ka mobile number daalein", en: "Enter the 10-digit mobile number registered with your bank" }));
-        setStep("login");
+        if (!forOther) setStep("login");
         return;
       }
       setErr(h.mode === "unavailable" ? h.reason : t({ hi: "Abhi jud nahi paaye", en: "Couldn't connect right now" }));
@@ -355,6 +376,17 @@ export default function Onboarding() {
                   : t({ hi: "Profile consent ke bina jawaab sirf is phone par rahenge", en: "Without profile consent, answers stay only on this phone" })}
               </p>
             </div>
+            {live && <WhoseAccount v={whose} set={setWhose} invite={invite} />}
+            {live && invite && mobile.length !== 10 && (
+              <div className="mt-2 flex items-center gap-2 rounded-[20px] bg-white px-3 shadow-soft">
+                <span className="font-bold">+91</span>
+                <input inputMode="numeric" maxLength={10} value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
+                  placeholder={lang === "hi" ? "Aapka bank wala mobile" : "Your bank-registered mobile"} className="flex-1 min-h-12 text-[15px] font-bold num outline-none bg-transparent min-w-0" />
+              </div>
+            )}
+            {live === false && (invite || whose.who === "family") && (
+              <p className="mt-3 rounded-[20px] bg-amber-soft p-3 text-[13px] font-semibold">{t({ hi: "Parivaar ke sadasya ka khaata sirf live Anumati se judta hai — yeh deployment abhi replay par hai.", en: "A family member's account links only through live Anumati — this deployment is on replay right now." })}</p>
+            )}
             <ConsentCard tone="ink" tag="AA · Anumati" title={{ hi: "2. Bank ka len-den", en: "2. Bank transactions" }}
               see={live ? liveSee(fiChoice) : LIVE_CONSENT.see} why={LIVE_CONSENT.why} until={LIVE_CONSENT.until} />
             {live && fiAllowed.length > 1 && (
@@ -370,21 +402,21 @@ export default function Onboarding() {
             {live && (
               <div className="mt-2 rounded-[24px] bg-white p-3 space-y-1">
                 <p className="text-[12px] font-bold text-muted px-1">{t({ hi: "Bank data ka istemaal — teeno pehle se band", en: "How the bank data may be used — all start off" })}</p>
-                <GrantRow on={grants.household_computation} set={(v) => setGrants({ ...grants, household_computation: v })} l={{ hi: "Parivaar ke hisaab mein jodein", en: "Use in household calculations" }} />
+                {!forOther && <GrantRow on={grants.household_computation} set={(v) => setGrants({ ...grants, household_computation: v })} l={{ hi: "Parivaar ke hisaab mein jodein", en: "Use in household calculations" }} />}
                 <GrantRow on={grants.alerts_and_actions} set={(v) => setGrants({ ...grants, alerts_and_actions: v })} l={{ hi: "Alert aur salah (sarkari bima check bhi)", en: "Alerts & suggestions (incl. the government insurance check)" }} />
-                <GrantRow on={grants.viewer_scope === "household_adults"} set={(v) => setGrants({ ...grants, viewer_scope: v ? "household_adults" : "only_me" })} l={{ hi: "Ghar ke bade bhi nateeje dekh sakein", en: "Household adults may see the results" }} />
+                {!forOther && <GrantRow on={grants.viewer_scope === "household_adults"} set={(v) => setGrants({ ...grants, viewer_scope: v ? "household_adults" : "only_me" })} l={{ hi: "Ghar ke bade bhi nateeje dekh sakein", en: "Household adults may see the results" }} />}
               </div>
             )}
             {err && <p className="mt-3 text-sm text-danger font-semibold">{err}{live ? "" : ` — ${t({ hi: "API chal raha hai?", en: "Is the API running?" })}`}</p>}
             <div className="flex-1" />
-            <Btn variant="haldi" className="w-full mt-5" disabled={live === true && fiChoice.length === 0} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
-            {live && <button onClick={startReplay} className="mt-2 w-full min-h-11 text-[13px] font-bold text-muted underline">{t({ hi: "Net kharab? Recorded sandbox (replay) chalayein", en: "Bad network? Use the recorded sandbox (replay)" })}</button>}
+            <Btn variant="haldi" className="w-full mt-5" disabled={(live === true && (fiChoice.length === 0 || !whoseReady)) || (live === false && forOther)} onClick={startAA}>{lang === "hi" ? "Haan — Anumati se jodein" : "Yes — connect via Anumati"}</Btn>
+            {live && !forOther && <button onClick={startReplay} className="mt-2 w-full min-h-11 text-[13px] font-bold text-muted underline">{t({ hi: "Net kharab? Recorded sandbox (replay) chalayein", en: "Bad network? Use the recorded sandbox (replay)" })}</button>}
             <p className="text-center text-[11px] text-muted mt-2">{t({ hi: "Consent Anumati (RBI-licensed Account Aggregator) sambhaalta hai", en: "Consent handled by Anumati, an RBI-licensed Account Aggregator" })}{live ? " · live sandbox" : ""}</p>
           </>)}
 
           {step === "connect" && liveLink && (<LiveConnect link={liveLink} url={liveUrl} err={err}
             onRetry={() => { setErr(null); setLiveLink(null); setStep("passport"); }}
-            onNext={() => setStep("reveal")} />)}
+            onNext={() => (returnTo ? router.push(returnTo) : setStep("reveal"))} />)}
 
           {step === "connect" && !liveLink && (<>
             <div className="flex-1 flex flex-col items-center pt-6">

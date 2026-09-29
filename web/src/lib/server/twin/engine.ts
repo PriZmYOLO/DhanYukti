@@ -1,10 +1,11 @@
 import "server-only";
 
-import { listLinks, readAccountData } from "@/lib/server/aa/links";
+import { listJoinedLinks, listLinks, readAccountData, readHouseholdAccountData, type StoredAccountData } from "@/lib/server/aa/links";
 import { kvDel, kvGet, kvSet, kvSetIfAbsent } from "@/lib/server/aa/store";
 import { hasConsent } from "@/lib/server/dpdp/ledger";
 import { readAnswers } from "@/lib/server/onboarding/store";
 import { STATE_TTL, twinKeys, withoutBankCorrections } from "@/lib/server/twin/keys";
+import type { LinkMember, SourceLink } from "@/lib/provisional/h03/types";
 import type { L } from "@/lib/types";
 
 /**
@@ -76,21 +77,38 @@ export async function buildTwin(sid: string): Promise<Twin> {
     const old = await kvGet<TwinState>(twinKeys.state(sid));
     if (old) await kvSet(twinKeys.state(sid), withoutBankCorrections(old), STATE_TTL);
   }
-  const links = (await listLinks(sid)).filter((l) => l.consent.status === "active" && !l.is_demo);
-  if (!links.length) throw new TwinError(404, "not_linked", "No bank account is linked yet.");
-  const datas = (await Promise.all(links.map((l) => readAccountData(sid, l.link_id)))).filter(
-    (x): x is NonNullable<typeof x> => x !== null && x.accounts.length > 0,
+  // One household = this phone's own links + links family members made from this household's
+  // invites on their own phones. Each account belongs to whoever linked it; a "private" account
+  // never reaches the engines, a "sirf_total" one is reduced to totals there.
+  const own = (await listLinks(sid)).filter((l) => l.consent.status === "active" && !l.is_demo);
+  const joined = (await listJoinedLinks(sid)).filter((l) => l.consent.status === "active");
+  const SELF: LinkMember = { id: "me", self: true, relation: null, role: "self", sharing: "poora" };
+  // A link this phone made into ANOTHER household is still this person's own account here.
+  const whose = (l: SourceLink): LinkMember => (l.household === "joined" || !l.member ? SELF : l.member);
+  const entries = [
+    ...own.map((l) => ({ link: l, member: whose(l), read: () => readAccountData(sid, l.link_id) })),
+    ...joined.map((l) => ({ link: l, member: l.member ?? SELF, read: () => readHouseholdAccountData(sid, l.link_id) })),
+  ];
+  if (!entries.length) throw new TwinError(404, "not_linked", "No bank account is linked yet.");
+  const used = entries.filter((e) => e.member.self || e.member.sharing !== "private");
+  if (!used.length) {
+    throw new TwinError(409, "twin_insufficient", "Every linked account is set to private, so there's no household picture to show.");
+  }
+  const read = await Promise.all(used.map(async (e) => ({ ...e, data: await e.read() })));
+  const datas = read.filter(
+    (x): x is typeof x & { data: StoredAccountData } => x.data !== null && x.data.accounts.length > 0,
   );
   if (!datas.length) {
-    const arrived = links.some((l) => l.import.status === "complete" || l.import.status === "partial");
+    const arrived = used.some((e) => e.link.import.status === "complete" || e.link.import.status === "partial");
     throw arrived
       ? new TwinError(410, "data_expired", "Your bank data is deleted 24 hours after it arrives. Link again to rebuild your picture.")
       : new TwinError(409, "data_pending", "Your bank data hasn't arrived yet.");
   }
-  const fetchedAt = datas.map((x) => x.fetched_at).sort().at(-1)!;
-  const accounts = datas.flatMap((x) =>
+  const fetchedAt = datas.map((x) => x.data.fetched_at).sort().at(-1)!;
+  const accounts = datas.flatMap(({ data: x, member }) =>
     x.accounts.map((a, i) => ({
       id: `${x.link_id.slice(-6)}-${i + 1}`,
+      member: member.self ? "me" : member.id,
       masked: a.masked_acc_number,
       fip: a.fip_id,
       type: a.account_type,
@@ -105,20 +123,27 @@ export async function buildTwin(sid: string): Promise<Twin> {
         })),
     })),
   );
-  const holder = datas.flatMap((x) => x.accounts).find((a) => a.holder_first_name || a.holder_age);
+  const holderOf = (pick: (m: LinkMember) => boolean) =>
+    datas.filter((x) => pick(x.member)).flatMap((x) => x.data.accounts).find((a) => a.holder_first_name || a.holder_age);
+  const holder = holderOf((m) => m.self);
+  // Family members, as each chose to show. Same person via two banks = two ids (kept simple).
+  const linked = [...new Map(datas.filter((x) => !x.member.self).map((x) => [x.member.id, x.member])).values()].map((m) => {
+    const h = holderOf((mm) => mm.id === m.id);
+    return { id: m.id, name: h?.holder_first_name ?? null, age: h?.holder_age ?? null, relation: m.relation, role: m.role, sharing: m.sharing, self: false };
+  });
   // Family answers shape the twin only with the member's DPDP "profile" consent.
   const answers = (await hasConsent(sid, "member_profile")) ? await readAnswers(sid) : null;
   const r = await callEngine<{ status: "ready" | "insufficient"; missing: L[]; twin?: Twin; state?: TwinState }>("build", {
     as_of: istDate(new Date(fetchedAt)),
     fetched_at: fetchedAt,
-    sandbox: links.some((l) => l.is_sandbox),
+    sandbox: entries.some((e) => e.link.is_sandbox),
     accounts,
-    profile: { first_name: holder?.holder_first_name ?? null, age: holder?.holder_age ?? null, answers },
+    profile: { first_name: holder?.holder_first_name ?? null, age: holder?.holder_age ?? null, answers, linked },
   });
   if (r.status !== "ready" || !r.twin) {
     throw new TwinError(409, "twin_insufficient", "Your bank data didn't have enough to build your picture.", r.missing);
   }
-  const twin: Twin = { ...r.twin, built_from: datas.map((x) => x.link_id) };
+  const twin: Twin = { ...r.twin, built_from: datas.map((x) => x.data.link_id) };
   await kvSet(twinKeys.twin(sid), twin, TWIN_TTL);
   if (!(await kvGet(twinKeys.state(sid)))) await kvSet(twinKeys.state(sid), r.state ?? {}, STATE_TTL);
   return twin;

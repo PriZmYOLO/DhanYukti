@@ -50,6 +50,8 @@ class AccountIn(BaseModel):
     type: str | None = None
     fi_type: str | None = "DEPOSIT"
     balance: float | None = None   # rupees; None = the bank didn't send it
+    # who linked this account: "me" (the phone's owner) or a family member's id from profile.linked
+    member: str | None = Field(default=None, max_length=40)
     transactions: list[TxnIn] = Field(default_factory=list, max_length=20000)
 
 

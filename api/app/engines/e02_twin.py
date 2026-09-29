@@ -157,7 +157,7 @@ def _event(kind: str, key: str, when: date, amount: int, account: str, every: di
     # member's decision on it (confirm / fix / ignore) applies to every date and survives a rebuild.
     ev = {"id": f"{kind}_{slug}_{when.isoformat()}", "series": f"{kind}_{slug}", "every": every,
           "date": iso(when), "type": EVENT_TYPE[kind],
-          "label": _label(kind, key), "amount": int(amount), "movable": kind == "fee", "_kind": kind}
+          "label": _label(kind, key), "amount": int(amount), "movable": kind == "fee", "_kind": kind, "_key": key}
     if kind in PROTECTED:
         ev["protected"] = True
     if kind == "fee":
@@ -207,31 +207,90 @@ def _count(ans: dict | None, *path: str) -> int | None:
     return int(node["value"]) if isinstance(node, dict) and node.get("state") == "answered" else None
 
 
+SHARING = ("poora", "sirf_total", "private")
+SHARING_WORD = {"poora": L("poora dikhta hai", "shows in full"), "sirf_total": L("sirf total", "totals only"),
+                "private": L("private", "private")}
+_AVATAR_BY_RELATION = [
+    (("pati", "husband", "bhai", "brother"), "man"), (("patni", "wife", "behen", "bahen", "sister", "didi"), "woman"),
+    (("maa", "mummy", "mother", "saas", "dadi", "nani"), "elder_woman"), (("papa", "father", "sasur", "dada", "nana"), "elder_man"),
+    (("beta", "son"), "boy"), (("beti", "daughter"), "girl"),
+]
+
+
+def _avatar(relation: str | None, default: str) -> str:
+    r = (relation or "").lower()
+    for words, av in _AVATAR_BY_RELATION:
+        if any(w in r for w in words):
+            return av
+    return default
+
+
+def linked_members(profile: dict) -> list[dict]:
+    """Other family members whose OWN bank links feed this household (not the phone's owner)."""
+    out = []
+    for m in profile.get("linked") or []:
+        if not isinstance(m, dict) or m.get("self") or m.get("sharing") not in ("poora", "sirf_total"):
+            continue   # private links never reach the engines; anything else is dropped too
+        out.append(m)
+    return out
+
+
 def build_members(profile: dict, has_income: bool) -> list[dict]:
+    """Members: the phone's owner ("me"), every family member who linked their OWN account (with the
+    sharing level THEY chose), then placeholders for people the owner told us about but who aren't linked."""
     ans = profile.get("answers")
     first = (profile.get("first_name") or "").strip().title() or None
     unknown_cover = L("Bank data mein bima premium nahi dikha — pata nahi", "No insurance premium seen in bank data — unknown")
-    me = {"id": "me", "name": first or "Aap", "role": L("Aap (khaata aapka)", "You (account holder)"),
-          "earner": has_income, "main_earner": has_income, "sharing": "poora", "avatar": "woman",
-          "account_holder": True, "cover": {"life": None, "health": None, "note": unknown_cover}}
+    # income_by_member is None on twins built before members were tagged: then all income is "me".
+    income_by = profile.get("income_by_member")
+    has_self = profile.get("self_linked", True)
+    me_income = bool(income_by.get("me")) if income_by is not None else has_income
+    if profile.get("declares_income"):
+        me_income = True
+    income_by = income_by or {}
+    me = {"id": "me", "name": first or "Aap",
+          "role": L("Aap (khaata aapka)", "You (account holder)") if has_self else L("Aap (khaata nahi juda)", "You (account not linked)"),
+          "earner": me_income, "main_earner": me_income, "sharing": "poora", "avatar": "woman",
+          "account_holder": bool(has_self), "cover": {"life": None, "health": None, "note": unknown_cover}}
     if profile.get("age"):
         me["age"] = int(profile["age"])
     members = [me]
-    extra_earners = max(0, (_count(ans, "earners") or 0) - (1 if has_income else 0))
+    linked = linked_members(profile)
+    for m in linked[:5]:
+        rel = (m.get("relation") or "").strip()[:24] or None
+        earner = bool(income_by.get(m["id"])) or m.get("role") == "earning_adult"
+        who_hi = rel or "Parivaar ke sadasya"
+        who_en = rel or "Family member"
+        mem = {"id": m["id"], "name": (m.get("name") or "").strip().title() or rel or "Sadasya",
+               "role": L(f"{who_hi} (apna khaata juda · {SHARING_WORD[m['sharing']]['hi']})",
+                         f"{who_en} (own account linked · {SHARING_WORD[m['sharing']]['en']})"),
+               "earner": earner, "main_earner": False, "sharing": m["sharing"], "account_holder": True,
+               "relation": rel, "avatar": _avatar(rel, "man"),
+               "cover": {"life": None, "health": None, "note": unknown_cover}}
+        if m.get("age"):
+            mem["age"] = int(m["age"])
+        members.append(mem)
+    # The main earner is whoever the bank shows earning the most (ties: the phone's owner).
+    top = max(members, key=lambda x: (income_by.get(x["id"], 0) or 0, x["id"] == "me"))
+    if income_by and income_by.get(top["id"]):
+        for x in members:
+            x["main_earner"] = x is top
+    linked_earners = sum(1 for x in members[1:] if x["earner"])
+    extra_earners = max(0, (_count(ans, "earners") or 0) - (1 if me_income else 0) - linked_earners)
     for i in range(min(extra_earners, 3)):
         members.append({"id": f"earner{i + 2}", "name": f"Kamaane wale {i + 2}", "role": L("Kamaane wale (khaata nahi juda)", "Earner (account not linked)"),
-                        "earner": True, "sharing": "private", "avatar": "man",
+                        "earner": True, "sharing": "private", "avatar": "man", "account_holder": False,
                         "cover": {"life": None, "health": None, "note": L("Inka data nahi juda — pata nahi", "Their data isn't linked — unknown")}})
     kids = _count(ans, "dependents", "children") or 0
     in_school = _count(ans, "dependents", "children_in_school") or 0
     for i in range(min(kids, 4)):
         members.append({"id": f"child{i + 1}", "name": f"Bachcha {i + 1}",
                         "role": L("Bachcha, school mein" if i < in_school else "Bachcha", "Child, in school" if i < in_school else "Child"),
-                        "earner": False, "sharing": "private", "avatar": "girl" if i % 2 else "boy",
+                        "earner": False, "sharing": "private", "avatar": "girl" if i % 2 else "boy", "account_holder": False,
                         "cover": {"life": None, "health": None, "note": L("Pata nahi", "Unknown")}})
     for i in range(min(_count(ans, "dependents", "elders") or 0, 2)):
         members.append({"id": f"elder{i + 1}", "name": f"Buzurg {i + 1}", "role": L("Buzurg (60+)", "Elder (60+)"),
-                        "earner": False, "sharing": "private", "avatar": "elder_woman" if i == 0 else "elder_man",
+                        "earner": False, "sharing": "private", "avatar": "elder_woman" if i == 0 else "elder_man", "account_holder": False,
                         "cover": {"life": None, "health": None, "note": L("Pata nahi", "Unknown")}})
     return members
 
@@ -255,13 +314,50 @@ def fresh_state(twin: dict) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------
+# "Sirf total": another member's account counts in the household numbers, but who they paid,
+# who paid them and which apps they borrowed from never leave the engines.
+# ----------------------------------------------------------------------------------------------
+def _code(key: str) -> str:
+    """An opaque, stable name for one payee (letters only, so payee_key keeps it whole)."""
+    h = 0
+    for ch in key:
+        h = (h * 131 + ord(ch)) % 26 ** 4
+    return "".join(chr(65 + (h // 26 ** i) % 26) for i in range(4))
+
+
+def hide_totals(rows: list[dict], norm: dict, hidden_accts: set[str], member_by_acct: dict[str, dict]) -> None:
+    if not hidden_accts:
+        return
+    for r in rows:
+        acct = r.get("account") or ""
+        if acct not in hidden_accts:
+            continue
+        m = member_by_acct[acct]
+        who = (m.get("name") or "").strip().title() or (m.get("relation") or "").strip() or "Sadasya"
+        token = f"HIDDEN {_code(payee_key(r['narration']))} {_code(acct)}"
+        r["narration"] = token                     # series grouping still works, the payee is gone
+        r["_hidden_key"] = payee_key(token)
+        r["_hidden_label"] = L(who, who)
+    for ln in norm.get("app_loans", []):
+        if (ln.get("disbursal") or {}).get("account") in hidden_accts:
+            ln["app"] = "App loan (totals only)"
+
+
+# ----------------------------------------------------------------------------------------------
 # build
 # ----------------------------------------------------------------------------------------------
 def build(payload: dict) -> dict:
     """{as_of, fetched_at, sandbox, accounts:[{id, masked, fip, type, balance, transactions:[...]}], profile}
     → {status: "ready"|"insufficient", missing: [L], twin?: {...}, state?: {...}}"""
     as_of = payload["as_of"]
-    accounts = [a for a in payload.get("accounts", []) if (a.get("fi_type") or "DEPOSIT") == "DEPOSIT"]
+    profile = payload.get("profile") or {}
+    # Each account belongs to the member who linked it. A "private" link never reaches the engines
+    # (the caller leaves it out); drop it here too, whatever the caller sent.
+    by_id = {m["id"]: m for m in linked_members(profile)}
+    accounts = [a for a in payload.get("accounts", []) if (a.get("fi_type") or "DEPOSIT") == "DEPOSIT"
+                and (a.get("member") in (None, "me") or a.get("member") in by_id)]
+    member_of = {a["id"]: (a.get("member") or "me") for a in accounts}
+    hidden_accts = {a["id"] for a in accounts if by_id.get(a.get("member"), {}).get("sharing") == "sirf_total"}
     txns: list[dict] = []
     for a in accounts:
         for t in a.get("transactions", []):
@@ -286,6 +382,12 @@ def build(payload: dict) -> dict:
     rows = norm["rows"]
     for r in rows:
         r["amount"] = R(r["paise"])
+    income_by_member: dict[str, int] = {}
+    for r in rows:
+        if r["kind"] in INCOME_KINDS and r["paise"] > 0:
+            m = member_of.get(r.get("account") or "", "me")
+            income_by_member[m] = income_by_member.get(m, 0) + r["paise"]
+    hide_totals(rows, norm, hidden_accts, {a["id"]: by_id[a["member"]] for a in accounts if a["id"] in hidden_accts})
 
     # E01 averages over 3 full months; a shorter window must not be divided by 3.
     months = covered_full_months(as_of, data_from)
@@ -308,8 +410,21 @@ def build(payload: dict) -> dict:
 
     upcoming = project_upcoming(rows, as_of)
     e17.annotate_certainty(upcoming, [{"date": r["date"], "amount": r["amount"], "source": "aa"} for r in rows])
+    hidden_keys = {r["_hidden_key"]: r["_hidden_label"] for r in rows if r.get("_hidden_key")}
     for e in upcoming:
         e.pop("_kind", None)
+        key = e.pop("_key", None)
+        if key in hidden_keys:
+            # someone else's payment shared as a total: who it goes to stays with them
+            who = hidden_keys[key]
+            word = KIND_WORD.get(e["type"], KIND_WORD["bill"])
+            e["label"] = L(f"{who['hi']}: {word['hi']} (sirf total)", f"{who['en']}: {word['en']} (totals only)")
+            e["movable"] = False
+            e.pop("contact", None)
+            e["hidden_payee"] = True
+    for r in rows:
+        if r.get("_hidden_key"):
+            r["narration"] = r["_hidden_label"]["en"] + " (totals only)"
 
     ess, ess_basis = essentials_per_day(rows, as_of, data_from)
     floor = max(1000, _round_to((ess or 0) * 7, 500))
@@ -318,14 +433,18 @@ def build(payload: dict) -> dict:
     if norm["salary_months"] >= 2 and (norm["gig_rows"] or norm["cash_income_rows"]):
         income_type = "dual"
 
-    profile = payload.get("profile") or {}
-    members = build_members(profile, has_income)
+    self_linked = any(v == "me" for v in member_of.values())
+    member_profile = {**profile, "income_by_member": {k: R(v) for k, v in income_by_member.items()}, "self_linked": self_linked}
+    members = build_members(member_profile, has_income)
     first = members[0]["name"]
     fam = L(f"{first} ka parivaar", f"{first}'s family") if first != "Aap" else L("Aapka parivaar", "Your family")
 
     # Compute-then-delete: the bank's own narration text (UPI refs, account numbers, full names) never
     # outlives the 24-hour raw data. Every row the twin keeps carries only a derived payee label.
     for r in rows:
+        if r.pop("_hidden_key", None):
+            r.pop("_hidden_label", None)
+            continue   # already reduced to "<member> (totals only)"
         r["narration"] = redact(r["narration"])
     # spend donut for last full month, then drop everyday rows
     from app import pipeline  # late import: pipeline does not import this module
@@ -338,15 +457,18 @@ def build(payload: dict) -> dict:
         "family_name": fam, "primary_user": "me", "city": L("—", "—"),
         "income_type": income_type, "literacy_mode": profile.get("literacy_mode") or "saathi",
         "language": profile.get("language") or "hi", "members": members,
-        "accounts": [{"id": a["id"], "masked": a.get("masked") or "", "fip": a.get("fip") or "", "type": a.get("type") or "SAVINGS",
-                      "balance": a.get("balance"), "operational": True} for a in accounts],
+        "accounts": [{"id": a["id"], "masked": "" if a["id"] in hidden_accts else (a.get("masked") or ""),
+                      "fip": "" if a["id"] in hidden_accts else (a.get("fip") or ""), "type": a.get("type") or "SAVINGS",
+                      "balance": a.get("balance"), "operational": True, "member": member_of[a["id"]]} for a in accounts],
         "closing_balance": round(sum(known)), "balance_partial": len(known) < len(balances),
         "safety_floor": floor,
         "essentials_per_day": ess or 0, "essentials_basis": ess_basis, "essentials_known": ess is not None,
         "upcoming": upcoming, "transactions": [],
         "data_window": {"from": data_from, "to": as_of, "full_months": len(months)},
         # what the bank told us about the person; members are rebuilt from this + their latest answers on every load
-        "profile": {"first_name": profile.get("first_name"), "age": profile.get("age"), "has_income": has_income},
+        "profile": {"first_name": profile.get("first_name"), "age": profile.get("age"), "has_income": has_income,
+                    "linked": linked_members(profile), "income_by_member": member_profile["income_by_member"],
+                    "self_linked": self_linked},
         "sandbox": bool(payload.get("sandbox")),
         "_norm": norm, "_spend": spend,
     }
@@ -395,9 +517,13 @@ def apply_declared(hh: dict, answers: dict | None) -> dict:
     own = _ans(answers, "own_income")
     bank_income = bool(prof.get("has_income"))
     declares_income = own in ("fixed", "varies")
-    hh["members"] = build_members({"first_name": prof.get("first_name"), "age": prof.get("age"), "answers": answers},
+    ibm = prof.get("income_by_member")
+    my_bank_income = bool(ibm.get("me")) if ibm is not None else bank_income
+    hh["members"] = build_members({"first_name": prof.get("first_name"), "age": prof.get("age"), "answers": answers,
+                                   "linked": prof.get("linked") or [], "income_by_member": ibm,
+                                   "self_linked": prof.get("self_linked", True), "declares_income": declares_income},
                                   bank_income or declares_income)
-    if not bank_income and declares_income:
+    if not my_bank_income and declares_income:
         hh["members"][0]["role"] = L("Aap (kamai: aapne bataya)", "You (income: you told us)")
 
     up = hh["upcoming"]

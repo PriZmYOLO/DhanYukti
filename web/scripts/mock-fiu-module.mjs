@@ -89,6 +89,33 @@ async function post(path, body) {
   }
 }
 
+/**
+ * A second family member (mobile ending in 8): different employer, landlord and shop, so a
+ * household check can see whose payees show and whose stay hidden (test data).
+ */
+function rebitSecondMember(masked, seed) {
+  const today = new Date();
+  const txns = [];
+  let balance = 6_000 + seed * 2_000;
+  const start = new Date(today);
+  start.setMonth(start.getMonth() - 12);
+  const push = (date, type, mode, amount, narration) => {
+    balance += type === "CREDIT" ? amount : -amount;
+    txns.push({ type, mode, amount: amount.toFixed(2), currentBalance: balance.toFixed(2),
+      transactionTimestamp: date.toISOString(), valueDate: date.toISOString().slice(0, 10),
+      txnId: `M${randomBytes(6).toString("hex")}`, narration, reference: `REF${randomBytes(4).toString("hex")}` });
+  };
+  for (let m = 0; m < 12; m++) {
+    const d = (day) => { const x = new Date(start); x.setMonth(start.getMonth() + m + 1, day); return x; };
+    if (d(3) > today) break;
+    push(d(3), "CREDIT", "NEFT", 22_000, "SALARY METRO TRANSPORT CORP");
+    push(d(6), "DEBIT", "UPI", 6_000, "UPI/RENT/VERMA PROPERTIES");
+    push(d(15), "DEBIT", "UPI", 399, "UPI/JIO RECHARGE/SECRETPAYEE");
+    for (let k = 0; k < 6; k++) push(d(9 + k * 3), "DEBIT", "UPI", 250 + ((k * 91 + m * 37) % 400), "UPI/SHARMA GENERAL STORE");
+  }
+  return depositXml({ masked, balance: balance.toFixed(2), start, today, txns, holderName: "SUNIL KUMAR" });
+}
+
 /** Twelve months (or 40 days) of a salaried household's savings account (test data). */
 function rebitDeposit(
   masked,
@@ -245,13 +272,15 @@ async function deliver(journey) {
         fipNonce: fip.nonce,
         ourPublicKey: fiu.publicKeyPem,
         ourNonce: fiu.nonce,
-        plaintext: rebitDeposit(
-          a.masked,
-          i,
-          i === 0 && journey.mobile.endsWith("5"),
-          i === 0 && journey.mobile.endsWith("7"),
-          journey.mobile.endsWith("3"),
-        ),
+        plaintext: journey.mobile.endsWith("8")
+          ? rebitSecondMember(a.masked, i)
+          : rebitDeposit(
+              a.masked,
+              i,
+              i === 0 && journey.mobile.endsWith("5"),
+              i === 0 && journey.mobile.endsWith("7"),
+              journey.mobile.endsWith("3"),
+            ),
       }),
       fipKeyMaterial: {
         cryptoAlg: "ECDH",

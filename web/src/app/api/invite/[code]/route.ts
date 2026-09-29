@@ -7,6 +7,6 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/invite/[cod
   if (guard) return guard;
   const { code } = await ctx.params;
   const invite = await lookupInvite(code.toUpperCase());
-  if (!invite) return errorResponse(404, "not_found", "This invite has expired or was cancelled.");
+  if (!invite) return errorResponse(404, "not_found", "This invite has expired, was cancelled or was already used.");
   return Response.json({ invite }, { headers: noStore });
 }

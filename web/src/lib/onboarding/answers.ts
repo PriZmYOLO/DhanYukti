@@ -95,7 +95,11 @@ export interface Invite {
   label: string | null;
   created_at: string;
   expires_at: string;
-  status: "open" | "cancelled";
+  /** "joined": the person linked their own bank from this invite (single use). */
+  status: "open" | "cancelled" | "joined";
+  /** Set once joined: the level THEY chose for the household picture. */
+  joined_sharing?: "poora" | "sirf_total" | "private";
+  joined_at?: string;
 }
 
 /** Count of questions left unanswered, for the "N not answered" note. */
