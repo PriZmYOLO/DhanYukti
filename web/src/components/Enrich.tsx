@@ -123,6 +123,14 @@ function MyRecords() {
 
             {have && (
               <div className="mt-2 space-y-1.5">
+                {k === "rc" && "rc" in stored && !("challan" in stored) && (
+                  <div className="rounded-xl bg-white/75 px-3 py-2">
+                    <p className="text-xs font-bold leading-snug">{t({ hi: "E-challan abhi check nahi ho paaye — RTO ka source jawab nahi de raha.", en: "E-challans couldn't be checked — the RTO source isn't answering right now." })}</p>
+                    <button onClick={() => { setOpen("rc"); setErr(null); setF({}); setAgree(false); }} className="mt-1 text-[12px] font-bold underline">
+                      {lang === "hi" ? "Challan dobara check karein" : "Check challans again"}
+                    </button>
+                  </div>
+                )}
                 {lines.map((r) => (
                   <div key={r.kind} className="rounded-xl bg-white/75 px-3 py-2">
                     <p className="text-[11px] font-bold uppercase text-muted">{t(r.title)}</p>
@@ -138,7 +146,7 @@ function MyRecords() {
               </div>
             )}
 
-            {open === k && !have && (
+            {open === k && (!have || (k === "rc" && !("challan" in stored))) && (
               <form className="mt-3 space-y-2 rounded-2xl bg-white/60 p-3" onSubmit={(e) => {
                 e.preventDefault();
                 if (k === "epf" && otpSent) return run("epf", { otp: f.otp ?? "", uan: f.uan ?? "" });
