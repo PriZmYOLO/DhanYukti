@@ -6,14 +6,19 @@ import os
 from fastapi import APIRouter, Header, HTTPException
 
 from app import store
-from app.config import settings
+from app.config import PERFIOS_HUB_VARS, settings
 
 router = APIRouter(prefix="/api", tags=["meta"])
 
 
 @router.get("/health")
 def health():
-    return {"ok": True, "mode": {"anumati": settings.anumati_mode, "perfios": settings.perfios_mode, "perfios_hub": settings.hub_mode}}
+    # Setup check without secrets: which Hub variables are missing (names only), and which
+    # PERFIOS_*/TWIN_* names this process actually received (catches typos and stray spaces in names).
+    missing = [k for k in PERFIOS_HUB_VARS if not settings.perfios.get(k)]
+    seen = sorted(k for k in os.environ if "PERFIOS" in k.upper() or "TWIN" in k.upper())
+    return {"ok": True, "mode": {"anumati": settings.anumati_mode, "perfios": settings.perfios_mode, "perfios_hub": settings.hub_mode},
+            "setup": {"perfios_hub_missing": missing, "env_names": seen}}
 
 
 @router.get("/capabilities")
