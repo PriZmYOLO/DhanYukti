@@ -31,7 +31,7 @@ const FAIL: Record<string, [number, string]> = {
 
 type EngineHub =
   | { ok: true; facts?: HubFacts; otp_sent?: boolean; request_id?: string; agent?: unknown }
-  | { ok: false; code: string };
+  | { ok: false; code: string; upstream_status?: number | null; upstream_reason?: string | null; secure_id?: string | null };
 
 /**
  * One Perfios Hub lookup the member asked for, for THEIR own record.
@@ -81,7 +81,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/households/
   }
   if (!r.ok) {
     const [status, msg] = FAIL[r.code] ?? [502, "The lookup didn't work. Please try again."];
-    return errorResponse(status, r.code, msg, status >= 500 || status === 429);
+    // A setup problem (Perfios refused our credentials) says why, so the team can fix it.
+    const why = r.code === "hub_auth" || r.code === "hub_unavailable"
+      ? ` (Perfios ${r.upstream_status ?? "?"}${r.upstream_reason ? `: ${r.upstream_reason}` : ""}${r.secure_id ? `; username in use: ${r.secure_id}` : ""})`
+      : "";
+    return errorResponse(status, r.code, msg + why, status >= 500 || status === 429);
   }
 
   if (kind === "epf_otp") {

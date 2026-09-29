@@ -262,7 +262,17 @@ def test_not_found_and_outage_are_codes_not_demo_data(monkeypatch):
     c = _client_with({}, [])
     c.request = down
     monkeypatch.setattr(connectors, "hub", lambda: c)
-    assert _lookup("electricity", {"board": "BESCOM", "consumer_no": "AB1234"}) == {"ok": False, "code": "hub_credits"}
+    r = _lookup("electricity", {"board": "BESCOM", "consumer_no": "AB1234"})
+    assert r["ok"] is False and r["code"] == "hub_credits" and r["upstream_status"] == 402
+
+    def refused(*a, **k):
+        e = SponsorError("x", 401, "r", "perfios")
+        e.reason = "Invalid credentials"
+        raise e
+    c.request = refused
+    r = _lookup("electricity", {"board": "BESCOM", "consumer_no": "AB1234"})
+    assert r["code"] == "hub_auth" and r["upstream_reason"] == "Invalid credentials" and "secure_id" in r
+    assert "PERFIOS_SECURE_CREDENTIAL" not in repr(r)
 
 
 def test_without_creds_the_lookup_says_so():

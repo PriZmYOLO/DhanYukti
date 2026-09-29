@@ -42,8 +42,27 @@ class PerfiosHTTP:
             raise SponsorError("perfios network error", None, req_id, "perfios") from None
         log.info("perfios %s %s req=%s status=%s", method, path, req_id, r.status_code)
         if r.status_code >= 400:
-            raise SponsorError("perfios http error", r.status_code, req_id, "perfios")
+            err = SponsorError("perfios http error", r.status_code, req_id, "perfios")
+            err.reason = _reason(r)
+            log.warning("perfios %s %s req=%s status=%s reason=%s", method, path, req_id, r.status_code, err.reason)
+            raise err
         try:
             return r.json()
         except ValueError:
             raise SponsorError("perfios bad json", r.status_code, req_id, "perfios") from None
+
+
+def _reason(r: httpx.Response) -> str | None:
+    """Perfios' own error text for a failed call (e.g. "Invalid credentials"), short, for setup checks."""
+    try:
+        body = r.json()
+    except ValueError:
+        return (r.text or "").strip()[:160] or None
+    if isinstance(body, dict):
+        errs = body.get("errors")
+        if isinstance(errs, list) and errs and isinstance(errs[0], dict):
+            return str(errs[0].get("errorMessage") or errs[0])[:160]
+        for k in ("message", "error", "errorMessage", "detail", "status-message"):
+            if body.get(k):
+                return str(body[k])[:160]
+    return str(body)[:160]
