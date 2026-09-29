@@ -4,7 +4,10 @@ Rules calculate, copy explains. Every number shown in a card comes from an engin
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 from app.engines import e04_debt, e06_protection
+from app.engines import e17_whatif as e17
 from app.engines.common import L, R, d, inr, ordinal
 from app.engines.e01_normalise import txn_out
 
@@ -84,20 +87,37 @@ def _deficit(need, ctx):
             fg = inr(R(fix["floor_gap_p"]))
             what_hi = "Fee badhne" if is_fee else "Tareekh badhne"
             what_en = "moving the fee" if is_fee else "moving the date"
-            second = L(f"{what_hi} ke baad bhi {fg} kam — 5 din ₹200 kam kharch, ya Gullak se.",
-                       f"Even after {what_en}, you're {fg} below your safety floor — spend ₹200 less for 5 days, or use the Gullak.")
+            plan = e17.cut_plan(hh, target="floor", moves=[{"event_id": culprit["id"], "new_date": fix["new_date"]}])
+            how = e17.cut_text(plan) if plan else L("Gullak ya parivaar se thoda intezaam karein.", "Use the Gullak or arrange a little from family.")
+            second = L(f"{what_hi} ke baad bhi safety floor se {fg} kam. {how['hi']}",
+                       f"Even after {what_en}, you're {fg} below your safety floor. {how['en']}")
         icon = "school" if is_fee else "alert"
     else:
         body = L(f"{fd['date']} tak kharch aamdani se pehle aa raha hai.", f"Bills land before income by {fd['date']}.")
         task = L("Gullak ya parivaar se chhota intezaam karein; app loan se bachein.",
                  "Arrange a small amount from the Gullak or family; avoid app loans.")
         rule = L("Kharch ki tareekh aamdani se pehle", "Spending dates fall before income")
-        action = {"type": "plan", "label": L("Plan dekhein", "See plan"), "payload": {"gap": gap, "date": fd["date"]}}
+        # the daily cut comes from THIS household's everyday spend and income date (None = spend unknown)
+        action = {"type": "plan", "label": L("Plan dekhein", "See plan"),
+                  "payload": {"gap": gap, "date": fd["date"], "cut_plan": e17.cut_plan(hh, target="gap")}}
         second, icon = None, "alert"
 
     return _card(need, f"nba_deficit_{fd['date']}", icon, "E03", title, body, task,
-                 L("App loan lena pad sakta hai, lagbhag ₹150–₹300 kharcha.", "You may need an app loan, costing about ₹150–₹300."),
+                 _app_loan_cost(gap, ctx),
                  action, {"saw": saw, "rule": rule, "confidence": ctx["conf"]["deficit"], "tag": "jaankari"}, 25, second)
+
+
+def _app_loan_cost(gap: int, ctx) -> dict:
+    """What an app loan for this gap would cost, from THIS household's own past app loans (no made-up range)."""
+    loans = [x for x in ctx.get("lenders") or [] if x.get("borrowed")]
+    if loans:
+        per100 = sum(x["charges"] for x in loans) / sum(x["borrowed"] for x in loans) * 100
+        cost = int(round(gap * per100 / 100, -1))
+        if cost > 0:
+            return L(f"App loan lena pad sakta hai — aapke pichhle app loan ke hisaab se {inr(gap)} par lagbhag {inr(cost)} byaaj.",
+                     f"You may need an app loan — at your past app loans' cost, about {inr(cost)} interest on {inr(gap)}.")
+    return L("App loan lena pad sakta hai — woh bank se kaafi mehenga padta hai.",
+             "You may need an app loan — far costlier than borrowing from a bank.")
 
 
 def _lender_rule(lenders):
@@ -142,8 +162,8 @@ def _lender(need, ctx):
     return _card(need, "nba_lender_shield", "loan", "E04", title, body,
                  L("Agli baar app loan se pehle bank se overdraft ya chhota loan poochhein. App RBI list mein hai ya nahi, check karein.",
                    "Before the next app loan, ask your bank for an overdraft or small loan. Check whether the app is on RBI's list."),
-                 L("Har baar ~₹300 extra, aur galat app se dhamki aur data ka khatra.",
-                   "About ₹300 extra each time, plus risk of harassment and data misuse from unregistered apps."),
+                 L(f"Har baar ~{inr(worst['charges'])} byaaj (pichhli baar jitna), aur galat app se dhamki aur data ka khatra.",
+                   f"About {inr(worst['charges'])} interest each time (as last time), plus risk of harassment and data misuse from unregistered apps."),
                  action,
                  {"saw": saw[:5], "rule": _lender_rule(lenders),
                   "confidence": ctx["conf"]["lender"], "tag": "jaankari"}, 25,
@@ -195,14 +215,30 @@ def _penalties(need, ctx):
              "Khate mein min balance bana rahe; SMS alert chalu karein.",
              f"Keep money in the account a day before the EMI ({emi}); turn on SMS alerts." if emi else
              "Keep the minimum balance; turn on SMS alerts.")
-    action = {"type": "plan", "label": L("Yaad dilayein", "Set reminder"),
-              "payload": {"reminders": [{"day": 4, "text": L("Kal EMI hai — khate mein paisa rakhein", "EMI tomorrow — keep money in the account")}]}}
+    # the day before THEIR next EMI (from their own upcoming dates), not a fixed day of the month
+    emi_ev = next((e for e in ctx["cash"]["events"] if e["type"] == "emi" and e["paise"] < 0 and e["date"] > ctx["hh"]["as_of"]), None)
+    reminders = []
+    if emi_ev:
+        rd = d(emi_ev["date"]) - timedelta(days=1)
+        reminders = [{"day": rd.day, "date": rd.isoformat(), "amount": -R(emi_ev["paise"]),
+                      "text": L(f"Kal EMI ({inr(-R(emi_ev['paise']))}) hai — khate mein paisa rakhein",
+                                f"EMI ({inr(-R(emi_ev['paise']))}) tomorrow — keep money in the account")}]
+    action = {"type": "plan", "label": L("Yaad dilayein", "Set reminder"), "payload": {"reminders": reminders}}
     return _card(need, "nba_penalties", "bolt", "E01", title, body, task,
-                 L("Har mahine ~₹100 aise hi katenge.", "About ₹100 will keep getting cut every month."),
+                 _penalty_pace(norm),
                  action,
                  {"saw": [txn_out(r) for r in sorted(norm["penalties"], key=lambda r: r["date"], reverse=True)[:5]],
                   "rule": L("CHRG / RTN wali entries = bank charges", "Entries marked CHRG / RTN = bank charges"),
                   "confidence": "pakka", "tag": "jaankari"}, 25)
+
+
+def _penalty_pace(norm) -> dict:
+    """Their own last 6 months of bank charges, as a monthly pace (not a fixed ₹100)."""
+    per_month = int(round(R(norm["penalty_6m_p"]) / 6, -1))
+    if per_month <= 0:
+        return L("Aise charges aage bhi kat sakte hain.", "These charges can keep getting cut.")
+    return L(f"Pichhle 6 mahine jaisa chala to har mahine ~{inr(per_month)} aise hi katenge.",
+             f"At the last 6 months' pace, about {inr(per_month)} a month will keep getting cut.")
 
 
 def _resilience(need, ctx):

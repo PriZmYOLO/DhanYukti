@@ -18,7 +18,9 @@ type Demo = {
   ask: Record<string, Record<string, { hi: L }>>;
   fetch: { ok: boolean; accounts: number; transactions: number; steps: { key: string; label: L; done: boolean }[]; mode: string };
   /** Engine facts the What-if demo needs (api/scripts/refresh_demo_whatif.py). */
-  whatif: Record<string, { needs: Record<string, L>; emi_monthly: number; monthly_income: number; resilience_days: number; next_income_date: string }>;
+  whatif: Record<string, { needs: Record<string, L>; emi_monthly: number; monthly_income: number; resilience_days: number; next_income_date: string;
+    /** The engine's daily cut for this household (E17 cut_plan; null = everyday spend unknown). api/scripts/refresh_demo_nba.py */
+    cut_per_day?: number | null; floor_cut_text?: L | null }>;
 };
 const D = demo as unknown as Demo;
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -126,15 +128,16 @@ function responses(hid: string, d: Dashboard, inp: SimInput & SimExtra, scen: Ri
     out.push({ id: `move:${e.id}`, kind: "move", label: { hi: `${e.label.hi} ${new Date(nid + "T00:00:00").getDate()} tareekh ko`, en: `Pay ${e.label.en} on ${dd(nid)}` },
       gap_after: r.gap, fixes: r.gap === 0, conditional: true, needs: w.needs[e.id] });
   });
-  let r = trial([], 200);
-  out.push({ id: "cut", kind: "cut", label: { hi: "Roz ₹200 kam kharch", en: "Spend ₹200 less a day" }, gap_after: r.gap, fixes: r.gap === 0, conditional: false });
+  const cut = w.cut_per_day ?? 0;   // the engine's cut from this household's own everyday spend
+  let r = trial([], cut);
+  if (cut > 0) out.push({ id: "cut", kind: "cut", label: { hi: `Roz ${inr(cut)} kam kharch`, en: `Spend ${inr(cut)} less a day` }, gap_after: r.gap, fixes: r.gap === 0, conditional: false });
   if (jar) {
     r = trial([], 0, jar.saved);
     out.push({ id: "gullak", kind: "gullak", label: { hi: `Emergency Gullak ke ${inr(jar.saved)} use karein`, en: `Use the Emergency jar (${inr(jar.saved)})` },
       gap_after: r.gap, fixes: r.gap === 0, conditional: false, jar_id: jar.id });
   }
   if (out.length > 1) {
-    r = trial(all, 200, jar?.saved ?? 0);
+    r = trial(all, cut, jar?.saved ?? 0);
     out.push({ id: "all", kind: "all", label: { hi: "Sab ek saath", en: "All of these together" }, gap_after: r.gap, fixes: r.gap === 0, conditional: all.length > 0 });
   }
   let goal_impact: GoalImpact | undefined;
@@ -180,8 +183,11 @@ export const mock = {
       const pre = salaryIdx > 0 ? Math.min(...river.days.slice(1, salaryIdx).map((x) => x.balance)) : river.min_balance;
       const floorGap = Math.max(0, river.floor - pre);
       message = after === 0
-        ? { hi: `Fee aage badhane se ${inr(before)} ki kami khatam.${floorGap ? ` Par salary se pehle ${inr(floorGap)} safety floor se kam rahega — 5 din ₹200 kam kharch karein ya Gullak use karein.` : ""}`,
-            en: `Moving the fee removes the ${inr(before)} shortfall.${floorGap ? ` But before salary you'll be ${inr(floorGap)} below the safety floor — spend ₹200 less for 5 days or use the Gullak.` : ""}` }
+        ? (() => {
+            const how = D.whatif[id]?.floor_cut_text ?? { hi: "Gullak ya parivaar se thoda intezaam karein.", en: "Use the Gullak or arrange a little from family." };
+            return { hi: `Fee aage badhane se ${inr(before)} ki kami khatam.${floorGap ? ` Par salary se pehle ${inr(floorGap)} safety floor se kam rahega. ${how.hi}` : ""}`,
+              en: `Moving the fee removes the ${inr(before)} shortfall.${floorGap ? ` But before salary you'll be ${inr(floorGap)} below the safety floor. ${how.en}` : ""}` };
+          })()
         : { hi: `Ab bhi ${inr(after)} kam padenge.`, en: `Still ${inr(after)} short.` };
     } else {
       const firstNeg = river.days.find((x) => x.balance < 0);

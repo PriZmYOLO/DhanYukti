@@ -8,6 +8,7 @@ import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { inr } from "@/lib/format";
 import type { Action, L, NBA } from "@/lib/types";
+import { OFFICIAL_ROUTES, SUPPORT_PHONE, supportTel } from "@/lib/support";
 
 const asL = (x: unknown): L => (x && typeof x === "object" && "hi" in (x as L) ? (x as L) : { hi: String(x ?? ""), en: String(x ?? "") });
 
@@ -22,10 +23,17 @@ export default function ActionSheet({ open, onClose, action, nba }: Props) {
       {action.type === "gullak" && <GullakFlow action={action} onDone={onClose} />}
       {action.type === "protect" && <ProtectFlow action={action} onDone={onClose} />}
       {action.type === "cheaper_option" && <CheaperFlow action={action} onDone={onClose} />}
-      {action.type === "plan" && <PlanFlow onDone={onClose} />}
+      {action.type === "plan" && <PlanFlow action={action} onDone={onClose} />}
       {action.type === "link" && <LinkFlow action={action} nba={nba} onDone={onClose} />}
       {action.type === "help" && (
-        <a href="tel:1800000000" className="flex items-center gap-3 rounded-[24px] bg-white p-4"><Phone /> <span className="font-bold">{t({ hi: "Callback maangein", en: "Request a callback" })}</span></a>
+        <div className="space-y-2">
+          {supportTel ? (
+            <a href={supportTel} className="flex items-center gap-3 rounded-[24px] bg-white p-4"><Phone /> <span className="font-bold">{t({ hi: "Hamein call karein", en: "Call us" })} · {SUPPORT_PHONE}</span></a>
+          ) : (
+            <p className="rounded-[24px] bg-white p-4 text-[14px]">{t({ hi: "Abhi DhanYukti ki phone line nahi hai. Bank ya lender ki shikayat ke liye:", en: "DhanYukti has no phone line yet. For a complaint about a bank or lender:" })}</p>
+          )}
+          {OFFICIAL_ROUTES.map((r) => <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-[24px] bg-white p-4 min-h-14 font-semibold"><ExternalLink size={18} />{r.label}</a>)}
+        </div>
       )}
       <p className="mt-4 text-center text-[11px] text-muted">{lang === "hi" ? "DhanYukti khud paisa nahi bhejta — aap hi confirm karte hain." : "DhanYukti never moves money by itself — you confirm every step."}</p>
     </Sheet>
@@ -167,22 +175,72 @@ function CheaperFlow({ action, onDone }: { action: Action; onDone: () => void })
   );
 }
 
-function PlanFlow({ onDone }: { onDone: () => void }) {
+type CutPlan = { per_day_now: number; cut_per_day: number; per_day_after: number; days: number; until: string;
+  fixes: boolean; left_after: number; rule: L };
+type Reminder = { day: number; date?: string; text: L };
+
+/**
+ * Two plans come here: a daily spending cut worked out by the engine from THIS household's own
+ * everyday spend (never a fixed ₹200), and reminders on their own dates. Unknown spend = no numbers.
+ */
+function PlanFlow({ action, onDone }: { action: Action; onDone: () => void }) {
   const { hid, t, award, lang } = useApp();
+  const plan = (action.payload.cut_plan ?? null) as CutPlan | null;
+  const reminders = (Array.isArray(action.payload.reminders) ? action.payload.reminders : []) as Reminder[];
   const [msg, setMsg] = useState<L | null>(null);
-  useEffect(() => { api.simulate(hid, { cut_per_day: 200 }).then((r) => setMsg(r.message)).catch(() => {}); }, [hid]);
+  const cut = plan?.cut_per_day ?? 0;
+  useEffect(() => { if (cut > 0) api.simulate(hid, { cut_per_day: cut }).then((r) => setMsg(r.message)).catch(() => {}); }, [hid, cut]);
+
+  if (reminders.length || "reminders" in action.payload) {
+    return (
+      <div className="space-y-3">
+        {reminders.map((r, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-[20px] bg-white p-3">
+            <CalendarCheck size={20} className="shrink-0" />
+            <p className="flex-1 text-[15px]"><b className="num">{r.date ? dayLabel(r.date, lang) : `${lang === "hi" ? "Har mahine" : "Every month on the"} ${r.day}`}</b> · {t(r.text)}</p>
+          </div>
+        ))}
+        {!reminders.length && <p className="rounded-2xl bg-white p-3 text-sm">{t({ hi: "Aapke bank data mein agli EMI ki tareekh nahi dikhi, isliye yaad dilane ki tareekh nahi bana sake.", en: "Your bank data doesn't show the next EMI date, so we can't set a reminder date." })}</p>}
+        <Btn className="w-full" onClick={() => { award("task_done", { hi: "Yaad dilana set!", en: "Reminder set!" }); onDone(); }}>{lang === "hi" ? "Theek hai" : "OK"}</Btn>
+      </div>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <div className="space-y-4">
+        <p className="rounded-2xl bg-white p-4 text-[15px]">{t({ hi: "Aapka roz ka kharch abhi pata nahi (bank data mein kam din hain), isliye roz kitna kam karein yeh nahi bata sakte.", en: "We don't know your everyday spend yet (too few days of bank data), so we can't say how much to cut each day." })}</p>
+        <p className="text-[14px]">{t({ hi: "Gullak ya parivaar se thoda intezaam karein; app loan se bachein.", en: "Arrange a little from the Gullak or family; avoid app loans." })}</p>
+        <Btn className="w-full" onClick={onDone}>{lang === "hi" ? "Theek hai" : "OK"}</Btn>
+      </div>
+    );
+  }
+
+  const shown = Math.min(plan.days, 7);
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((d) => (
-          <div key={d} className="rounded-2xl bg-white py-3 text-center"><CalendarCheck className="mx-auto" size={18} /><p className="text-xs mt-1 text-muted">{lang === "hi" ? "Din" : "Day"} {d}</p><p className="font-bold num">₹300</p></div>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${shown}, minmax(0, 1fr))` }}>
+        {Array.from({ length: shown }, (_, i) => i + 1).map((d) => (
+          <div key={d} className="rounded-2xl bg-white py-3 text-center"><CalendarCheck className="mx-auto" size={18} /><p className="text-xs mt-1 text-muted">{lang === "hi" ? "Din" : "Day"} {d}</p><p className="font-bold num text-[13px]">{inr(plan.per_day_after)}</p></div>
         ))}
       </div>
-      <p className="text-[15px]">{t({ hi: "5 din roz ₹200 kam kharch — ₹500 ki jagah ₹300.", en: "5 days, ₹200 less each day — ₹300 instead of ₹500." })}</p>
+      {plan.days > shown && <p className="text-[12px] text-muted -mt-2">{t({ hi: `…aur ${plan.days - shown} din aur`, en: `…and ${plan.days - shown} more days` })}</p>}
+      <p className="text-[15px]">{t({
+        hi: `${plan.days} din roz ${inr(plan.cut_per_day)} kam kharch — ${inr(plan.per_day_now)} ki jagah ${inr(plan.per_day_after)}.`,
+        en: `${plan.days} ${plan.days === 1 ? "day" : "days"}, ${inr(plan.cut_per_day)} less each day — ${inr(plan.per_day_after)} instead of ${inr(plan.per_day_now)}.`,
+      })}</p>
+      {!plan.fixes && <p className="rounded-2xl bg-danger-soft p-3 text-sm font-semibold">{t({ hi: `Isse bhi ${inr(plan.left_after)} kam rahega — baaki Gullak ya parivaar se.`, en: `That still leaves ${inr(plan.left_after)} short — the rest from the Gullak or family.` })}</p>}
+      <p className="text-[11px] text-muted">{t({ hi: `${inr(plan.per_day_now)}/din = aapke bank data se roz ka kharch.`, en: `${inr(plan.per_day_now)}/day = your everyday spend in your bank data.` })} {t(plan.rule)}.</p>
       {msg && <p className="rounded-2xl bg-haldi-soft p-3 text-sm">{t(msg)} <span className="text-[11px] font-bold text-muted">· sirf andaaza</span></p>}
       <Btn className="w-full" onClick={() => { award("task_done", { hi: "Plan shuru!", en: "Plan started!" }); onDone(); }}>{lang === "hi" ? "Plan shuru karo" : "Start plan"}</Btn>
     </div>
   );
+}
+
+const EN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function dayLabel(iso: string, lang: string) {
+  const [, m, d] = iso.split("-").map(Number);
+  return lang === "hi" ? `${d} tareekh` : `${d} ${EN_MON[m - 1]}`;
 }
 
 /** A task done on an official site (renew insurance, pay a challan, renew a licence). */

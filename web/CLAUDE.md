@@ -55,6 +55,13 @@ sent to the engines as `hub` with every twin call, and deleted when the purpose 
 The IRDAI agent check (`agent`) stores nothing. Demo households A/B/C always replay.
 Checks: `api/tests/test_hub.py`.
 
+No hand-typed rupee figures reach a member. A daily spending cut comes from
+E17 `cut_plan` (their own everyday spend, capped at a third — DhanYukti's rule —
+checked on their own river up to the day the shortfall bites; None when spend is
+unknown). Support contacts come only from `NEXT_PUBLIC_SUPPORT_PHONE` /
+`NEXT_PUBLIC_GRIEVANCE_EMAIL` (`src/lib/support.ts`); unset = no phone shown.
+Offline demo snapshot: `api/scripts/refresh_demo_nba.py`.
+
 Server code lives in `src/lib/server/`. Live consent terms: `src/lib/aa/live-terms.ts`
 (keep in step with `ONBOARDING_CONSENT` in `src/lib/server/aa/fiu-client.ts`).
 Everything else under `/api` goes to FastAPI at `API_ORIGIN`; when that is

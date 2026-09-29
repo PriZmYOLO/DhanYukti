@@ -31,12 +31,12 @@ export default function Responses({ res, dark }: { res: SimResult; dark?: boolea
           <p className="font-extrabold">{hi ? "Aapke plan mein koi rasta yeh kami poori nahi karta" : "Nothing in your plan covers this"}</p>
           <p className={`text-[13px] mt-1 leading-snug ${dark ? "text-white/85" : ""}`}>
             {t({
-              hi: "Fee khiskana, kharch kam karna, Gullak — sab milakar bhi salary se pehle paisa kam padega. Kisi app se loan lene se pehle bank mitra se baat karein.",
-              en: "Moving a bill, spending less and the Gullak together still leave you short before income. Talk to a bank mitra before taking any app loan.",
+              hi: "Fee khiskana, kharch kam karna, Gullak — sab milakar bhi salary se pehle paisa kam padega. Kisi app se loan lene se pehle apne bank ki branch ya bank mitra se baat karein.",
+              en: "Moving a bill, spending less and the Gullak together still leave you short before income. Before taking any app loan, talk to your own bank's branch or bank mitra.",
             })}
           </p>
           <button onClick={() => setHelp(true)} className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 min-h-10 text-xs font-bold ${dark ? "bg-white text-ink" : "bg-ink text-white"}`}>
-            <LifeBuoy size={15} />{hi ? "Bank mitra se baat" : "Talk to a bank mitra"}
+            <LifeBuoy size={15} />{hi ? "Madad ke raaste" : "Where to get help"}
           </button>
         </div>
       ) : (

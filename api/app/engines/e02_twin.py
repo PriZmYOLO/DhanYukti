@@ -22,7 +22,7 @@ from calendar import monthrange
 from datetime import date, timedelta
 
 from app.engines import e17_whatif as e17
-from app.engines.common import L, P, R, d, iso
+from app.engines.common import L, P, R, d, inr, iso
 from app.engines.e01_normalise import full_months_before, normalise
 
 HORIZON_DAYS = 45                 # project a little past the 30-day river
@@ -301,13 +301,16 @@ def fresh_state(twin: dict) -> dict:
     goal = max(1000, _round_to(ess * 30, 500)) if ess else 5000
     target = iso(d(twin["as_of"]) + timedelta(days=180))
     name = twin["members"][0]["name"]
+    # First mission: this month's share of THEIR jar goal (goal ÷ 6 months, in ₹100s), not a fixed ₹500.
+    monthly = max(100, _round_to(goal / 6, 100))
     return {
         "overlays": {},
         "jars": [{"id": "emergency", "name": L("Emergency Gullak", "Emergency jar"), "goal": goal, "saved": 0,
                   "kind": "emergency", "target_date": target}],
         "open_actions": [],
         "game": {"points": 0, "streak": 0, "streak_shield": 0, "badges_earned": [],
-                 "mission": {"title": L("Is mahine ₹500 Gullak mein", "₹500 into the Gullak this month"), "progress": 0, "target": 500},
+                 "mission": {"title": L(f"Is mahine {inr(monthly)} Gullak mein", f"{inr(monthly)} into the Gullak this month"),
+                             "progress": 0, "target": monthly},
                  "leaderboard": [{"member_id": "me", "name": name, "habits": 0, "streak": 0}],
                  "ledger": [], "last_checkin": None, "checkins": []},
     }

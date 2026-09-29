@@ -449,3 +449,11 @@ def test_only_a_family_members_account_linked():
     me = twin["members"][0]
     assert me["id"] == "me" and not me["account_holder"] and not me["earner"]
     assert twin["members"][1]["id"] == "inv-PQ7K" and twin["members"][1]["main_earner"]
+
+
+def test_first_mission_is_their_own_pace_not_a_fixed_500():
+    twin, state = _built()
+    jar = state["jars"][0]
+    m = state["game"]["mission"]
+    assert m["target"] % 100 == 0 and m["target"] >= jar["goal"] / 6 and m["target"] < jar["goal"] / 6 + 100
+    assert m["title"]["en"] == f"₹{m['target']:,} into the Gullak this month"

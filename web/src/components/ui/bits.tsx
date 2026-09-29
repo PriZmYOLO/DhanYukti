@@ -77,7 +77,7 @@ export function HelpLink({ compact }: { compact?: boolean }) {
       ) : (
         <button onClick={() => setOpen(true)} className="mx-5 lg:mx-0 mt-8 w-[calc(100%-2.5rem)] lg:w-full flex items-center gap-3 rounded-[24px] bg-white/70 border border-white px-4 py-3 min-h-14 text-left">
           <span className="grid place-items-center h-10 w-10 rounded-full bg-lav"><LifeBuoy size={20} /></span>
-          <span className="flex-1 text-sm font-semibold">{t({ hi: "Madad chahiye? Bank mitra se baat karein", en: "Need help? Talk to a bank mitra" })}</span>
+          <span className="flex-1 text-sm font-semibold">{t({ hi: "Madad chahiye? Madad aur shikayat ke raaste", en: "Need help? Help and complaint routes" })}</span>
         </button>
       )}
       <HelpSheet open={open} onClose={() => setOpen(false)} />

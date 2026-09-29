@@ -127,7 +127,78 @@ def first_emi_date(as_of: str) -> str:
 # ----------------------------------------------------------------------------------------------
 # Responses: which permitted moves keep cash at or above ₹0 until the next income?
 # ----------------------------------------------------------------------------------------------
-CUT_PER_DAY = 200  # same nudge as the "spend ₹200 less" action
+# A daily cut is worked out from the household's OWN everyday spend, never a fixed ₹200.
+# DhanYukti's rule (not a regulation): never ask a family to cut more than a third of what they
+# spend on everyday needs — below that, the cut itself starts to hurt (food, medicine, travel).
+MAX_CUT_SHARE = 1 / 3
+CUT_RULE = L("DhanYukti ka niyam: roz ke kharch ka ek-tihaai se zyada kaatne ko kabhi nahi kehte",
+             "DhanYukti's rule: we never ask you to cut more than a third of your everyday spend")
+_STEP_P = 1000  # ₹10
+
+
+def cut_plan(hh: dict, *, target: str = "gap", **scen_kwargs) -> dict | None:
+    """The smallest daily cut (in ₹10 steps) that closes the shortfall on this household's own river.
+
+    target "gap": cash stays at or above ₹0; "floor": it stays at or above the safety floor.
+    Returns None when there is nothing to close, or when everyday spend is unknown (unknown is
+    not zero: we don't invent a number to cut from)."""
+    ess_p = P(hh.get("essentials_per_day") or 0)
+    if ess_p <= 0 or hh.get("essentials_known") is False:
+        return None
+    base_cut = scen_kwargs.pop("cut_per_day", 0) or 0
+    base = e03.run(hh, cut_per_day=base_cut, **scen_kwargs)
+    # the days that count: tomorrow up to the day the shortfall bites (for the floor: the lowest day before income)
+    if target == "gap":
+        if not base["first_deficit"]:
+            return None
+        until, ref_p = base["first_deficit"]["date"], 0
+    else:
+        until = (base.get("low_before_income") or {}).get("date") or base["next_income_date"]
+        ref_p = base["floor_p"]
+
+    def short_with(c_p: int) -> int:
+        """How far below ₹0 (or the floor) the river still dips up to `until`, cutting c_p a day."""
+        series = e03.run(hh, cut_per_day=base_cut + R(c_p), **scen_kwargs)["series"]
+        low = min(x["balance_p"] for x in series if x["date"] <= until)
+        return max(0, ref_p - low)
+
+    need_p = short_with(0)
+    if need_p <= 0:
+        return None
+    left_now = ess_p - P(base_cut)
+    cap_p = int(left_now * MAX_CUT_SHARE) // _STEP_P * _STEP_P
+    if cap_p <= 0:
+        return None
+    days = max(1, (d(until) - d(hh["as_of"])).days)
+
+    if short_with(cap_p) > 0:
+        cut_p, fixes = cap_p, False
+    else:
+        lo, hi = 1, cap_p // _STEP_P          # smallest k with short_with(k * ₹10) == 0
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if short_with(mid * _STEP_P) == 0:
+                hi = mid
+            else:
+                lo = mid + 1
+        cut_p, fixes = lo * _STEP_P, True
+    return {
+        "per_day_now": R(left_now), "cut_per_day": R(cut_p), "per_day_after": R(left_now - cut_p),
+        "days": days, "until": until, "fixes": fixes, "gap": R(need_p),
+        "left_after": R(short_with(cut_p)), "target": target, "rule": CUT_RULE,
+        "basis": hh.get("essentials_basis"),
+    }
+
+
+def cut_text(plan: dict) -> dict:
+    """"5 din roz ₹110 kam kharch — ₹330 ki jagah ₹220" from a cut_plan (rupees only, Rules.md #4)."""
+    n, c, a, b = plan["days"], inr(plan["cut_per_day"]), inr(plan["per_day_after"]), inr(plan["per_day_now"])
+    hi = f"{n} din roz {c} kam kharch — {b} ki jagah {a}."
+    en = f"{n} {'day' if n == 1 else 'days'}, {c} less each day — {a} instead of {b}."
+    if not plan["fixes"]:
+        hi += f" Isse bhi {inr(plan['left_after'])} kam rahega — baaki Gullak ya parivaar se."
+        en += f" That still leaves {inr(plan['left_after'])} short — the rest from the Gullak or family."
+    return L(hi, en)
 
 
 def _needs(e: dict) -> dict:
@@ -139,7 +210,8 @@ def responses(hh: dict, scen_kwargs: dict, scen: dict) -> dict:
     """Try each permitted response on the scenario; report which ones close the shortfall.
 
     Permitted: move a movable bill due before the next income to income day (conditional — the payee
-    must agree), spend ₹200 less a day, use the Emergency Gullak, or all of these together.
+    must agree), spend a little less each day (worked out from their own everyday spend, see
+    `cut_plan`), use the Emergency Gullak, or all of these together.
     Never suggested: new credit. If nothing works, `feasible` is False and the UI says so.
     """
     nid = scen["next_income_date"]
@@ -165,16 +237,19 @@ def responses(hh: dict, scen_kwargs: dict, scen: dict) -> dict:
         out.append({"id": f"move:{e['id']}", "kind": "move",
                     "label": L(f"{e['label']['hi']} {d(nid).day} tareekh ko", f"Pay {e['label']['en']} on {d(nid).day} {EN_MONTHS[d(nid).month]}"),
                     "gap_after": R(r["gap_p"]), "fixes": r["gap_p"] == 0, "conditional": True, "needs": _needs(e)})
-    r = trial(cut=CUT_PER_DAY)
-    out.append({"id": "cut", "kind": "cut", "label": L(f"Roz {inr(CUT_PER_DAY)} kam kharch", f"Spend {inr(CUT_PER_DAY)} less a day"),
-                "gap_after": R(r["gap_p"]), "fixes": r["gap_p"] == 0, "conditional": False})
+    plan = cut_plan(hh, target="gap", **scen_kwargs)
+    cut = plan["cut_per_day"] if plan else 0
+    if plan:
+        r = trial(cut=cut)
+        out.append({"id": "cut", "kind": "cut", "label": L(f"Roz {inr(cut)} kam kharch", f"Spend {inr(cut)} less a day"),
+                    "gap_after": R(r["gap_p"]), "fixes": r["gap_p"] == 0, "conditional": False, "plan": plan})
     if gullak:
         r = trial(opening_extra=gullak)
         out.append({"id": "gullak", "kind": "gullak",
                     "label": L(f"Emergency Gullak ke {inr(gullak)} use karein", f"Use the Emergency jar ({inr(gullak)})"),
                     "gap_after": R(r["gap_p"]), "fixes": r["gap_p"] == 0, "conditional": False, "jar_id": emergency[0]["id"]})
     if len(out) > 1:
-        r = trial(all_moves, cut=CUT_PER_DAY, opening_extra=gullak)
+        r = trial(all_moves, cut=cut, opening_extra=gullak)
         out.append({"id": "all", "kind": "all", "label": L("Sab ek saath", "All of these together"),
                     "gap_after": R(r["gap_p"]), "fixes": r["gap_p"] == 0, "conditional": bool(all_moves)})
     return {"responses": out, "feasible": any(x["fixes"] for x in out)}

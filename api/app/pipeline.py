@@ -516,8 +516,10 @@ def scenario_message(hh, base, scen, moves, shock, delay, cut, res) -> dict:
         s_en = f"{lead_en}no day goes below zero."
         s_hi, s_en = s_hi[:1].upper() + s_hi[1:], s_en[:1].upper() + s_en[1:]
     if fg > 0:
-        s_hi += f" Par {before_hi} {inr(fg)} safety floor se kam rahega — 5 din ₹200 kam kharch karein ya Gullak use karein."
-        s_en += f" But {before_en} you'll be {inr(fg)} below the safety floor — spend ₹200 less for 5 days or use the Gullak."
+        plan = e17.cut_plan(hh, target="floor", moves=moves, shock_amount=shock, salary_delay_days=delay, cut_per_day=cut)
+        how = e17.cut_text(plan) if plan else L("Gullak ya parivaar se thoda intezaam karein.", "Use the Gullak or arrange a little from family.")
+        s_hi += f" Par {before_hi} {inr(fg)} safety floor se kam rahega. {how['hi']}"
+        s_en += f" But {before_en} you'll be {inr(fg)} below the safety floor. {how['en']}"
     else:
         s_hi += f" Safety floor ({inr(R(scen['floor_p']))}) bhi surakshit hai."
         s_en += f" Your safety floor ({inr(R(scen['floor_p']))}) stays safe too."
