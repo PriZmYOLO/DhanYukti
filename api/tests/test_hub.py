@@ -287,3 +287,28 @@ def test_demo_households_stay_replay_and_epf_copy_is_honest(monkeypatch):
     r = client.post("/api/enrich/A/epf", json={"consent": True}).json()
     assert r["mode"] == "replay" and "never counted as spendable" in r["used_for"]["en"]
     assert hub_mod.PATHS["epf_otp"] == "/v2/epf-get-otp"
+
+
+PNG = {"result": {"Bill_No": "4000256445202503", "Due_Date": "12-10-2026", "Bill_Amount": "1943.0", "mobile": "",
+                  "Customer_Address": "", "Bill_Date": "20-09-2026", "Email": "", "Customer_Name": "SYED SARWAR HUSAIN  "},
+       "request_id": "07ff593f", "status-code": "101"}
+
+
+def test_png_gas_bill_lookup_and_river(live_hub, monkeypatch):
+    calls = []
+    monkeypatch.setattr(connectors, "hub", lambda: _client_with({"/v2/png": PNG}, calls))
+    r = _lookup("png", {"provider": "ag", "consumer_no": "1000082138"})
+    f = r["facts"]["png"]
+    assert f["provider_name"] == "Adani Gas" and f["amount_due"] == 1943 and f["due_date"] == "2026-10-12"
+    assert "SYED" not in repr(r) and calls[-1] == ("/v2/png", {"service_provider": "AG", "consumer_id": "1000082138", "bp_no": "", "consent": "Y"})
+    _lookup("png", {"provider": "IG", "consumer_no": "123"}, status=422)   # IGL needs a BP number
+    twin, state = _built()
+    db = client.post("/api/twin/dashboard", json={"twin": twin, "state": state, "hub": {"png": f}}).json()
+    gas = [(dt, e) for dt, e in _river_events(db) if e.get("biller")]
+    assert gas == [("2026-10-12", gas[0][1])] and gas[0][1]["amount"] == -1943
+    assert any(r["kind"] == "png" for r in db["records"])
+
+
+def test_ration_lookup_endpoint(live_hub):
+    r = _lookup("ration", {"card_no": "12344556433"})
+    assert r["facts"]["ration"]["scheme"] == "AAY" and "KATHIKUND" not in repr(r)

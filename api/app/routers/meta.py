@@ -18,7 +18,9 @@ def health():
     missing = [k for k in PERFIOS_HUB_VARS if not settings.perfios.get(k)]
     seen = sorted(k for k in os.environ if "PERFIOS" in k.upper() or "TWIN" in k.upper())
     return {"ok": True, "mode": {"anumati": settings.anumati_mode, "perfios": settings.perfios_mode, "perfios_hub": settings.hub_mode},
-            "setup": {"perfios_hub_missing": missing, "env_names": seen}}
+            "setup": {"perfios_hub_missing": missing, "env_names": seen},
+            # which commit is live (Render sets RENDER_GIT_COMMIT on every deploy)
+            "commit": (os.environ.get("RENDER_GIT_COMMIT") or "local")[:7]}
 
 
 @router.get("/capabilities")

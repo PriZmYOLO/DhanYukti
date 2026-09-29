@@ -28,6 +28,9 @@ services:
       - { key: PERFIOS_ORG_ID, sync: false }
       # Hub base URL; empty = test environment (hub-test.perfios.ai)
       - { key: PERFIOS_HUB_BASE_URL, sync: false }
+      # Same value as TWIN_SHARED_SECRET on Vercel: only the Next.js server may call /api/twin/*
+      # (incl. the Perfios Hub lookups), so nobody can spend Hub credits by calling Render directly.
+      - { key: TWIN_SHARED_SECRET, sync: false }
       - { key: ANTHROPIC_API_KEY, sync: false }
       # Team-only demo reset token (web/scripts/reset-demo.sh). Unset = reset refused.
       - { key: ADMIN_RESET_TOKEN, sync: false }
