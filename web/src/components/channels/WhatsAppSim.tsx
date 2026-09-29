@@ -16,7 +16,7 @@ function buildScript(d: Dashboard): Record<string, Node> {
   const n = topTask(d);
   const jar = d.jars[0];
   const pay = nextSalary(d) ?? "salary day";
-  const lender = d.lender_shield.find((l) => !l.on_rbi_list);
+  const lender = d.lender_shield.find((l) => l.on_rbi_list === false)  // demo-only: live apps missing from our copy are "unknown", never "not on RBI's list";
   const aa = { hi: "Anumati", en: "Anumati" };
   const karo: L = n.action.type === "message" && n.action.payload.text && typeof n.action.payload.text === "object"
     ? { hi: `Yeh message school ko bhej dijiye:\n\n${(n.action.payload.text as L).hi}`, en: `Forward this to the school:\n\n${(n.action.payload.text as L).en}` }

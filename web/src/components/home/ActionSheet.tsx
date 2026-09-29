@@ -136,9 +136,16 @@ function ProtectFlow({ action, onDone }: { action: Action; onDone: () => void })
   );
 }
 
+function rbiBadge(on: boolean | null): L {
+  if (on === true) return { hi: "Hamari RBI list copy mein", en: "In our copy of RBI's list" };
+  if (on === false) return { hi: "RBI list mein nahi (demo)", en: "Not on RBI list (demo)" };
+  return { hi: "Hamari copy mein nahi — check karein", en: "Not in our copy — check" };
+}
+
 function CheaperFlow({ action, onDone }: { action: Action; onDone: () => void }) {
   const { data, t, award, lang } = useApp();
-  const bad = data?.lender_shield.filter((l) => !l.on_rbi_list || l.effective_annual_pct > 36) ?? [];
+  // 36 is DhanYukti's own cost line, not an RBI rule; an app missing from our partial copy of RBI's list is "unknown", not "bad".
+  const bad = data?.lender_shield.filter((l) => l.on_rbi_list === false || (l.above_our_cost_line ?? l.effective_annual_pct > 36)) ?? [];
   const rbi = String(action.payload.rbi_dla_url ?? "https://www.rbi.org.in");
   const sachet = String(action.payload.sachet_url ?? "https://sachet.rbi.org.in");
   return (
@@ -146,12 +153,12 @@ function CheaperFlow({ action, onDone }: { action: Action; onDone: () => void })
       {bad.map((l) => (
         <div key={l.app} className="rounded-[24px] bg-danger-soft p-4">
           <div className="flex items-center gap-2"><TriangleAlert className="text-danger" size={20} /><b className="text-lg">{l.app}</b>
-            <span className="ml-auto text-[11px] font-bold rounded-full bg-white px-2 py-0.5 text-danger">{l.on_rbi_list ? (lang === "hi" ? "RBI list mein" : "On RBI list") : (lang === "hi" ? "RBI list mein nahi" : "Not on RBI list")}</span></div>
+            <span className="ml-auto text-[11px] font-bold rounded-full bg-white px-2 py-0.5 text-danger">{t(rbiBadge(l.on_rbi_list))}</span></div>
           <p className="mt-2 text-[15px]">{t({ hi: `${inr(l.borrowed)} liye, ${l.days} din mein ${inr(l.charges)} byaaj gaya`, en: `Borrowed ${inr(l.borrowed)}, paid ${inr(l.charges)} in ${l.days} days` })}</p>
           <p className="text-sm text-muted mt-1">{t(l.verdict)}</p>
         </div>
       ))}
-      <a href={rbi} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-[24px] bg-white p-4 min-h-14 font-semibold"><ExternalLink size={18} />{t({ hi: "RBI ki lending app list dekhein", en: "Check RBI's lending app list" })}</a>
+      <a href={rbi} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-[24px] bg-white p-4 min-h-14 font-semibold"><ExternalLink size={18} /><span>{t({ hi: "RBI ki lending app list dekhein", en: "Check RBI's lending app list" })}{action.payload.rbi_dla_path != null && <span className="block text-[11px] font-normal text-muted">{t(asL(action.payload.rbi_dla_path))}</span>}</span></a>
       <a href={sachet} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-[24px] bg-white p-4 min-h-14 font-semibold"><ExternalLink size={18} />{t({ hi: "SACHET par shikayat karein", en: "Complain on SACHET" })}</a>
       {action.payload.option != null && <div className="rounded-[24px] bg-mint p-4"><p className="text-xs font-bold text-leaf uppercase tracking-wider">{lang === "hi" ? "Sasta vikalp" : "Cheaper option"}</p><p className="font-bold mt-1">{t(asL(action.payload.option))}</p><p className="text-[11px] mt-1 text-muted">Referral · {lang === "hi" ? "sirf RBI-registered lender" : "RBI-registered lenders only"}</p></div>}
       <Btn variant="ink" className="w-full" onClick={() => { award("task_done", { hi: "Lender check ho gaya", en: "Lender checked" }); onDone(); }}>{lang === "hi" ? "Samajh gaya" : "Got it"}</Btn>

@@ -28,7 +28,7 @@ export default function Ask() {
   const [busy, setBusy] = useState(false);
   const rec = useRef<SR | null>(null);
   const top = data?.nba[0];
-  const lender = data?.lender_shield.find((l) => !l.on_rbi_list);
+  const lender = data?.lender_shield.find((l) => l.on_rbi_list !== true);
   const CHIPS: L[] = [
     ...(top ? [{ hi: `Kyon? — ${top.title.hi}`, en: `Why? — ${top.title.en}` }] : []),
     ...(lender ? [{ hi: `Kya ${lender.app} app safe hai?`, en: `Is the ${lender.app} app safe?` }] : []),

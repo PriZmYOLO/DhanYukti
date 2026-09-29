@@ -72,7 +72,9 @@ def _app_name(n: str) -> str:
     u = n.upper()
     for a in APP_LENDERS:
         if a in u:
-            return {"QUICKRUPEE": "QuickRupee", "KREDITBEE": "KreditBee", "MONEYVIEW": "MoneyView"}.get(a, a.title())
+            return {"QUICKRUPEE": "QuickRupee", "KREDITBEE": "KreditBee", "MONEYVIEW": "MoneyView",
+                    "RUPEEREDEE": "RupeeRedee", "LOANTAP": "LoanTap", "INSTAMONEY": "InstaMoney", "CASHBEAN": "CashBean",
+                    "SMARTCOIN": "SmartCoin", "TRUEBALANCE": "TrueBalance", "MPOKKET": "mPokket", "PAYSENSE": "PaySense"}.get(a, a.title())
     return "Unknown"
 
 

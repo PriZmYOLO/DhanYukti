@@ -95,11 +95,14 @@ def test_lender_shield_A():
     q = ls["QuickRupee"]
     assert not q["on_rbi_list"] and q["borrowed"] == 3000 and q["charges"] == 340 and q["days"] == 15
     assert q["effective_annual_pct"] == 276
-    assert ls["KreditBee"]["on_rbi_list"]
+    assert q["rbi_list_status"] == "not_on_list" and q["verdict"]["en"].startswith("Not on RBI's list (demo).")
+    assert ls["KreditBee"]["on_rbi_list"] and ls["KreditBee"]["rbi_list_status"] == "in_our_copy"
+    assert "our rule, not RBI's" in ls["KreditBee"]["verdict"]["en"]
     assert effective_annual_pct(34000, 300000, 15) > 36
     n2 = db["nba"][1]
     assert n2["tier"] == 1 and n2["action"]["type"] == "cheaper_option"
     assert "sachet_url" in n2["action"]["payload"] and "rbi_dla_url" in n2["action"]["payload"]
+    assert "DhanYukti's rule (not RBI's)" in n2["why"]["rule"]["en"]
 
 
 def test_metrics_A():
