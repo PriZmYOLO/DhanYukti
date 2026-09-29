@@ -1,7 +1,9 @@
 import type {
-  Capability, ConsentArtefact, Dashboard, DpdpGrant, GameEventResult, HouseholdSummary, L, SimResult,
+  AgentRecord, Capability, ConsentArtefact, Dashboard, DpdpGrant, GameEventResult, HouseholdSummary, L, SimResult,
 } from "./types";
 import type { MyBillsView } from "./contracts/my-bills";
+
+export type HubLookupKind = "electricity" | "png" | "ration" | "epf_otp" | "epf" | "rc" | "dl" | "agent";
 
 /** A "my household" (linked member) error: says what's wrong, never swaps in demo data. */
 export class MeError extends Error {
@@ -92,6 +94,12 @@ const real = {
     post<{ bills: MyBillsView; receipt_id: string | null }>("/households/me/bills", { series, action, ...extra }),
   enrich: (hid: string, kind: "electricity" | "rc" | "ration" | "epf", input: Record<string, string> = {}) =>
     post<{ kind: string; mode: string; result: Record<string, unknown>; used_for: L }>(`/enrich/${hid}/${kind}`, { consent: true, input }),
+  /** A linked member's own record through Perfios Hub (their consent in the same call). Never mocked. */
+  hubLookup: (kind: HubLookupKind, input: Record<string, string>, consent = true) =>
+    post<{ ok: true; facts?: Record<string, Record<string, unknown>>; otp_sent?: boolean; agent?: { found: boolean; any_active: boolean; records: AgentRecord[] } }>(
+      `/households/me/hub/${kind}`, { consent, input }),
+  hubFacts: () => call<{ facts: Record<string, Record<string, unknown>> }>("/households/me/hub"),
+  hubForget: (kind: HubLookupKind) => call<{ ok: true }>(`/households/me/hub/${kind}`, { method: "DELETE" }),
   bsaUpload: async (file: File) => {
     const fd = new FormData(); fd.append("file", file);
     const res = await fetch("/api/bsa/upload", { method: "POST", body: fd, headers: { "X-DY-Demo": demoVisitor() } });

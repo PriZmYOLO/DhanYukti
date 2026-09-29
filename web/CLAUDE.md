@@ -36,6 +36,15 @@ them, each as a Value Ledger entry (`bill:<hash>`, no payee or amount); the
 reveal step shows `ConfirmBills`. Checks: `api/tests/test_twin.py` and
 `npm run test:my-bills` (mock bank + Next.js + FastAPI).
 
+Records from Perfios Hub (`/api/households/me/hub/[kind]`, `src/lib/server/twin/hub.ts`):
+the member's own electricity/gas bill, ration card, EPF (OTP), vehicle RC + e-challans and
+driving licence, each behind its own DPDP purpose (electricity, gas, ration, epf, rc, dl; the
+call grants it with `consent: true`). FastAPI `/api/twin/hub/{kind}` makes the live call and
+returns derived facts only (no names, addresses, photos); they are kept 30 days per session,
+sent to the engines as `hub` with every twin call, and deleted when the purpose is withdrawn.
+The IRDAI agent check (`agent`) stores nothing. Demo households A/B/C always replay.
+Checks: `api/tests/test_hub.py`.
+
 Server code lives in `src/lib/server/`. Live consent terms: `src/lib/aa/live-terms.ts`
 (keep in step with `ONBOARDING_CONSENT` in `src/lib/server/aa/fiu-client.ts`).
 Everything else under `/api` goes to FastAPI at `API_ORIGIN`; when that is

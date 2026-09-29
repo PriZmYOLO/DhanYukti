@@ -36,6 +36,7 @@ export default function KyonSheet({ nba, open, onClose }: { nba: NBA | null; ope
             <p className="flex-1 text-[17px] font-semibold leading-snug">{t(w.rule)}</p>
             <SpeakBtn v={speech} size={40} />
           </div>
+          {w.source && <p className="mt-2 text-[12px] font-bold text-muted">{t(w.source)}</p>}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-[24px] bg-white p-4">

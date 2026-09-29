@@ -28,9 +28,9 @@ export type RiverDay = { date: string; balance: number; events: RiverEvent[] };
 export type River = { floor: number; days: RiverDay[]; min_balance: number; min_date: string; gap: number };
 
 export type Txn = { date: string; narration: string; amount: number; source: "aa" | "perfios" | "declared" };
-export type Why = { saw: Txn[]; rule: L; confidence: Confidence; tag: "jaankari" | "referral" };
+export type Why = { saw: Txn[]; rule: L; confidence: Confidence; tag: "jaankari" | "referral"; source?: L };
 export type Action = {
-  type: "message" | "gullak" | "protect" | "cheaper_option" | "plan" | "help";
+  type: "message" | "gullak" | "protect" | "cheaper_option" | "plan" | "help" | "link";
   label: L; payload: Record<string, unknown>;
 };
 export type NBA = {
@@ -77,8 +77,14 @@ export type Dashboard = {
   spend: SpendSlice[];
   lender_shield: LenderCheck[];
   crosscheck: { field: L; ours: string; perfios: string; agree: boolean }[];
+  /** Records the linked member added through Perfios Hub (derived facts only). */
+  records?: HubRecord[];
+  records_notes?: L[];
   game: Game;
 };
+
+export type HubRecord = { kind: "electricity" | "png" | "ration" | "epf" | "rc" | "challan" | "dl"; title: L; lines: L[]; fetched_on: string; source: string };
+export type AgentRecord = { name: string; insurer: string; insurer_type: string; status: string; active: boolean; appointed: string | null };
 
 export type HouseholdSummary = { id: string; family_name: L; city: L; income: number; members: number; problem: L; hero: L };
 

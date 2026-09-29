@@ -10,10 +10,11 @@ Within a tier, the earliest date of harm wins; ties broken by a fixed kind order
 """
 from __future__ import annotations
 
+from app.engines import hub_facts
 from app.engines.common import P, add_days, d, iso
 
-KIND_ORDER = {"deficit": 0, "protected_obligation": 1, "lender": 2, "protect_earner": 3,
-              "penalties": 4, "resilience": 5, "grow": 6}
+KIND_ORDER = {"deficit": 0, "protected_obligation": 1, "lender": 2, "vehicle_insurance": 3, "protect_earner": 4,
+              "licence": 5, "penalties": 6, "challans": 7, "puc": 8, "resilience": 9, "grow": 10}
 IDLE_MIN_P = P(10000)
 
 
@@ -54,6 +55,9 @@ def needs(ctx: dict) -> list[dict]:
     if idle_p >= IDLE_MIN_P and not fd:
         out.append({"kind": "grow", "tier": 4, "harm_date": iso(add_days(d(as_of), 90)), "severity": "green",
                     "idle_p": idle_p})
+
+    # records the member added through Perfios Hub (vehicle, e-challans, licence)
+    out += hub_facts.vehicle_needs(ctx["hh"])
 
     out.sort(key=lambda n: (n["tier"], n["harm_date"], KIND_ORDER[n["kind"]]))
     return out
